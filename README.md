@@ -1,5 +1,7 @@
 # 🚀 OptiScaler Installer
 
+![20260325-235312](https://github.com/user-attachments/assets/00f34656-a2b6-4ad3-bce9-04e7a8daf102)
+
 <p align="center">
   <b>Simple and automated installer for OptiScaler.</b><br>
 </p>
@@ -15,6 +17,8 @@
 &nbsp;
 
 ## 💻 Supported Hardware
+![20260325-235312](https://github.com/user-attachments/assets/00f34656-a2b6-4ad3-bce9-04e7a8daf102)
+
 ---
 ### **Supported GPU**
 - **Intel:** Lunar Lake, Meteor Lake
