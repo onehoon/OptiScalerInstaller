@@ -1,6 +1,7 @@
 # Local configuration and scripts
 build.py
 .env
+.vscode/
 
 # Python & PyInstaller artifacts
 __pycache__/
@@ -9,3 +10,4 @@ dist/
 *.spec
 *.pyc
 temp_version.txt
+*.log
