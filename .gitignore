@@ -9,3 +9,5 @@ dist/
 *.spec
 *.pyc
 temp_version.txt
+# VS Code settings
+.vscode/
