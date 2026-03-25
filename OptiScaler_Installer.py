@@ -24,7 +24,8 @@ import unicodedata
 import ctypes
 import locale
 import stat
-import winreg
+if os.name == "nt":
+    import winreg
 
 try:
     import customtkinter as ctk
@@ -279,7 +280,7 @@ USE_KOREAN: bool = _is_korean_ui()
 
 def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    response = requests.get(url, timeout=15)
+    response = _file_session.get(url, timeout=15)
     response.raise_for_status()
     text = response.content.decode("utf-8-sig")
 
@@ -489,7 +490,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
 def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
     """Load module download links from sheet columns: module_dl, version, download link, gpu rule."""
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    response = requests.get(url, timeout=15)
+    response = _file_session.get(url, timeout=15)
     response.raise_for_status()
 
     reader = csv.reader(io.StringIO(response.content.decode("utf-8-sig"), newline=""))
@@ -1337,7 +1338,7 @@ def process_engine_ini_edits(spreadsheet_id: str, gid: int = 0, workspace_root: 
     """
     # Fetch game sheet CSV
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    resp = requests.get(url, timeout=15)
+    resp = _file_session.get(url, timeout=15)
     resp.raise_for_status()
     text = resp.content.decode("utf-8-sig")
     reader = csv.reader(io.StringIO(text, newline=""))
@@ -1577,6 +1578,67 @@ FONT_UI = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
 
 
 class OptiManagerApp:
+    def __init__(self, root: ctk.CTk):
+        self.root = root
+        self.root.title(f"OptiScaler Installer for Intel LunarLake (v{APP_VERSION})")
+        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
+        screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
+        target_w = min(WINDOW_W, max(360, screen_w - 40))
+        target_h = min(WINDOW_H, max(420, screen_h - 80))
+
+        self.root.geometry(f"{target_w}x{target_h}")
+        self.root.minsize(target_w, target_h)
+        self.root.update_idletasks()
+        self.root.state("normal")
+        self.root.overrideredirect(False)
+        self.root.resizable(True, True)
+
+        self.game_folder = ""
+        self.opti_source_archive = ""
+        self.found_exe_list = []
+        self.game_db = {}
+        self.module_download_links = {}
+        self._supported_games_popup_shown = False
+        self.sheet_status = False
+        self.sheet_loading = True
+        self.gpu_info = get_graphics_adapter_info()
+        self.install_in_progress = False
+        self.selected_game_index = None
+        self.card_frames: list = []
+        self.card_items: list = []
+        self._hovered_card_index = None
+        self._grid_cols_current = GRID_COLS
+        self._resize_after_id = None
+        self._resize_visual_after_id = None
+        self._resize_in_progress = False
+        self._last_reflow_width = 0
+        self._base_root_width = None
+        self._ctk_images: list = []   # keep refs alive
+        self._image_cache: dict = {}  # cache_key -> PIL.Image
+        self._poster_cache_dir = POSTER_CACHE_DIR
+        if ENABLE_POSTER_CACHE:
+            self._poster_cache_dir.mkdir(parents=True, exist_ok=True)
+        self._default_poster_base = _load_default_poster_base(TARGET_POSTER_W, TARGET_POSTER_H)
+        self._image_session = self._build_retry_session()
+        self._image_executor = ThreadPoolExecutor(max_workers=IMAGE_MAX_WORKERS, thread_name_prefix="cover-loader")
+        self._task_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="general-task")
+        self._pending_image_jobs: dict = {}
+        self._inflight_image_futures: dict = {}
+        self._failed_image_jobs: dict = {}
+        self._render_generation = 0
+        self._image_queue_after_id = None
+        self._games_scrollregion_after_id = None
+        self._overflow_fit_after_id = None
+        self._initial_image_pass = True
+        self._scan_in_progress = False
+        self._auto_scan_active = False
+        self._retry_attempted = False
+        self.setup_ui()
+        self.root.bind("<Configure>", self._on_root_resize)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.after(250, self._capture_startup_width)
+        self._start_game_db_load_async()
+
     def _show_game_selection_popup(self, message_text: str, on_confirm: callable = None):
         popup = ctk.CTkToplevel(self.root)
         popup.title("Installer Notice")
@@ -1634,66 +1696,6 @@ class OptiManagerApp:
         popup.deiconify()
         popup.after(0, lambda p=popup: self._center_popup_on_root(p))
         popup.after(80, lambda p=popup: self._center_popup_on_root(p))
-    def __init__(self, root: ctk.CTk):
-        self.root = root
-        self.root.title(f"OptiScaler Installer for Intel LunarLake (v{APP_VERSION})")
-        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
-        screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
-        target_w = min(WINDOW_W, max(360, screen_w - 40))
-        target_h = min(WINDOW_H, max(420, screen_h - 80))
-
-        self.root.geometry(f"{target_w}x{target_h}")
-        self.root.minsize(target_w, target_h)
-        self.root.update_idletasks()
-        self.root.state("normal")
-        self.root.overrideredirect(False)
-        self.root.resizable(True, True)
-
-        self.game_folder = ""
-        self.opti_source_archive = ""
-        self.found_exe_list = []
-        self.game_db = {}
-        self.module_download_links = {}
-        self._supported_games_popup_shown = False
-        self.sheet_status = False
-        self.sheet_loading = True
-        self.gpu_info = get_graphics_adapter_info()
-        self.install_in_progress = False
-        self.selected_game_index = None
-        self.card_frames: list = []
-        self.card_items: list = []
-        self._hovered_card_index = None
-        self._grid_cols_current = GRID_COLS
-        self._resize_after_id = None
-        self._resize_visual_after_id = None
-        self._resize_in_progress = False
-        self._last_reflow_width = 0
-        self._base_root_width = None
-        self._ctk_images: list = []   # keep refs alive
-        self._image_cache: dict = {}  # cache_key -> PIL.Image
-        self._poster_cache_dir = POSTER_CACHE_DIR
-        if ENABLE_POSTER_CACHE:
-            self._poster_cache_dir.mkdir(parents=True, exist_ok=True)
-        self._default_poster_base = _load_default_poster_base(TARGET_POSTER_W, TARGET_POSTER_H)
-        self._image_session = self._build_retry_session()
-        self._image_executor = ThreadPoolExecutor(max_workers=IMAGE_MAX_WORKERS, thread_name_prefix="cover-loader")
-        self._pending_image_jobs: dict = {}
-        self._inflight_image_futures: dict = {}
-        self._failed_image_jobs: dict = {}
-        self._render_generation = 0
-        self._image_queue_after_id = None
-        self._games_scrollregion_after_id = None
-        self._overflow_fit_after_id = None
-        self._initial_image_pass = True
-        self._scan_in_progress = False
-        self._auto_scan_active = False
-        self._retry_attempted = False
-
-        self.setup_ui()
-        self.root.bind("<Configure>", self._on_root_resize)
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-        self.root.after(250, self._capture_startup_width)
-        self._start_game_db_load_async()
 
     def _get_rtss_install_path(self) -> Path:
         try:
@@ -1711,7 +1713,6 @@ class OptiManagerApp:
         try:
             profiles_dir = self._get_rtss_install_path() / "Profiles"
             global_path = profiles_dir / "Global"
-            # ...debug log removed...
             ref_val, detours_val = None, None
             # RTSS 폴더 또는 Global 파일이 없으면 팝업 띄우지 않음
             if not (profiles_dir.exists() and global_path.exists()):
@@ -1722,7 +1723,6 @@ class OptiManagerApp:
                     ref_val = line.split("=", 1)[1].strip()
                 if line.strip().startswith("UseDetours="):
                     detours_val = line.split("=", 1)[1].strip()
-            # ...debug log removed...
             # 둘 다 조건 만족 시(정상): 팝업 띄우지 않음
             if ref_val == "0" and detours_val == "1":
                 return
@@ -1730,12 +1730,11 @@ class OptiManagerApp:
             key = "rtss_kr" if USE_KOREAN else "rtss_en"
             val = self.module_download_links.get(key, None)
             msg = str(val or "").strip()
-            # ...debug log removed...
             if not msg:
                 return  # 문구 없으면 아무 알림도 띄우지 않음
             self._show_rtss_popup(msg)
         except Exception as e:
-            logging.warning(f"RTSS 팝업 검사 중 오류: {e}")
+            logging.warning(f"Error during RTSS popup check: {e}")
 
     def _show_rtss_popup(self, message_text: str):
         """RTSS 안내 팝업 (텍스트+이미지)"""
@@ -1780,33 +1779,17 @@ class OptiManagerApp:
                 scale = 1.8  # 80% 확대 (20% 추가)
                 target_w = int(base_w * scale * HI_DPI_SCALE)
                 target_h = int(orig_h * (target_w / orig_w))
-                # 커버 이미지와 동일한 PIL 처리
-                if pil_img.mode not in {"RGB", "RGBA"}:
-                    pil_img = pil_img.convert("RGBA")
-                else:
-                    pil_img = pil_img.copy()
-                prefit_limit = (max(1, target_w * 2), max(1, target_h * 2))
-                if pil_img.width > prefit_limit[0] or pil_img.height > prefit_limit[1]:
-                    pil_img.thumbnail(prefit_limit, Image.Resampling.LANCZOS)
-                pil_img = ImageOps.fit(
-                    pil_img,
-                    (target_w, target_h),
-                    method=Image.Resampling.LANCZOS,
-                    centering=(0.5, 0.5),
-                )
-                pil_img = pil_img.filter(ImageFilter.UnsharpMask(radius=0.6, percent=60, threshold=4))
-                pil_img = ImageEnhance.Color(pil_img).enhance(1.1)
-                pil_img = ImageEnhance.Contrast(pil_img).enhance(1.05)
-                pil_img = pil_img.convert("RGBA")
+
+                # 커버 이미지 처리 로직 재사용
+                pil_img = _prepare_cover_image(pil_img, target_w, target_h)
+
                 # CTkImage에 hi-dpi 적용
                 ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(target_w // HI_DPI_SCALE, target_h // HI_DPI_SCALE))
                 img_label = ctk.CTkLabel(container, image=ctk_img, text="")
                 img_label.image = ctk_img  # keep ref
                 img_label.pack(pady=(12, 0))
-            else:
-                pass
         except Exception as e:
-            logging.warning(f"RTSS 이미지 로딩 실패: {e}")
+            logging.warning(f"Failed to load RTSS image: {e}")
 
         def _close_popup():
             try:
@@ -1866,6 +1849,10 @@ class OptiManagerApp:
             self._image_executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
+        try:
+            self._task_executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
         self.root.destroy()
 
     def _build_retry_session(self) -> requests.Session:
@@ -1884,7 +1871,7 @@ class OptiManagerApp:
         return session
 
     def _start_game_db_load_async(self):
-        threading.Thread(target=self._load_game_db_worker, daemon=True).start()
+        self._task_executor.submit(self._load_game_db_worker)
 
     def _load_game_db_worker(self):
         try:
@@ -2039,21 +2026,56 @@ class OptiManagerApp:
         paths = []
         seen = set()
 
-        candidates = [
-            Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Steam" / "steamapps" / "common",
-            Path("D:/") / "SteamLibrary" / "steamapps" / "common",
+        # 1. Custom paths that should always be scanned if they exist
+        custom_candidates = [
             Path("D:/") / "game",
             Path("D:/") / "games",
-            Path("E:/") / "SteamLibrary" / "steamapps" / "common",
             Path("E:/") / "game",
             Path("E:/") / "games",
         ]
 
-        for p in candidates:
-            resolved = str(p).lower()
-            if resolved not in seen and p.exists() and p.is_dir():
-                seen.add(resolved)
-                paths.append(str(p))
+        for p in custom_candidates:
+            if p.exists() and p.is_dir():
+                resolved = str(p).lower()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    paths.append(str(p))
+
+        # 2. Steam Library Detection (Registry + VDF)
+        steam_paths = []
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
+                base_steam_path_str, _ = winreg.QueryValueEx(key, "SteamPath")
+            
+            base_steam_path = Path(base_steam_path_str)
+            steam_paths.append(base_steam_path / "steamapps" / "common")
+
+            vdf_path = base_steam_path / "steamapps" / "libraryfolders.vdf"
+            if vdf_path.exists():
+                try:
+                    with open(vdf_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    matches = re.findall(r'"path"\s+"([^"]+)"', content, re.IGNORECASE)
+                    for match in matches:
+                        clean_path = match.replace("\\\\", "\\")
+                        steam_paths.append(Path(clean_path) / "steamapps" / "common")
+                except Exception as e:
+                    logging.warning("Error parsing libraryfolders.vdf: %s", e)
+        except Exception as e:
+            logging.debug("Steam registry detection failed: %s", e)
+
+        # 3. Fallback Steam paths (only if auto-detection found nothing valid)
+        if not any(p.exists() and p.is_dir() for p in steam_paths):
+            steam_paths.append(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Steam" / "steamapps" / "common")
+            steam_paths.append(Path("D:/") / "SteamLibrary" / "steamapps" / "common")
+            steam_paths.append(Path("E:/") / "SteamLibrary" / "steamapps" / "common")
+
+        for p in steam_paths:
+            if p.exists() and p.is_dir():
+                resolved = str(p).lower()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    paths.append(str(p))
 
         return paths
 
@@ -2071,11 +2093,7 @@ class OptiManagerApp:
         self._auto_scan_active = True
         self.btn_select_folder.configure(state="disabled")
 
-        threading.Thread(
-            target=self._scan_worker,
-            args=(scan_paths,),
-            daemon=True,
-        ).start()
+        self._task_executor.submit(self._scan_worker, scan_paths)
 
     def _show_supported_games_popup(self):
         names = []
@@ -3355,11 +3373,7 @@ class OptiManagerApp:
         self._auto_scan_active = False
         self.btn_select_folder.configure(state="disabled")
 
-        threading.Thread(
-            target=self._scan_worker,
-            args=([self.game_folder],),
-            daemon=True,
-        ).start()
+        self._task_executor.submit(self._scan_worker, [self.game_folder])
 
     def _scan_worker(self, game_folders: list):
         """Background thread: walk one or more folders, post each found game to the main thread."""
@@ -3548,11 +3562,7 @@ class OptiManagerApp:
         self.install_in_progress = True
         self.apply_btn.configure(state="disabled", text="Installing…")
 
-        threading.Thread(
-            target=self._apply_optiscaler_worker,
-            args=(game_data, source_archive),
-            daemon=True,
-        ).start()
+        self._task_executor.submit(self._apply_optiscaler_worker, game_data, source_archive)
 
     def _apply_optiscaler_worker(self, game_data, source_archive):
         target_path = game_data["path"]
