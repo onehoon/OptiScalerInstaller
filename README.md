@@ -23,7 +23,7 @@
 <br>
 
 > **Note:** The default installation option is **XeSS + XeFG**
-&nbsp;
+>  
 > If you prefer **FSR**, you can switch it manually via the OptiScaler overlay (Press `Insert` key in-game)
 
 &nbsp;
