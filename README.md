@@ -72,4 +72,4 @@
 
 
 ![GitHub All Releases](https://img.shields.io/github/downloads/onehoon/OptiScalerInstaller/total?style=for-the-badge&color=orange)
-![GitHub last commit](https://img.shields.io/github/last-commit/onehoon/OptiScalerInstaller?style=for-the-badge)
+![GitHub Downloads (latest Release)](https://img.shields.io/github/downloads/onehoon/OptiScalerInstaller/latest/total?style=for-the-badge&label=latest%20download&color=brightgreen)
