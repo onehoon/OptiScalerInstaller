@@ -1,4 +1,3 @@
-
 import os
 import csv
 import io
@@ -265,6 +264,38 @@ USE_KOREAN: bool = _is_korean_ui()
 
 
 def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
+    # ...existing code...
+    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+    response = _file_session.get(url, timeout=15)
+    response.raise_for_status()
+    text = response.content.decode("utf-8-sig")
+
+    # Use StringIO so quoted multi-line cells (e.g., #information with line breaks)
+    # are parsed correctly instead of being flattened.
+    reader = csv.reader(io.StringIO(text, newline=""))
+    headers = next(reader, None)
+    if not headers:
+        raise ValueError("Google Sheet has no header row")
+
+    columns = [c.strip().lower() for c in headers]
+
+    # after_popup columns: index calculation here, value extraction in row loop
+    after_popup_kr_keys = ["after_popup_kr", "after popup kr", "afterpopupkr"]
+    after_popup_en_keys = ["after_popup_en", "after popup en", "afterpopupen"]
+    after_popup_kr_col = next((c for c in columns if c in after_popup_kr_keys), None)
+    after_popup_en_col = next((c for c in columns if c in after_popup_en_keys), None)
+    after_popup_kr_index = columns.index(after_popup_kr_col) if after_popup_kr_col else None
+    after_popup_en_index = columns.index(after_popup_en_col) if after_popup_en_col else None
+
+    db = {}
+    for sheet_order, row in enumerate(reader):
+        # ...existing code...
+        after_popup_kr = ""
+        after_popup_en = ""
+        if after_popup_kr_index is not None and len(row) > after_popup_kr_index:
+            after_popup_kr = row[after_popup_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
+        if after_popup_en_index is not None and len(row) > after_popup_en_index:
+            after_popup_en = row[after_popup_en_index].replace("\r\n", "\n").replace("\r", "\n").strip()
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
     response = _file_session.get(url, timeout=15)
     response.raise_for_status()
@@ -444,7 +475,17 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
             if len(row) > col_i:
                 val = row[col_i].strip()
                 if val:
-                    ini_settings[var_name] = val
+                    # [Section]|Key 형태면 Section/Key로 분리, 아니면 Key만 사용
+                    if "|" in var_name:
+                        section, key = var_name.split("|", 1)
+                        section = section.strip().strip("[]")
+                        key = key.strip()
+                        if section and key:
+                            ini_settings[(section, key)] = val
+                        else:
+                            ini_settings[var_name] = val
+                    else:
+                        ini_settings[var_name] = val
 
         if exe_path:
             db[exe_path.lower()] = {
@@ -468,6 +509,8 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 "ingame_settings": ingame_settings,
                 "popup_kr": popup_kr,
                 "popup_en": popup_en,
+                "after_popup_kr": after_popup_kr,
+                "after_popup_en": after_popup_en,
             }
 
     return db
@@ -874,40 +917,6 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False):
         return
 
     logging.info("INI settings applied in-place: %s", applied)
-
-    if force_frame_generation:
-        try:
-            force_lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
-        except Exception:
-            logging.exception("Failed to read INI for frame generation enforcement")
-            return
-
-        frame_enabled_updated = False
-        for i, line in enumerate(force_lines):
-            if line.strip() == "; Enables Frame Generation":
-                for j in range(i + 1, min(i + 9, len(force_lines))):
-                    line_body, line_ending = _split_line_ending(force_lines[j])
-                    stripped = line_body.strip()
-                    if stripped.startswith("Enabled="):
-                        prefix_len = len(line_body) - len(line_body.lstrip())
-                        prefix = line_body[:prefix_len]
-                        old_rest = line_body.split("=", 1)[1]
-                        _, comment = _split_value_and_comment(old_rest)
-                        new_line = f"{prefix}Enabled=True"
-                        if comment:
-                            new_line += f" {comment}"
-                        force_lines[j] = f"{new_line}{line_ending}"
-                        frame_enabled_updated = True
-                        break
-            if frame_enabled_updated:
-                break
-
-        if frame_enabled_updated:
-            try:
-                p.write_text("".join(force_lines), encoding="utf-8")
-                logging.info("Frame Generation Enabled=True applied")
-            except Exception:
-                logging.exception("Failed to write frame generation enforcement in INI")
 
 
 def download_to_file(url, dest_path, timeout=60, logger=None):
@@ -1672,7 +1681,7 @@ class OptiManagerApp:
         self.root.after(250, self._capture_startup_width)
         self._start_game_db_load_async()
 
-    def _show_game_selection_popup(self, message_text: str, on_confirm: callable = None):
+    def _show_game_selection_popup(self, message_text: str, on_confirm: callable = None, is_after_popup: bool = False):
         popup = ctk.CTkToplevel(self.root)
         popup.title("Installer Notice")
         popup.transient(self.root)
@@ -1696,7 +1705,28 @@ class OptiManagerApp:
         )
         normal_font = tkfont.Font(family=FONT_UI, size=13)
         text_widget.configure(font=normal_font)
-        text_widget.insert("end", message_text)
+
+        def insert_with_red(text):
+            idx = 0
+            while idx < len(text):
+                start = text.find("[RED]", idx)
+                if start == -1:
+                    text_widget.insert("end", text[idx:])
+                    break
+                text_widget.insert("end", text[idx:start])
+                end = text.find("[END]", start)
+                if end == -1:
+                    text_widget.insert("end", text[start+5:], "red")
+                    break
+                text_widget.insert("end", text[start+5:end], "red")
+                idx = end + 5
+
+        if is_after_popup and ("[RED]" in message_text and "[END]" in message_text):
+            text_widget.tag_configure("red", foreground="#FF4444")
+            insert_with_red(message_text)
+        else:
+            text_widget.insert("end", message_text)
+
         line_count = max(1, min(16, message_text.count("\n") + 1))
         text_widget.configure(height=line_count)
         text_widget.configure(state="disabled")
@@ -1729,6 +1759,20 @@ class OptiManagerApp:
         popup.deiconify()
         popup.after(0, lambda p=popup: self._center_popup_on_root(p))
         popup.after(80, lambda p=popup: self._center_popup_on_root(p))
+    def _show_after_install_popup(self, game: dict):
+        # Determine language
+        import locale
+        lang, _ = locale.getdefaultlocale()
+        is_kr = lang and lang.lower().startswith("ko")
+        msg = ""
+        if is_kr:
+            print("DEBUG after_popup_kr:", repr(game.get("after_popup_kr", "")))  # 진단용
+            msg = game.get("after_popup_kr", "").strip()
+        else:
+            msg = game.get("after_popup_en", "").strip()
+        if not msg:
+            msg = "설치가 완료되었습니다." if is_kr else "Installation Success"
+        self._show_game_selection_popup(msg, is_after_popup=True)
 
     def _get_rtss_install_path(self) -> Path:
         roots = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
@@ -3500,6 +3544,8 @@ class OptiManagerApp:
                                 "sheet_order": int(entry.get("sheet_order", 10**9)),
                                 "popup_kr": entry.get("popup_kr", ""),
                                 "popup_en": entry.get("popup_en", ""),
+                                "after_popup_kr": entry.get("after_popup_kr", ""),
+                                "after_popup_en": entry.get("after_popup_en", ""),
                             }
                             found_games.append(game)
 
@@ -3758,7 +3804,9 @@ class OptiManagerApp:
         self.apply_btn.configure(state="normal", text="Install")
 
         if success:
-            self._show_success_popup(message)
+            # Use after_popup_kr/en if present, else fallback
+            game = self.found_exe_list[self.selected_game_index] if hasattr(self, 'selected_game_index') and self.selected_game_index is not None and self.selected_game_index < len(self.found_exe_list) else {}
+            self._show_after_install_popup(game)
         else:
             messagebox.showerror("Error", f"An error occurred during installation: {message}")
 
