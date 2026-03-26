@@ -7,6 +7,7 @@ import tempfile
 import threading
 import zipfile
 import tkinter as tk
+import time
 import tkinter.font as tkfont
 import math
 import hashlib
@@ -264,16 +265,35 @@ USE_KOREAN: bool = _is_korean_ui()
 
 
 def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
-    # ...existing code...
+    # Fetch with retry/backoff; do NOT use or write any local cache.
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    response = _file_session.get(url, timeout=15)
-    response.raise_for_status()
+
+    max_attempts = 3
+    backoff_base = 1.0
+    response = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = _file_session.get(url, timeout=15)
+            response.raise_for_status()
+            break
+        except Exception as e:
+            if attempt < max_attempts:
+                sleep_for = backoff_base * (2 ** (attempt - 1))
+                try:
+                    time.sleep(sleep_for)
+                except Exception:
+                    pass
+            else:
+                # All attempts failed — propagate the exception (no cache fallback)
+                raise
+
     text = response.content.decode("utf-8-sig")
 
     # Use StringIO so quoted multi-line cells (e.g., #information with line breaks)
     # are parsed correctly instead of being flattened.
     reader = csv.reader(io.StringIO(text, newline=""))
     headers = next(reader, None)
+    # (No debug logging of parsed headers)
     if not headers:
         raise ValueError("Google Sheet has no header row")
 
