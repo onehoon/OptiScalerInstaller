@@ -279,36 +279,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
 
     columns = [c.strip().lower() for c in headers]
 
-    # after_popup columns: index calculation here, value extraction in row loop
-    after_popup_kr_keys = ["after_popup_kr", "after popup kr", "afterpopupkr"]
-    after_popup_en_keys = ["after_popup_en", "after popup en", "afterpopupen"]
-    after_popup_kr_col = next((c for c in columns if c in after_popup_kr_keys), None)
-    after_popup_en_col = next((c for c in columns if c in after_popup_en_keys), None)
-    after_popup_kr_index = columns.index(after_popup_kr_col) if after_popup_kr_col else None
-    after_popup_en_index = columns.index(after_popup_en_col) if after_popup_en_col else None
-
-    db = {}
-    for sheet_order, row in enumerate(reader):
-        # ...existing code...
-        after_popup_kr = ""
-        after_popup_en = ""
-        if after_popup_kr_index is not None and len(row) > after_popup_kr_index:
-            after_popup_kr = row[after_popup_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
-        if after_popup_en_index is not None and len(row) > after_popup_en_index:
-            after_popup_en = row[after_popup_en_index].replace("\r\n", "\n").replace("\r", "\n").strip()
-    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    response = _file_session.get(url, timeout=15)
-    response.raise_for_status()
-    text = response.content.decode("utf-8-sig")
-
-    # Use StringIO so quoted multi-line cells (e.g., #information with line breaks)
-    # are parsed correctly instead of being flattened.
-    reader = csv.reader(io.StringIO(text, newline=""))
-    headers = next(reader, None)
-    if not headers:
-        raise ValueError("Google Sheet has no header row")
-
-    columns = [c.strip().lower() for c in headers]
+    # One fetch + header parse only; per-row extraction happens in the single main loop below.
 
     popup_kr_keys = ["popup_kr", "popup message kr", "popup message_kr", "popupkr", "popup_kr_message"]
     popup_en_keys = ["popup_en", "popup message en", "popup message_en", "popupen", "popup_en_message"]
@@ -316,6 +287,13 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     popup_en_col = next((c for c in columns if c in popup_en_keys), None)
     popup_kr_index = columns.index(popup_kr_col) if popup_kr_col else None
     popup_en_index = columns.index(popup_en_col) if popup_en_col else None
+    # after_popup columns: enable per-row extraction below
+    after_popup_kr_keys = ["after_popup_kr", "after popup kr", "afterpopupkr"]
+    after_popup_en_keys = ["after_popup_en", "after popup en", "afterpopupen"]
+    after_popup_kr_col = next((c for c in columns if c in after_popup_kr_keys), None)
+    after_popup_en_col = next((c for c in columns if c in after_popup_en_keys), None)
+    after_popup_kr_index = columns.index(after_popup_kr_col) if after_popup_kr_col else None
+    after_popup_en_index = columns.index(after_popup_en_col) if after_popup_en_col else None
 
     exe_keys = ["exe", "exe_name", "filename", "game_exe", "executable", "gamefile"]
     display_keys = ["display", "game_name", "gamename", "name", "title", "display_name"]
@@ -469,6 +447,14 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
             popup_kr = row[popup_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
         if popup_en_index is not None and len(row) > popup_en_index:
             popup_en = row[popup_en_index].replace("\r\n", "\n").replace("\r", "\n").strip()
+
+        # after popup messages (may contain multi-line content)
+        after_popup_kr = ""
+        after_popup_en = ""
+        if after_popup_kr_index is not None and len(row) > after_popup_kr_index:
+            after_popup_kr = row[after_popup_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
+        if after_popup_en_index is not None and len(row) > after_popup_en_index:
+            after_popup_en = row[after_popup_en_index].replace("\r\n", "\n").replace("\r", "\n").strip()
 
         ini_settings = {}
         for col_i, var_name in ini_var_indices.items():
