@@ -279,6 +279,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
 
     columns = [c.strip().lower() for c in headers]
 
+
     # One fetch + header parse only; per-row extraction happens in the single main loop below.
 
     popup_kr_keys = ["popup_kr", "popup message kr", "popup message_kr", "popupkr", "popup_kr_message"]
@@ -294,6 +295,10 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     after_popup_en_col = next((c for c in columns if c in after_popup_en_keys), None)
     after_popup_kr_index = columns.index(after_popup_kr_col) if after_popup_kr_col else None
     after_popup_en_index = columns.index(after_popup_en_col) if after_popup_en_col else None
+    # Guide page URL to open after installation (optional)
+    guidepage_keys = ["guidepage_after_installation", "guide_page_after_installation", "guidepage", "after_installation_guide", "guide_url", "after_install_url"]
+    guidepage_col = next((c for c in columns if c in guidepage_keys), None)
+    guidepage_index = columns.index(guidepage_col) if guidepage_col else None
 
     exe_keys = ["exe", "exe_name", "filename", "game_exe", "executable", "gamefile"]
     display_keys = ["display", "game_name", "gamename", "name", "title", "display_name"]
@@ -451,10 +456,15 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         # after popup messages (may contain multi-line content)
         after_popup_kr = ""
         after_popup_en = ""
+        guidepage_after_installation = ""
         if after_popup_kr_index is not None and len(row) > after_popup_kr_index:
             after_popup_kr = row[after_popup_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
         if after_popup_en_index is not None and len(row) > after_popup_en_index:
             after_popup_en = row[after_popup_en_index].replace("\r\n", "\n").replace("\r", "\n").strip()
+        if guidepage_index is not None and len(row) > guidepage_index:
+            raw_guide = str(row[guidepage_index]).strip()
+            norm_guide = _normalize_optional_url(raw_guide)
+            guidepage_after_installation = norm_guide
 
         ini_settings = {}
         for col_i, var_name in ini_var_indices.items():
@@ -497,6 +507,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 "popup_en": popup_en,
                 "after_popup_kr": after_popup_kr,
                 "after_popup_en": after_popup_en,
+                "guidepage_after_installation": guidepage_after_installation,
             }
 
     return db
@@ -613,8 +624,24 @@ def _normalize_optional_url(value):
         return ""
     if raw.lower() in {"null", "none", "na", "n/a", "-"}:
         return ""
-    if raw.lower().startswith("http://") or raw.lower().startswith("https://"):
+    low = raw.lower()
+    if low.startswith("http://") or low.startswith("https://"):
         return raw
+
+    # Accept common bare forms like "example.com" or "www.example.com" by
+    # prepending https://. Reject values with spaces or that look like placeholders.
+    if " " in raw or "\n" in raw or low in {"null", "none", "na", "n/a", "-"}:
+        return ""
+
+    # Simple heuristic: contains a dot and no scheme -> assume it's a hostname/path
+    if "." in raw:
+        candidate = raw
+        if candidate.startswith("//"):
+            candidate = "https:" + candidate
+        elif not candidate.lower().startswith("http"):
+            candidate = "https://" + candidate
+        return candidate
+
     return ""
 
 
@@ -1500,6 +1527,7 @@ TARGET_POSTER_W = CARD_W * HI_DPI_SCALE
 TARGET_POSTER_H = CARD_H * HI_DPI_SCALE
 INFO_TEXT_OFFSET_PX = 10
 ENABLE_POSTER_CACHE = os.environ.get("OPTISCALER_ENABLE_POSTER_CACHE", "0").strip().lower() in {"1", "true", "yes", "on"}
+IMAGE_CACHE_MAX = int(os.environ.get("OPTISCALER_IMAGE_CACHE_MAX", "100"))
 
 
 def _make_default_poster_base(width: int, height: int) -> Image.Image:
@@ -1597,10 +1625,11 @@ _ACCENT_HOVER = "#35B6E0"
 _LINK_ACTIVE = "#7DD3FC"
 _LINK_HOVER = "#38BDF8"
 _SELECTED_BORDER = "#4CC9F0"
-_CARD_BG = "#3D4450"
+_CARD_BG = "#181B21"
 _CARD_BG_SEL = "#33506B"
-_SURFACE = "#343943"
-_PANEL = "#2A2D33"
+_SURFACE = "#2A2E35"
+_PANEL = "#1E2128"
+_ACCENT_DISABLED = "#3A414C"
 FONT_HEADING = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
 FONT_UI = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
 
@@ -1629,7 +1658,7 @@ class OptiManagerApp:
         self._supported_games_popup_shown = False
         self.sheet_status = False
         self.sheet_loading = True
-        self.gpu_info = get_graphics_adapter_info()
+        self.gpu_info = "Checking GPU..."
         self.install_in_progress = False
         self.selected_game_index = None
         self.card_frames: list = []
@@ -1662,6 +1691,11 @@ class OptiManagerApp:
         self._auto_scan_active = False
         self._retry_attempted = False
         self.setup_ui()
+        # Fetch GPU info asynchronously to avoid blocking startup on slow PowerShell
+        try:
+            self._task_executor.submit(self._fetch_gpu_info_async)
+        except Exception:
+            logging.exception("Failed to submit GPU info fetch task")
         self.root.bind("<Configure>", self._on_root_resize)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(250, self._capture_startup_width)
@@ -1745,6 +1779,25 @@ class OptiManagerApp:
         popup.deiconify()
         popup.after(0, lambda p=popup: self._center_popup_on_root(p))
         popup.after(80, lambda p=popup: self._center_popup_on_root(p))
+
+    def _fetch_gpu_info_async(self):
+        try:
+            info = get_graphics_adapter_info()
+        except Exception:
+            logging.exception("Error fetching GPU info")
+            info = "Unknown"
+        try:
+            self.root.after(0, lambda: self._update_gpu_ui(info))
+        except Exception:
+            logging.exception("Failed to schedule GPU UI update")
+
+    def _update_gpu_ui(self, info: str):
+        try:
+            self.gpu_info = info
+            if hasattr(self, 'gpu_lbl') and self.gpu_lbl:
+                self.gpu_lbl.configure(text=f"GPU : {self.gpu_info}")
+        except Exception:
+            logging.exception("Failed to update GPU UI")
     def _show_after_install_popup(self, game: dict):
         # Determine language
         import locale
@@ -1752,13 +1805,24 @@ class OptiManagerApp:
         is_kr = lang and lang.lower().startswith("ko")
         msg = ""
         if is_kr:
-            print("DEBUG after_popup_kr:", repr(game.get("after_popup_kr", "")))  # 진단용
             msg = game.get("after_popup_kr", "").strip()
         else:
             msg = game.get("after_popup_en", "").strip()
         if not msg:
             msg = "설치가 완료되었습니다." if is_kr else "Installation Success"
-        self._show_game_selection_popup(msg, is_after_popup=True)
+        # If a guide URL is provided in the sheet, open it after the user confirms the popup.
+        guide_url = (game.get("guidepage_after_installation") or "").strip()
+
+        def _on_confirm_open_guide():
+            try:
+                if guide_url:
+                    webbrowser.open(guide_url)
+                else:
+                    logging.debug("No guide URL provided for after-install popup for game: %s", game.get("display", "<unknown>"))
+            except Exception:
+                logging.exception("Failed to open guide URL: %s", guide_url)
+
+        self._show_game_selection_popup(msg, on_confirm=_on_confirm_open_guide, is_after_popup=True)
 
     def _get_rtss_install_path(self) -> Path:
         roots = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
@@ -2002,7 +2066,7 @@ class OptiManagerApp:
 
         self.sheet_status = ok
         self._refresh_optiscaler_download_link_ui()
-        self.apply_btn.configure(state="normal")
+        self.apply_btn.configure(state="normal", fg_color=_ACCENT)
         self._update_sheet_status()
         # --- 최신 버전 확인 및 업그레이드 유도 ---
         self.check_app_update()
@@ -2330,14 +2394,14 @@ class OptiManagerApp:
         sub_frame.grid(row=1, column=0, padx=24, pady=(0, 14), sticky="ew")
         sub_frame.grid_columnconfigure(0, weight=1)
 
-        gpu_lbl = ctk.CTkLabel(
+        self.gpu_lbl = ctk.CTkLabel(
             sub_frame,
             text=f"GPU : {self.gpu_info}",
             font=ctk.CTkFont(family=FONT_UI, size=11),
             text_color="#C5CFDB",
             anchor="w",
         )
-        gpu_lbl.grid(row=0, column=0, sticky="w")
+        self.gpu_lbl.grid(row=0, column=0, sticky="w")
 
         # Badge-style status indicator
         self.status_badge = ctk.CTkLabel(
@@ -2531,9 +2595,9 @@ class OptiManagerApp:
             width=130,
             height=72,
             corner_radius=10,
-            fg_color=_ACCENT,
+            fg_color=_ACCENT_DISABLED,
             hover_color=_ACCENT_HOVER,
-            text_color="#FFFFFF",
+            text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=14, weight="bold"),
             state="disabled",
             command=self.apply_optiscaler,
@@ -3379,7 +3443,7 @@ class OptiManagerApp:
             try:
                 pil_img = _prepare_cover_image(Image.open(local_cover_path), TARGET_POSTER_W, TARGET_POSTER_H)
                 if ENABLE_POSTER_CACHE:
-                    self._image_cache[local_cache_key] = pil_img
+                    self._image_cache_put(local_cache_key, pil_img)
                 return pil_img, False
             except Exception as exc:
                 logging.warning("Failed to load local cover image from %s: %s", local_cover_path, exc)
@@ -3392,7 +3456,7 @@ class OptiManagerApp:
         if ENABLE_POSTER_CACHE and cache_path.exists():
             try:
                 pil_img = Image.open(cache_path).convert("RGBA")
-                self._image_cache[cache_key] = pil_img
+                self._image_cache_put(cache_key, pil_img)
                 return pil_img, False
             except Exception:
                 logging.warning("Failed to decode cached poster: %s", cache_path)
@@ -3415,7 +3479,7 @@ class OptiManagerApp:
                 except Exception:
                     logging.debug("Failed to write poster cache file: %s", cache_path)
 
-                self._image_cache[cache_key] = pil_img
+                self._image_cache_put(cache_key, pil_img)
             return pil_img, False
         except Exception as exc:
             logging.warning("Failed to load cover image from %s: %s", url, exc)
@@ -3426,6 +3490,23 @@ class OptiManagerApp:
         if generation != self._render_generation:
             return
         self._set_card_base_image(index, label, pil_img)
+
+    def _image_cache_put(self, key: str, pil_img: Image.Image):
+        try:
+            self._image_cache[key] = pil_img
+            # Evict oldest entries when exceeding cap. Use dict insertion order (Py3.7+).
+            if len(self._image_cache) > IMAGE_CACHE_MAX:
+                try:
+                    first_key = next(iter(self._image_cache))
+                    del self._image_cache[first_key]
+                except Exception:
+                    # On any failure, fall back to clearing a single arbitrary item.
+                    try:
+                        self._image_cache.popitem(last=False)
+                    except Exception:
+                        pass
+        except Exception:
+            logging.exception("Failed to put image into cache for key=%s", key)
 
     def _set_selected_game(self, index: int):
         self.selected_game_index = index
@@ -3442,14 +3523,14 @@ class OptiManagerApp:
             else:
                 popup_msg = game.get("popup_en", "").strip()
             if popup_msg:
-                self.apply_btn.configure(state="disabled")
+                self.apply_btn.configure(state="disabled", fg_color=_ACCENT_DISABLED)
                 def _on_confirm():
                     self._game_popup_confirmed = True
-                    self.apply_btn.configure(state="normal")
+                    self.apply_btn.configure(state="normal", fg_color=_ACCENT)
                 self._show_game_selection_popup(popup_msg, on_confirm=_on_confirm)
             else:
                 self._game_popup_confirmed = True
-                self.apply_btn.configure(state="normal")
+                self.apply_btn.configure(state="normal", fg_color=_ACCENT)
 
     # ------------------------------------------------------------------
     # File dialogs
@@ -3532,6 +3613,7 @@ class OptiManagerApp:
                                 "popup_en": entry.get("popup_en", ""),
                                 "after_popup_kr": entry.get("after_popup_kr", ""),
                                 "after_popup_en": entry.get("after_popup_en", ""),
+                                "guidepage_after_installation": entry.get("guidepage_after_installation", ""),
                             }
                             found_games.append(game)
 
@@ -3675,7 +3757,7 @@ class OptiManagerApp:
         source_archive = self.opti_source_archive
 
         self.install_in_progress = True
-        self.apply_btn.configure(state="disabled", text="Installing…")
+        self.apply_btn.configure(state="disabled", text="Installing…", fg_color=_ACCENT_DISABLED)
 
         self._task_executor.submit(self._apply_optiscaler_worker, game_data, source_archive)
 
@@ -3787,11 +3869,13 @@ class OptiManagerApp:
 
     def _on_install_finished(self, success, message):
         self.install_in_progress = False
-        self.apply_btn.configure(state="normal", text="Install")
+        self.apply_btn.configure(state="normal", text="Install", fg_color=_ACCENT)
 
         if success:
             # Use after_popup_kr/en if present, else fallback
             game = self.found_exe_list[self.selected_game_index] if hasattr(self, 'selected_game_index') and self.selected_game_index is not None and self.selected_game_index < len(self.found_exe_list) else {}
+            # Debug logging to help diagnose missing guide URL / popup behavior
+            pass
             self._show_after_install_popup(game)
         else:
             messagebox.showerror("Error", f"An error occurred during installation: {message}")
