@@ -15,7 +15,7 @@ from network_utils import build_retry_session
 _file_session = build_retry_session()
 
 
-def apply_ini_settings(ini_path, settings, force_frame_generation=False):
+def apply_ini_settings(ini_path, settings, force_frame_generation=False, logger=None):
     if not settings:
         return
 
@@ -49,7 +49,10 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False):
     try:
         lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
     except Exception:
-        logging.exception("Failed to read INI for in-place update")
+        if logger:
+            logger.exception("Failed to read INI for in-place update")
+        else:
+            logging.exception("Failed to read INI for in-place update")
         return
 
     section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$")
@@ -120,6 +123,8 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False):
             updated_lines.append(original_line)
             continue
 
+        old_value_preview = str(old_rest).strip()
+
         if delimiter == "=":
             leading_ws, comment = _split_value_and_comment(old_rest)
             rebuilt_rest = f"{leading_ws}{new_value}"
@@ -137,18 +142,30 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False):
             f"{prefix}{key_text}{key_space_before_delim}{delimiter}{rebuilt_rest}{line_ending}"
         )
 
-        if current_section:
-            applied.append(f"{current_section}:{norm_key}")
-        else:
-            applied.append(norm_key)
+        applied_key = f"{current_section}:{norm_key}" if current_section else norm_key
+        applied.append(applied_key)
+        if logger:
+            logger.info(
+                "INI edit %s -> %s (was: %s) in %s",
+                applied_key,
+                new_value,
+                old_value_preview if old_value_preview else "<empty>",
+                ini_path,
+            )
 
     try:
         p.write_text("".join(updated_lines), encoding="utf-8")
     except Exception:
-        logging.exception("Failed to write updated INI file")
+        if logger:
+            logger.exception("Failed to write updated INI file")
+        else:
+            logging.exception("Failed to write updated INI file")
         return
 
-    logging.info("INI settings applied in-place: %s", applied)
+    if logger:
+        logger.info("INI settings applied in-place: %s", applied)
+    else:
+        logging.info("INI settings applied in-place: %s", applied)
 
 
 def _parse_version_text_to_ini_entries(version_text: str):
@@ -294,7 +311,7 @@ def _get_engine_ini_path(raw_path: Optional[str], workspace_root: Optional[str] 
     return None
 
 
-def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] = None) -> Optional[Path]:
+def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] = None, logger=None) -> Optional[Path]:
     if workspace_root is None:
         workspace_root = os.getcwd()
 
@@ -309,7 +326,10 @@ def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] =
     ):
         folder_raw = folder_raw[1:-1].strip()
     if not folder_raw:
-        logging.info("Empty engine.ini_location provided")
+        if logger:
+            logger.info("Empty engine.ini_location provided")
+        else:
+            logging.info("Empty engine.ini_location provided")
         return None
 
     try:
@@ -327,16 +347,25 @@ def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] =
                     except Exception:
                         pass
                 if val is None:
-                    logging.warning("Environment variable %s not found when expanding engine.ini path", name)
+                    if logger:
+                        logger.warning("Environment variable %s not found when expanding engine.ini path", name)
+                    else:
+                        logging.warning("Environment variable %s not found when expanding engine.ini path", name)
                     return match.group(0)
                 return val
 
             folder_raw_new = re.sub(r"%([^%]+)%", _replace_env, folder_raw)
             if folder_raw_new != folder_raw:
-                logging.info("Expanded env vars in engine.ini path: %s -> %s", folder_raw, folder_raw_new)
+                if logger:
+                    logger.info("Expanded env vars in engine.ini path: %s -> %s", folder_raw, folder_raw_new)
+                else:
+                    logging.info("Expanded env vars in engine.ini path: %s -> %s", folder_raw, folder_raw_new)
                 folder_raw = folder_raw_new
     except Exception:
-        logging.exception("Failed while replacing %VAR% tokens in engine.ini path: %s", folder_raw)
+        if logger:
+            logger.exception("Failed while replacing %%VAR%% tokens in engine.ini path: %s", folder_raw)
+        else:
+            logging.exception("Failed while replacing %%VAR%% tokens in engine.ini path: %s", folder_raw)
     try:
         folder_raw = os.path.expanduser(folder_raw)
         p_in = Path(folder_raw)
@@ -351,16 +380,25 @@ def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] =
             val = os.environ.get(var) or os.environ.get(var.upper()) or os.environ.get(var.lower())
             if val:
                 expanded = os.path.normpath(os.path.join(val, rest)) if rest else os.path.normpath(val)
-                logging.info("Expanded leading env var in engine.ini path: %s -> %s", folder_raw, expanded)
+                if logger:
+                    logger.info("Expanded leading env var in engine.ini path: %s -> %s", folder_raw, expanded)
+                else:
+                    logging.info("Expanded leading env var in engine.ini path: %s -> %s", folder_raw, expanded)
                 folder_raw = expanded
                 try:
                     p_in = Path(folder_raw)
                 except Exception:
                     p_in = None
             else:
-                logging.warning("Environment variable %s not set for engine.ini path", var)
+                if logger:
+                    logger.warning("Environment variable %s not set for engine.ini path", var)
+                else:
+                    logging.warning("Environment variable %s not set for engine.ini path", var)
     except Exception:
-        logging.exception("Error while expanding leading env var in engine.ini path: %s", folder_raw)
+        if logger:
+            logger.exception("Error while expanding leading env var in engine.ini path: %s", folder_raw)
+        else:
+            logging.exception("Error while expanding leading env var in engine.ini path: %s", folder_raw)
 
     if p_in is not None and (p_in.suffix.lower() == ".ini" or p_in.name.lower() == "engine.ini"):
         target_dir = str(p_in.parent)
@@ -372,34 +410,52 @@ def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] =
         else:
             target_dir = os.path.normpath(os.path.join(workspace_root, folder_raw))
 
-    logging.info("Resolved engine.ini target_dir: %s from input: %s", target_dir, folder_raw)
+    if logger:
+        logger.info("Resolved engine.ini target_dir: %s from input: %s", target_dir, folder_raw)
+    else:
+        logging.info("Resolved engine.ini target_dir: %s from input: %s", target_dir, folder_raw)
 
     try:
         Path(target_dir).mkdir(parents=True, exist_ok=True)
     except Exception:
-        logging.exception("Failed to ensure target directory for engine.ini: %s", target_dir)
+        if logger:
+            logger.exception("Failed to ensure target directory for engine.ini: %s", target_dir)
+        else:
+            logging.exception("Failed to ensure target directory for engine.ini: %s", target_dir)
         return None
 
     try:
         for fname in os.listdir(target_dir):
             if fname.lower() == "engine.ini":
                 p_existing = Path(os.path.join(target_dir, fname))
-                logging.info("Found existing Engine.ini: %s", p_existing)
+                if logger:
+                    logger.info("Engine.ini already existed: %s", p_existing)
+                else:
+                    logging.info("Found existing Engine.ini: %s", p_existing)
                 return p_existing
     except Exception:
-        logging.exception("Failed to list directory for engine.ini: %s", target_dir)
+        if logger:
+            logger.exception("Failed to list directory for engine.ini: %s", target_dir)
+        else:
+            logging.exception("Failed to list directory for engine.ini: %s", target_dir)
 
     p = Path(os.path.join(target_dir, "Engine.ini"))
     try:
         p.write_text("", encoding="utf-8")
-        logging.info("Created new INI: %s", p)
+        if logger:
+            logger.info("Engine.ini did not exist, created new file: %s", p)
+        else:
+            logging.info("Created new INI: %s", p)
         return p
     except Exception:
-        logging.exception("Failed to create Engine.ini at %s", p)
+        if logger:
+            logger.exception("Failed to create Engine.ini at %s", p)
+        else:
+            logging.exception("Failed to create Engine.ini at %s", p)
         return None
 
 
-def _upsert_ini_entries(ini_path: Path, section_map: dict):
+def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
     try:
         if not ini_path.exists():
             try:
@@ -408,9 +464,15 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict):
                 logging.debug("Parent dir create skipped or failed for: %s", ini_path.parent)
             try:
                 ini_path.write_text("", encoding="utf-8")
-                logging.info("Created missing INI file for upsert: %s", ini_path)
+                if logger:
+                    logger.info("Created missing INI file for upsert: %s", ini_path)
+                else:
+                    logging.info("Created missing INI file for upsert: %s", ini_path)
             except Exception:
-                logging.exception("Failed to create missing INI file: %s", ini_path)
+                if logger:
+                    logger.exception("Failed to create missing INI file: %s", ini_path)
+                else:
+                    logging.exception("Failed to create missing INI file: %s", ini_path)
                 return
 
         try:
@@ -421,10 +483,16 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict):
         try:
             text = ini_path.read_text(encoding="utf-8")
         except Exception:
-            logging.exception("Failed to read INI for upsert (will proceed with empty content): %s", ini_path)
+            if logger:
+                logger.exception("Failed to read INI for upsert (will proceed with empty content): %s", ini_path)
+            else:
+                logging.exception("Failed to read INI for upsert (will proceed with empty content): %s", ini_path)
             text = ""
     except Exception:
-        logging.exception("Unexpected error preparing INI for upsert: %s", ini_path)
+        if logger:
+            logger.exception("Unexpected error preparing INI for upsert: %s", ini_path)
+        else:
+            logging.exception("Unexpected error preparing INI for upsert: %s", ini_path)
         return
 
     lines = text.splitlines(keepends=True)
@@ -471,12 +539,23 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict):
                 found = _find_key_in_range(key, 0, len(lines))
                 if found is not None:
                     ending = "\n" if lines[found].endswith("\n") else ""
+                    previous_value = lines[found].strip()
                     lines[found] = f"{key}={value}{ending}"
                     modified = True
+                    if logger:
+                        logger.info(
+                            "Engine.ini edit %s=%s (was: %s) in %s",
+                            key,
+                            value,
+                            previous_value if previous_value else "<empty>",
+                            ini_path,
+                        )
                 else:
                     lines.insert(insert_pos, f"{key}={value}\n")
                     insert_pos += 1
                     modified = True
+                    if logger:
+                        logger.info("Engine.ini add %s=%s in %s", key, value, ini_path)
             continue
 
         if norm_sec in sections:
@@ -487,26 +566,48 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict):
                 if found is not None:
                     ending = "\n" if lines[found].endswith("\n") else ""
                     prefix = re.match(r"^(\s*)", lines[found]).group(1)
+                    previous_value = lines[found].strip()
                     lines[found] = f"{prefix}{key}={value}{ending}"
                     modified = True
+                    if logger:
+                        logger.info(
+                            "Engine.ini edit [%s] %s=%s (was: %s) in %s",
+                            sec,
+                            key,
+                            value,
+                            previous_value if previous_value else "<empty>",
+                            ini_path,
+                        )
                 else:
                     lines.insert(insert_at, f"{key}={value}\n")
                     insert_at += 1
                     modified = True
+                    if logger:
+                        logger.info("Engine.ini add [%s] %s=%s in %s", sec, key, value, ini_path)
         else:
             if lines and not lines[-1].endswith("\n"):
                 lines[-1] = lines[-1] + "\n"
             lines.append(f"[{sec}]\n")
+            if logger:
+                logger.info("Engine.ini add section [%s] in %s", sec, ini_path)
             for key, value in kvs.items():
                 lines.append(f"{key}={value}\n")
+                if logger:
+                    logger.info("Engine.ini add [%s] %s=%s in %s", sec, key, value, ini_path)
             modified = True
 
     if modified:
         try:
             ini_path.write_text("".join(lines), encoding="utf-8")
-            logging.info("Upserted INI entries into %s", ini_path)
+            if logger:
+                logger.info("Upserted INI entries into %s", ini_path)
+            else:
+                logging.info("Upserted INI entries into %s", ini_path)
         except Exception:
-            logging.exception("Failed to write updated INI: %s", ini_path)
+            if logger:
+                logger.exception("Failed to write updated INI: %s", ini_path)
+            else:
+                logging.exception("Failed to write updated INI: %s", ini_path)
 
 
 def process_engine_ini_edits(spreadsheet_id: str, gid: int = 0, workspace_root: Optional[str] = None):

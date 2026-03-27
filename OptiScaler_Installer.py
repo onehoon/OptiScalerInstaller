@@ -57,7 +57,7 @@ except ModuleNotFoundError as e:
     ) from e
 
  # Application Version
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 
  # Configure logging deterministically below (avoid calling basicConfig early)
 
@@ -78,7 +78,7 @@ SHEET_GID = int(os.environ.get("OPTISCALER_SHEET_GID", "0"))
 DOWNLOAD_LINKS_SHEET_GID = int(os.environ.get("OPTISCALER_DOWNLOAD_LINKS_SHEET_GID", "0"))
 
 if not SHEET_ID:
-    logging.warning("OPTISCALER_SHEET_ID not found in environment variables or .env file.")
+    logging.warning("[APP] OPTISCALER_SHEET_ID not found in environment variables or .env file.")
 
 OPTIPATCHER_URL = os.environ.get(
     "OPTIPATCHER_URL",
@@ -89,18 +89,16 @@ OPTIPATCHER_URL = os.environ.get(
 ENFORCE_GPU_CHECK = True
 
 import logging.handlers
-def get_game_logger(game_name: str) -> logging.Logger:
-    """Return a logger that writes to gamename.log in the exe/script directory."""
-    safe_name = re.sub(r'[^\w\-]', '_', game_name)
-    log_path = Path(sys.executable if getattr(sys, 'frozen', False) else __file__).resolve().parent / f"{safe_name}.log"
-    logger = logging.getLogger(f"game_{safe_name}")
-    if not any(isinstance(h, logging.FileHandler) and getattr(h, 'baseFilename', None) == str(log_path) for h in logger.handlers):
-        fh = logging.FileHandler(log_path, encoding="utf-8")
-        fh.setLevel(logging.INFO)
-        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-        logger.addHandler(fh)
-    logger.setLevel(logging.INFO)
-    return logger
+
+
+class PrefixedLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        prefix = self.extra.get("prefix", "APP")
+        return f"[{prefix}] {msg}", kwargs
+
+
+def get_prefixed_logger(prefix: str = "APP") -> PrefixedLoggerAdapter:
+    return PrefixedLoggerAdapter(logging.getLogger(), {"prefix": prefix})
 
 # File logging handler with fallbacks: app folder -> %LOCALAPPDATA% -> temp dir
 def _init_file_logger() -> Optional[Path]:
@@ -126,29 +124,24 @@ def _init_file_logger() -> Optional[Path]:
     for directory in candidates:
         try:
             directory.mkdir(parents=True, exist_ok=True)
-            log_path = directory / "installer.log"
+            log_path = directory / f"installer_{time.strftime('%Y-%m-%d_%H-%M-%S')}.log"
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write("")
 
             for h in list(root_logger.handlers):
-                if isinstance(h, logging.FileHandler) and getattr(h, 'baseFilename', None) == str(log_path):
+                if isinstance(h, logging.FileHandler):
                     root_logger.removeHandler(h)
+                    try:
+                        h.close()
+                    except Exception:
+                        pass
 
-            try:
-                from logging.handlers import RotatingFileHandler
-                fh = RotatingFileHandler(
-                    log_path,
-                    maxBytes=5 * 1024 * 1024,
-                    backupCount=3,
-                    encoding="utf-8"
-                )
-            except Exception:
-                fh = logging.FileHandler(log_path, encoding="utf-8")
+            fh = logging.FileHandler(log_path, encoding="utf-8")
 
             fh.setLevel(logging.INFO)
             fh.setFormatter(formatter)
             root_logger.addHandler(fh)
-            logging.info("File logging initialized at %s", log_path)
+            get_prefixed_logger("APP").info("File logging initialized at %s", log_path)
             return log_path
         except Exception as e:
             try:
@@ -172,7 +165,7 @@ def _configure_logging():
     try:
         _init_file_logger()
     except Exception:
-        logging.exception("Failed during file logger initialization")
+        logging.exception("[APP] Failed during file logger initialization")
 
 
 _configure_logging()
@@ -182,7 +175,7 @@ try:
     from requests.adapters import HTTPAdapter
     from urllib3.util.retry import Retry
 except ModuleNotFoundError as e:
-    logging.error("requests module not installed. Install: python -m pip install requests")
+    logging.error("[APP] requests module not installed. Install: python -m pip install requests")
     raise e
 
 def _subprocess_no_window_kwargs() -> dict:
@@ -251,7 +244,7 @@ def _is_korean_ui() -> bool:
     except Exception:
         pass
     try:
-        lang = locale.getdefaultlocale()[0] or ""
+        lang = locale.getlocale()[0] or ""
         return lang.lower().startswith("ko")
     except Exception:
         pass
@@ -440,6 +433,10 @@ class OptiManagerApp:
         self.install_in_progress = False
         self.selected_game_index = None
         self._game_popup_confirmed = False
+        self.install_precheck_running = False
+        self.install_precheck_ok = False
+        self.install_precheck_error = ""
+        self.install_precheck_dll_name = ""
         self.card_frames: list = []
         self.card_items: list = []
         self._hovered_card_index = None
@@ -607,10 +604,7 @@ class OptiManagerApp:
         except Exception:
             logging.debug("Failed to align supported-games count label", exc_info=True)
     def _show_after_install_popup(self, game: dict):
-        # Determine language
-        import locale
-        lang, _ = locale.getdefaultlocale()
-        is_kr = lang and lang.lower().startswith("ko")
+        is_kr = USE_KOREAN
         msg = ""
         if is_kr:
             msg = game.get("after_popup_kr", "").strip()
@@ -838,6 +832,8 @@ class OptiManagerApp:
             and not self.sheet_loading
             and not self.install_in_progress
             and has_valid_game
+            and not self.install_precheck_running
+            and self.install_precheck_ok
             and self.optiscaler_archive_ready
             and not self.optiscaler_archive_downloading
             and has_supported_gpu
@@ -932,6 +928,15 @@ class OptiManagerApp:
         self.module_download_links = module_links if ok else {}
 
         self.sheet_status = ok
+        if ok:
+            logging.info(
+                "[APP] Game DB loaded successfully: games=%d, module_links=%d, download_links_gid=%s",
+                len(self.game_db),
+                len(self.module_download_links),
+                DOWNLOAD_LINKS_SHEET_GID,
+            )
+        else:
+            logging.error("[APP] Failed to load Game DB: %s", err)
         self._refresh_optiscaler_archive_info_ui()
         if ok:
             self._start_optiscaler_archive_prepare()
@@ -982,6 +987,12 @@ class OptiManagerApp:
             self.optiscaler_archive_downloading = False
             self.optiscaler_archive_error = "Missing archive metadata in sheet."
             self.opti_source_archive = ""
+            logging.warning(
+                "[APP] OptiScaler archive preparation skipped: missing metadata (url=%r, filename=%r, entry=%r)",
+                url,
+                filename,
+                entry,
+            )
             self._update_install_button_state()
             return
 
@@ -991,23 +1002,27 @@ class OptiManagerApp:
             self.optiscaler_archive_ready = True
             self.optiscaler_archive_downloading = False
             self.optiscaler_archive_error = ""
+            logging.info("[APP] OptiScaler archive already cached: %s", cache_path)
             self._update_install_button_state()
             return
 
         self.optiscaler_archive_ready = False
         self.optiscaler_archive_downloading = True
         self.optiscaler_archive_error = ""
+        logging.info("[APP] Starting OptiScaler archive download: %s -> %s", url, cache_path)
         self._update_install_button_state()
         self._download_executor.submit(self._download_optiscaler_archive_worker, url, str(cache_path), filename)
 
     def _download_optiscaler_archive_worker(self, url: str, dest_path: str, archive_name: str):
         try:
             installer_services.download_to_file(url, dest_path, timeout=300)
+            logging.info("[APP] OptiScaler archive download completed: %s", dest_path)
             self.root.after(
                 0,
                 lambda path=dest_path, name=archive_name: self._on_optiscaler_archive_ready(path, name, None),
             )
         except Exception as exc:
+            logging.error("[APP] OptiScaler archive download failed: %s", exc)
             self.root.after(
                 0,
                 lambda err=str(exc): self._on_optiscaler_archive_ready("", archive_name, err),
@@ -1020,10 +1035,12 @@ class OptiManagerApp:
             self.optiscaler_archive_ready = False
             self.optiscaler_archive_error = error_message
             self.opti_source_archive = ""
+            logging.warning("[APP] OptiScaler archive is not ready: %s", error_message)
         else:
             self.optiscaler_archive_ready = True
             self.optiscaler_archive_error = ""
             self.opti_source_archive = archive_path
+            logging.info("[APP] OptiScaler archive is ready: %s", archive_path)
 
         self._update_install_button_state()
 
@@ -1045,12 +1062,12 @@ class OptiManagerApp:
                     if upgrade_url:
                         webbrowser.open_new(upgrade_url)
         except Exception as e:
-            logging.warning(f"Version check failed: {e}")
+            logging.warning("[APP] Version check failed: %s", e)
 
         # 시트 로드 성공 이후 RTSS 설정 체크 진행 (기본 메시지 fallback)
         logger = None
         if getattr(self, "found_exe_list", None) and self.selected_game_index is not None:
-            logger = get_game_logger(self.found_exe_list[self.selected_game_index].get("game_name", "unknown"))
+            logger = get_prefixed_logger(self.found_exe_list[self.selected_game_index].get("game_name", "unknown"))
         self._check_and_show_rtss_popup(logger=logger)
 
     def _show_startup_warning_popup(self, warning_text: str, on_close=None):
@@ -1061,7 +1078,7 @@ class OptiManagerApp:
             return
 
         popup = ctk.CTkToplevel(self.root)
-        popup.title("Warning")
+        popup.title("Notice")
         popup.transient(self.root)
         popup.grab_set()
         popup.resizable(False, False)
@@ -1235,15 +1252,8 @@ class OptiManagerApp:
         popup.grab_set()
         popup.configure(fg_color=_SURFACE)
         popup.withdraw()
-        popup.geometry("364x420")
-        popup.minsize(336, 360)
-
-        ctk.CTkLabel(
-            popup,
-            text="Supported Game List",
-            font=ctk.CTkFont(family=FONT_HEADING, size=16, weight="bold"),
-            text_color="#F1F5F9",
-        ).pack(anchor="w", padx=18, pady=(14, 8))
+        popup.geometry("364x560")
+        popup.minsize(336, 460)
 
         list_frame = ctk.CTkScrollableFrame(
             popup,
@@ -1660,6 +1670,10 @@ class OptiManagerApp:
         if not keep_selection:
             self.selected_game_index = None
             self._game_popup_confirmed = False
+            self.install_precheck_running = False
+            self.install_precheck_ok = False
+            self.install_precheck_error = ""
+            self.install_precheck_dll_name = ""
             self._set_information_text("")
         self._hovered_card_index = None
         self._update_install_button_state()
@@ -2387,10 +2401,15 @@ class OptiManagerApp:
 
         # Popup confirmation logic
         self._game_popup_confirmed = False
+        self.install_precheck_running = True
+        self.install_precheck_ok = False
+        self.install_precheck_error = ""
+        self.install_precheck_dll_name = ""
         self._update_install_button_state()
         if 0 <= index < len(self.found_exe_list):
             game = self.found_exe_list[index]
             self._set_information_text(game.get("information", ""))
+            self._run_install_precheck(game)
             gpu_text = str(getattr(self, "gpu_info", "") or "").strip().lower()
             if gpu_text not in {"", "checking gpu...", "unknown"} and not self._selected_game_has_supported_gpu():
                 self._game_popup_confirmed = True
@@ -2410,6 +2429,38 @@ class OptiManagerApp:
             else:
                 self._game_popup_confirmed = True
                 self._update_install_button_state()
+        else:
+            self.install_precheck_running = False
+            self.install_precheck_ok = False
+            self.install_precheck_error = ""
+            self.install_precheck_dll_name = ""
+            self._update_install_button_state()
+
+    def _run_install_precheck(self, game_data: dict):
+        target_path = str(game_data.get("path", "")).strip()
+        preferred_dll = str(game_data.get("dll_name", "")).strip()
+        logger = get_prefixed_logger(str(game_data.get("game_name", "unknown")).strip() or "unknown")
+        try:
+            resolved_name = installer_services.resolve_proxy_dll_name(target_path, preferred_dll, logger=logger)
+            self.install_precheck_ok = True
+            self.install_precheck_error = ""
+            self.install_precheck_dll_name = resolved_name
+        except Exception as exc:
+            raw_error = str(exc)
+            checked_prefix = "Checked: "
+            if USE_KOREAN and raw_error.startswith("No available OptiScaler DLL names for installation. "):
+                checked_names = raw_error.split(checked_prefix, 1)[1] if checked_prefix in raw_error else ""
+                translated = "설치에 사용할 수 있는 OptiScaler DLL 이름이 없습니다."
+                if checked_names:
+                    translated += f" 확인한 이름: {checked_names}"
+                raw_error = translated
+            self.install_precheck_ok = False
+            self.install_precheck_error = raw_error
+            self.install_precheck_dll_name = ""
+            logger.warning("Install precheck failed: %s", raw_error)
+        finally:
+            self.install_precheck_running = False
+            self._update_install_button_state()
 
     # ------------------------------------------------------------------
     # File dialogs
@@ -2610,6 +2661,22 @@ class OptiManagerApp:
             messagebox.showinfo("Preparing Archive", "OptiScaler archive download is still in progress. Please wait.")
             return
 
+        if self.install_precheck_running:
+            return
+
+        if not self.install_precheck_ok or not self.install_precheck_dll_name:
+            detail = self.install_precheck_error or (
+                "OptiScaler DLL compatibility check has not completed."
+                if not USE_KOREAN
+                else "OptiScaler DLL 호환성 확인이 아직 완료되지 않았습니다."
+            )
+            if USE_KOREAN:
+                detail = f"{detail}\n\nReShade, Special K 등 다른 MOD 사용 중이면 확인 후 다시 설치해 주세요."
+            else:
+                detail = f"{detail}\n\nIf you are using other mods such as ReShade or Special K, please verify them and try the installation again."
+            messagebox.showwarning("Warning", detail)
+            return
+
         if not self.optiscaler_archive_ready or not getattr(self, "opti_source_archive", None):
             detail = self.optiscaler_archive_error or "OptiScaler archive is not ready yet."
             messagebox.showwarning("Warning", detail)
@@ -2630,30 +2697,41 @@ class OptiManagerApp:
             return
 
         source_archive = self.opti_source_archive
+        resolved_dll_name = self.install_precheck_dll_name
 
         self.install_in_progress = True
         self.apply_btn.configure(state="disabled", text="Installing...", fg_color=_ACCENT_DISABLED)
 
-        self._task_executor.submit(self._apply_optiscaler_worker, game_data, source_archive)
+        self._task_executor.submit(self._apply_optiscaler_worker, game_data, source_archive, resolved_dll_name)
 
-    def _apply_optiscaler_worker(self, game_data, source_archive):
+    def _apply_optiscaler_worker(self, game_data, source_archive, resolved_dll_name):
         target_path = game_data["path"]
-        logger = get_game_logger(game_data.get("game_name", "unknown"))
+        game_name = str(game_data.get("game_name", "unknown")).strip() or "unknown"
+        logger = get_prefixed_logger(game_name)
         try:
+            final_dll_name = installer_services.resolve_proxy_dll_name(
+                target_path,
+                resolved_dll_name or str(game_data.get("dll_name", "")).strip(),
+                logger=logger,
+            )
+            logger.info("Install started: target=%s", target_path)
             exclude_raw = str(self.module_download_links.get("__exclude_list__", "")).strip()
             exclude_patterns = [token.strip() for token in exclude_raw.split("|") if token.strip()]
             with tempfile.TemporaryDirectory() as tmpdir:
-                installer_services.extract_archive(source_archive, tmpdir)
+                installer_services.extract_archive(source_archive, tmpdir, logger=logger)
                 contents = os.listdir(tmpdir)
                 if len(contents) == 1 and os.path.isdir(os.path.join(tmpdir, contents[0])):
                     actual_source = os.path.join(tmpdir, contents[0])
                 else:
                     actual_source = tmpdir
+                installer_services.backup_existing_optiscaler_proxy_dlls(target_path, logger=logger)
+                installer_services.remove_legacy_optiscaler_files(target_path, logger=logger)
                 installer_services.install_from_source_folder(
                     actual_source,
                     target_path,
-                    dll_name=game_data.get("dll_name", ""),
+                    dll_name=final_dll_name,
                     exclude_patterns=exclude_patterns,
+                    logger=logger,
                 )
                 logger.info(f"Extracted and installed files to {target_path}")
 
@@ -2664,17 +2742,13 @@ class OptiManagerApp:
             if isinstance(unreal_link_entry, dict) and unreal_link_entry.get("url"):
                 unreal_url = unreal_link_entry["url"]
 
-            if game_data.get("unreal5") and unreal_url:
-                installer_services.install_unreal5_from_url(unreal_url, target_path)
-                logger.info(f"Installed Unreal5 patch from {unreal_url} to {target_path}")
-
-            if game_data.get("reframework_url"):
-                installer_services.install_reframework_dinput8_from_url(game_data["reframework_url"], target_path)
-                logger.info(f"Installed REFramework dinput8.dll from {game_data['reframework_url']} to {target_path}")
-
             ini_path = os.path.join(target_path, "OptiScaler.ini")
             if not os.path.exists(ini_path):
                 raise FileNotFoundError("OptiScaler.ini not found after installation")
+
+            if game_data.get("reframework_url"):
+                installer_services.install_reframework_dinput8_from_url(game_data["reframework_url"], target_path, logger=logger)
+                logger.info(f"Installed REFramework dinput8.dll from {game_data['reframework_url']} to {target_path}")
 
             merged_ini_settings = dict(game_data.get("ini_settings", {}))
             if game_data.get("optipatcher"):
@@ -2683,11 +2757,11 @@ class OptiManagerApp:
                 opti_url = OPTIPATCHER_URL
                 if isinstance(opti_link_entry, dict):
                     opti_url = opti_link_entry.get("url", OPTIPATCHER_URL)
-                installer_services.install_optipatcher(target_path, url=opti_url)
+                installer_services.install_optipatcher(target_path, url=opti_url, logger=logger)
                 merged_ini_settings["LoadAsiPlugins"] = "True"
                 logger.info(f"Installed OptiPatcher from {opti_url} to {target_path}")
 
-            ini_utils.apply_ini_settings(ini_path, merged_ini_settings, force_frame_generation=True)
+            ini_utils.apply_ini_settings(ini_path, merged_ini_settings, force_frame_generation=True, logger=logger)
             logger.info(f"Applied ini settings to {ini_path}")
 
             # Optional in-game ini patching from sheet columns:
@@ -2697,6 +2771,7 @@ class OptiManagerApp:
             ingame_ini_name = str(game_data.get("ingame_ini", "")).strip()
             ingame_settings = dict(game_data.get("ingame_settings", {}) or {})
             if ingame_ini_name and ingame_settings:
+                logger.info("#ingame_ini configured: %s", ingame_ini_name)
                 # Determine if ingame_ini_name is a full path (contains folder) or just a filename
                 if any(sep in ingame_ini_name for sep in ("/", "\\", ":")):
                     # Treat as path, expand env vars
@@ -2715,14 +2790,19 @@ class OptiManagerApp:
                     try:
                         if orig_readonly:
                             ini_utils._ensure_file_writable(ini_file)
-                        ini_utils.apply_ini_settings(ingame_ini_path, ingame_settings, force_frame_generation=False)
+                        logger.info("#ingame_ini exists: %s", ingame_ini_path)
+                        ini_utils.apply_ini_settings(ingame_ini_path, ingame_settings, force_frame_generation=False, logger=logger)
                         logger.info(f"Applied in-game settings to {ingame_ini_path}")
                     finally:
                         # Restore original read-only state
                         if orig_readonly:
                             ini_utils._set_file_readonly(ini_file)
                 else:
-                    logger.info(f"In-game ini not found, skipped: {ingame_ini_path}")
+                    logger.info("#ingame_ini missing, skipped edits: %s", ingame_ini_path)
+            elif ingame_ini_name:
+                logger.info("#ingame_ini configured but no #ingame_setting values provided: %s", ingame_ini_name)
+            else:
+                logger.info("#ingame_ini not configured for this game")
 
             try:
                 engine_loc = str(game_data.get("engine_ini_location", "")).strip()
@@ -2730,7 +2810,7 @@ class OptiManagerApp:
                 logger.info(f"engine.ini info for install: target={target_path}, engine_ini_location='{engine_loc}'")
                 
                 if engine_loc and engine_ini_content:
-                    ini_path = ini_utils._find_or_create_engine_ini(engine_loc, workspace_root=target_path)
+                    ini_path = ini_utils._find_or_create_engine_ini(engine_loc, workspace_root=target_path, logger=logger)
                     
                     if ini_path:
                         try:
@@ -2738,18 +2818,27 @@ class OptiManagerApp:
                             section_map = ini_utils._parse_version_text_to_ini_entries(engine_ini_content)
                             
                             if section_map:
-                                ini_utils._upsert_ini_entries(ini_path, section_map)
+                                ini_utils._upsert_ini_entries(ini_path, section_map, logger=logger)
                                 logger.info(f"Upserted engine.ini entries to {ini_path}")
                         finally:
                             ini_utils._set_file_readonly(ini_path)
             except Exception:
-                logging.exception("Failed while handling engine.ini for %s", target_path)
+                logger.exception("Failed while handling engine.ini for %s", target_path)
 
+            if game_data.get("unreal5") and unreal_url:
+                unreal_installed = installer_services.install_unreal5_from_url(unreal_url, target_path, logger=logger)
+                if unreal_installed:
+                    logger.info(f"Installed Unreal5 patch from {unreal_url} to {target_path}")
+                else:
+                    logger.info("Skipped Unreal5 patch because dxgi.dll is already present in %s", target_path)
+
+            logger.info("Install completed")
             self.root.after(
                 0,
                 lambda game=dict(game_data): self._on_install_finished(True, "Install Completed", game),
             )
         except Exception as e:
+            logger.exception("Install failed: %s", e)
             self.root.after(
                 0,
                 lambda err=e, game=dict(game_data): self._on_install_finished(False, str(err), game),
