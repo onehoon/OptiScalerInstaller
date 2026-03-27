@@ -47,10 +47,8 @@
 1.  **Launch the App:** It will scan your Steam libraries. (Manual folder selection is also available).
 2.  **Check Notice:** View the supported game list and latest update info.
 3.  **Select Game:** Choose the game you want to optimize.
-4.  **Select Archive:** Choose the downloaded OptiScaler file. 
-    > **Do NOT extract** the file; use it as-is.
-5.  **Install:** Click the **Install** button.
-6.  **Run Game:** Follow the in-game instructions to enable upscaling/frame generation.
+4.  **Install:** Click the **Install** button.
+5.  **Run Game:** Follow the in-game instructions to enable upscaling/frame generation.
     > Press `Insert` to verify with the OptiScaler overlay.
 
 &nbsp;
