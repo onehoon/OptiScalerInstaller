@@ -930,10 +930,9 @@ class OptiManagerApp:
         self.sheet_status = ok
         if ok:
             logging.info(
-                "[APP] Game DB loaded successfully: games=%d, module_links=%d, download_links_gid=%s",
+                "[APP] Game DB loaded successfully: games=%d, module_links=%d",
                 len(self.game_db),
                 len(self.module_download_links),
-                DOWNLOAD_LINKS_SHEET_GID,
             )
         else:
             logging.error("[APP] Failed to load Game DB: %s", err)
