@@ -57,7 +57,7 @@ except ModuleNotFoundError as e:
     ) from e
 
  # Application Version
-APP_VERSION = "0.1.3"
+APP_VERSION = "0.2.0"
 
  # Configure logging deterministically below (avoid calling basicConfig early)
 
