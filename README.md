@@ -36,7 +36,7 @@
 
 <p>🚀 <b>Advanced Patches:</b> Automatic installation of additional modules (OptiPatcher, Unreal5 G/I bug fix) for selected games.</p>
 
-<p>🚀 <b>Advanced INI Edit:</b> Automatically edit Unreal Engine.ini & game INI for proper OptiScaler working</p>
+<p>🚀 <b>Advanced INI Edit:</b> Automatically edit Unreal Engine.ini & game INI for proper OptiScaler working for selected games.</p>
 
 <p>🔔 <b>Smart Guidance:</b> User notifications and RTSS option change guides to ensure the best performance.</p>
 
