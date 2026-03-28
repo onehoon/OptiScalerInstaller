@@ -275,7 +275,6 @@ PLACEHOLDER_FG = "#9fb0c5"
 LOCAL_APPDATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path(tempfile.gettempdir()))
 APP_CACHE_DIR = LOCAL_APPDATA_DIR / "OptiScalerInstaller"
 OPTISCALER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optiscaler"
-POSTER_CACHE_DIR = APP_CACHE_DIR / "cache" / "posters"
 APP_BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 ASSETS_DIR = APP_BASE_DIR / "assets"
 DEFAULT_POSTER_CANDIDATES = [
@@ -287,14 +286,13 @@ DEFAULT_POSTER_PATH = next((p for p in DEFAULT_POSTER_CANDIDATES if p.exists()),
 IMAGE_TIMEOUT_SECONDS = 10
 IMAGE_MAX_RETRIES = 3
 IMAGE_MAX_WORKERS = 4
+IMAGE_RETRY_DELAY_MS = int(os.environ.get("OPTISCALER_IMAGE_RETRY_DELAY_MS", "1500"))
 HI_DPI_SCALE = 2
 TARGET_POSTER_W = CARD_W * HI_DPI_SCALE
 TARGET_POSTER_H = CARD_H * HI_DPI_SCALE
 INFO_TEXT_OFFSET_PX = 10
 POSTER_CACHE_VERSION = 1
 ENABLE_POSTER_CACHE = os.environ.get("OPTISCALER_ENABLE_POSTER_CACHE", "1").strip().lower() in {"1", "true", "yes", "on"}
-POSTER_CACHE_MAX_FILES = int(os.environ.get("OPTISCALER_POSTER_CACHE_MAX_FILES", "500"))
-POSTER_CACHE_MAX_AGE_DAYS = int(os.environ.get("OPTISCALER_POSTER_CACHE_MAX_AGE_DAYS", "45"))
 IMAGE_CACHE_MAX = int(os.environ.get("OPTISCALER_IMAGE_CACHE_MAX", "100"))
 
 
@@ -436,6 +434,7 @@ ctk.set_default_color_theme("blue")
 # Accent colours
 _ACCENT = "#4CC9F0"
 _ACCENT_HOVER = "#35B6E0"
+_ACCENT_SUCCESS = "#7EE1AA"
 _LINK_ACTIVE = "#7DD3FC"
 _LINK_HOVER = "#38BDF8"
 _SELECTED_BORDER = "#4CC9F0"
@@ -499,23 +498,16 @@ class OptiManagerApp:
         self._base_root_width = None
         self._ctk_images: list = []   # keep refs alive
         self._image_cache: dict = {}  # cache_key -> PIL.Image
-        self._poster_cache_dir = POSTER_CACHE_DIR
-        if ENABLE_POSTER_CACHE:
-            self._poster_cache_dir.mkdir(parents=True, exist_ok=True)
         self._default_poster_base = _load_default_poster_base(TARGET_POSTER_W, TARGET_POSTER_H)
         self._image_session = self._build_retry_session()
         self._image_executor = ThreadPoolExecutor(max_workers=IMAGE_MAX_WORKERS, thread_name_prefix="cover-loader")
         self._task_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="general-task")
         self._download_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="archive-download")
         self._app_update_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="app-update")
-        if ENABLE_POSTER_CACHE:
-            try:
-                self._task_executor.submit(self._maintain_poster_cache)
-            except Exception:
-                logging.exception("Failed to submit poster cache maintenance task")
         self._pending_image_jobs: dict = {}
         self._inflight_image_futures: dict = {}
         self._failed_image_jobs: dict = {}
+        self._delayed_image_retry_after_ids: dict[int, str] = {}
         self._render_generation = 0
         self._image_queue_after_id = None
         self._games_scrollregion_after_id = None
@@ -660,6 +652,31 @@ class OptiManagerApp:
             self.lbl_game_path.place_configure(x=clamped_left, rely=0.5, anchor="w")
         except Exception:
             logging.debug("Failed to align supported-games count label", exc_info=True)
+
+    def _get_selected_game_header_parts(self) -> tuple[str, str]:
+        label = "선택된 게임" if USE_KOREAN else "Selected Game"
+        if self.selected_game_index is None or not (0 <= self.selected_game_index < len(self.found_exe_list)):
+            return "", ""
+
+        game = self.found_exe_list[self.selected_game_index]
+        if USE_KOREAN:
+            game_name = str(game.get("display", "") or game.get("game_name_kr", "") or game.get("game_name", "")).strip()
+        else:
+            game_name = str(game.get("game_name", "") or game.get("display", "")).strip()
+        if not game_name:
+            return "", ""
+        return f"{label}: ", game_name
+
+    def _update_selected_game_header(self):
+        try:
+            label_text, game_name = self._get_selected_game_header_parts()
+            if hasattr(self, "lbl_selected_game_header_label") and self.lbl_selected_game_header_label.winfo_exists():
+                self.lbl_selected_game_header_label.configure(text=label_text)
+            if hasattr(self, "lbl_selected_game_header") and self.lbl_selected_game_header.winfo_exists():
+                self.lbl_selected_game_header.configure(text=game_name)
+        except Exception:
+            logging.debug("Failed to update selected game header", exc_info=True)
+
     def _show_after_install_popup(self, game: dict):
         is_kr = USE_KOREAN
         msg = ""
@@ -920,6 +937,8 @@ class OptiManagerApp:
                 self._image_queue_after_id = None
         except Exception:
             pass
+        for index in list(self._delayed_image_retry_after_ids.keys()):
+            self._cancel_delayed_image_retry(index)
         try:
             if self._games_scrollregion_after_id is not None:
                 self.root.after_cancel(self._games_scrollregion_after_id)
@@ -1649,13 +1668,42 @@ class OptiManagerApp:
         wrapper.grid_rowconfigure(1, weight=1)
         wrapper.grid_columnconfigure(0, weight=1)
 
+        header_row = ctk.CTkFrame(wrapper, fg_color="transparent", corner_radius=0)
+        header_row.grid(row=0, column=0, padx=20, pady=(6, 6), sticky="ew")
+        header_row.grid_columnconfigure(1, weight=1)
+
         sec_lbl = ctk.CTkLabel(
-            wrapper,
+            header_row,
             text="2. Supported Games",
             font=ctk.CTkFont(family=FONT_HEADING, size=12, weight="bold"),
             text_color="#F1F5F9",
         )
-        sec_lbl.grid(row=0, column=0, padx=20, pady=(6, 6), sticky="w")
+        sec_lbl.grid(row=0, column=0, sticky="w")
+
+        selected_header_row = ctk.CTkFrame(header_row, fg_color="transparent", corner_radius=0)
+        selected_header_row.grid(row=0, column=1, padx=(8, 5), pady=(1, 0), sticky="e")
+
+        label_text, game_name = self._get_selected_game_header_parts()
+
+        self.lbl_selected_game_header_label = ctk.CTkLabel(
+            selected_header_row,
+            text=label_text,
+            font=ctk.CTkFont(family=FONT_UI, size=12),
+            text_color="#AEB9C8",
+            anchor="e",
+            justify="right",
+        )
+        self.lbl_selected_game_header_label.grid(row=0, column=0, sticky="e")
+
+        self.lbl_selected_game_header = ctk.CTkLabel(
+            selected_header_row,
+            text=game_name,
+            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
+            text_color=_ACCENT_SUCCESS,
+            anchor="e",
+            justify="right",
+        )
+        self.lbl_selected_game_header.grid(row=0, column=1, sticky="e")
 
         self.games_scroll = ctk.CTkScrollableFrame(
             wrapper,
@@ -1700,7 +1748,7 @@ class OptiManagerApp:
 
         # Section label + latest version info on the same line
         title_line = ctk.CTkFrame(bar, fg_color="transparent", corner_radius=0)
-        title_line.grid(row=0, column=0, padx=20, pady=(10, 2), sticky="ew")
+        title_line.grid(row=0, column=0, padx=20, pady=(7, 2), sticky="ew")
         title_line.grid_columnconfigure(1, weight=1)
 
         sec_lbl = ctk.CTkLabel(
@@ -1723,7 +1771,7 @@ class OptiManagerApp:
         self.lbl_optiscaler_version_line.grid(row=0, column=1, padx=(10, 0), pady=(2, 0), sticky="e")
 
         mid_bottom = ctk.CTkFrame(bar, fg_color=_SURFACE, corner_radius=0)
-        mid_bottom.grid(row=1, column=0, sticky="ew", padx=20, pady=(4, 10))
+        mid_bottom.grid(row=1, column=0, sticky="ew", padx=20, pady=(7, 10))
         mid_bottom.grid_columnconfigure(0, weight=1)
 
         self.apply_btn = ctk.CTkButton(
@@ -1891,6 +1939,8 @@ class OptiManagerApp:
         self._pending_image_jobs.clear()
         self._inflight_image_futures.clear()
         self._failed_image_jobs.clear()
+        for index in list(self._delayed_image_retry_after_ids.keys()):
+            self._cancel_delayed_image_retry(index)
         self._initial_image_pass = True
         self._scan_in_progress = False
         self._retry_attempted = False
@@ -1908,6 +1958,7 @@ class OptiManagerApp:
             self.install_precheck_dll_name = ""
             self._set_information_text("")
         self._hovered_card_index = None
+        self._update_selected_game_header()
         self._update_install_button_state()
 
     def _get_effective_widget_scale(self) -> float:
@@ -2043,6 +2094,7 @@ class OptiManagerApp:
 
     def _on_root_resize(self, _event=None):
         self._schedule_reflow_for_resize()
+        self.root.after_idle(self._align_supported_games_count_label)
 
     def _configure_card_columns(self, cols: int):
         max_cols = max(self._grid_cols_current, cols)
@@ -2422,9 +2474,6 @@ class OptiManagerApp:
 
         return None
 
-    def _poster_cache_file_prefix(self) -> str:
-        return f"v{POSTER_CACHE_VERSION}_{TARGET_POSTER_W}x{TARGET_POSTER_H}_"
-
     def _poster_cache_key(self, title: str, url: str) -> str:
         normalized_url = ""
         if url:
@@ -2440,51 +2489,49 @@ class OptiManagerApp:
         cache_source = f"poster|v{POSTER_CACHE_VERSION}|{TARGET_POSTER_W}x{TARGET_POSTER_H}|{source}"
         return hashlib.sha256(cache_source.encode("utf-8")).hexdigest()
 
-    def _poster_cache_path(self, title: str, url: str) -> Path:
-        key = self._poster_cache_key(title, url)
-        # Store processed poster in a stable format/path regardless of source URL extension.
-        return self._poster_cache_dir / f"{self._poster_cache_file_prefix()}{key}.png"
-
-    def _remove_poster_cache_file(self, cache_path: Path):
+    def _cancel_delayed_image_retry(self, index: int):
+        after_id = self._delayed_image_retry_after_ids.pop(index, None)
+        if after_id is None:
+            return
         try:
-            cache_path.unlink(missing_ok=True)
+            self.root.after_cancel(after_id)
         except Exception:
-            logging.debug("Failed to remove poster cache file: %s", cache_path, exc_info=True)
+            pass
 
-    def _maintain_poster_cache(self):
-        if not ENABLE_POSTER_CACHE:
+    def _schedule_delayed_image_retry(self, job: dict):
+        index = int(job.get("index", -1))
+        if index < 0:
+            return
+        if int(job.get("delayed_retry_count", 0)) >= 1:
+            return
+        if index in self._delayed_image_retry_after_ids:
             return
 
+        retry_job = dict(job)
+        retry_job["delayed_retry_count"] = int(job.get("delayed_retry_count", 0)) + 1
+
+        def _requeue():
+            self._delayed_image_retry_after_ids.pop(index, None)
+            try:
+                if not self.root.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+
+            if retry_job.get("generation") != self._render_generation:
+                return
+
+            self._pending_image_jobs[index] = retry_job
+            self._pump_image_jobs()
+
         try:
-            self._poster_cache_dir.mkdir(parents=True, exist_ok=True)
-            prefix = self._poster_cache_file_prefix()
-            now = time.time()
-            max_age_seconds = max(0, POSTER_CACHE_MAX_AGE_DAYS) * 86400
-            retained_files: list[tuple[float, Path]] = []
-
-            for cache_path in self._poster_cache_dir.glob("*.png"):
-                try:
-                    stat_result = cache_path.stat()
-                except Exception:
-                    logging.debug("Failed to stat poster cache file: %s", cache_path, exc_info=True)
-                    continue
-
-                is_legacy_schema = not cache_path.name.startswith(prefix)
-                is_expired = max_age_seconds > 0 and (now - stat_result.st_mtime) > max_age_seconds
-                if is_legacy_schema or is_expired:
-                    self._remove_poster_cache_file(cache_path)
-                    continue
-
-                retained_files.append((stat_result.st_mtime, cache_path))
-
-            if POSTER_CACHE_MAX_FILES > 0 and len(retained_files) > POSTER_CACHE_MAX_FILES:
-                retained_files.sort(key=lambda item: item[0], reverse=True)
-                for _, stale_path in retained_files[POSTER_CACHE_MAX_FILES:]:
-                    self._remove_poster_cache_file(stale_path)
+            after_id = self.root.after(max(0, IMAGE_RETRY_DELAY_MS), _requeue)
         except Exception:
-            logging.exception("Failed to maintain poster cache")
+            return
+        self._delayed_image_retry_after_ids[index] = after_id
 
     def _queue_card_image_fetch(self, index: int, label: ctk.CTkLabel, title: str, game_name: str, url: str):
+        self._cancel_delayed_image_retry(index)
         self._pending_image_jobs[index] = {
             "index": index,
             "label": label,
@@ -2493,6 +2540,7 @@ class OptiManagerApp:
             "url": url,
             "generation": self._render_generation,
             "cache_key": self._poster_cache_key(title, url),
+            "delayed_retry_count": 0,
         }
         self._pump_image_jobs()
 
@@ -2585,8 +2633,10 @@ class OptiManagerApp:
 
         for future, job in completed:
             try:
-                pil_img, _ = future.result()
+                pil_img, _is_default, should_retry = future.result()
                 self._apply_loaded_poster(job["index"], job["label"], job["generation"], pil_img)
+                if should_retry:
+                    self._schedule_delayed_image_retry(job)
             except Exception as exc:
                 logging.warning("Poster download failed (will retry): %s", exc)
                 # Store for one automatic retry after all jobs are done.
@@ -2596,41 +2646,30 @@ class OptiManagerApp:
         self._image_queue_after_id = None
         self._pump_image_jobs()
 
-    def _load_poster_image_worker(self, title: str, game_name: str, url: str) -> tuple[Image.Image, bool]:
+    def _load_poster_image_worker(self, title: str, game_name: str, url: str) -> tuple[Image.Image, bool, bool]:
         local_cover_path = self._find_local_cover_asset(game_name)
         if local_cover_path is not None:
             local_cache_key = f"local::v{POSTER_CACHE_VERSION}::{TARGET_POSTER_W}x{TARGET_POSTER_H}::{str(local_cover_path).lower()}"
             cached_local = self._image_cache_get(local_cache_key) if ENABLE_POSTER_CACHE else None
             if cached_local is not None:
-                return cached_local, False
+                return cached_local, False, False
             try:
                 with Image.open(local_cover_path) as local_img:
                     pil_img = _prepare_cover_image(local_img, TARGET_POSTER_W, TARGET_POSTER_H)
                 if ENABLE_POSTER_CACHE:
                     self._image_cache_put(local_cache_key, pil_img)
-                return pil_img, False
+                return pil_img, False, False
             except Exception as exc:
                 logging.warning("Failed to load local cover image from %s: %s", local_cover_path, exc)
 
         cache_key = self._poster_cache_key(title, url)
         cached_image = self._image_cache_get(cache_key) if ENABLE_POSTER_CACHE else None
         if cached_image is not None:
-            return cached_image, False
-
-        cache_path = self._poster_cache_path(title, url)
-        if ENABLE_POSTER_CACHE and cache_path.exists():
-            try:
-                with Image.open(cache_path) as cached_img:
-                    pil_img = cached_img.convert("RGBA")
-                self._image_cache_put(cache_key, pil_img)
-                return pil_img, False
-            except Exception:
-                logging.warning("Failed to decode cached poster: %s", cache_path)
-                self._remove_poster_cache_file(cache_path)
+            return cached_image, False, False
 
         if not url:
             fallback = self._default_poster_base.copy().convert("RGBA")
-            return fallback, True
+            return fallback, True, False
 
         try:
             with self._image_session.get(url, timeout=IMAGE_TIMEOUT_SECONDS, stream=True) as response:
@@ -2638,21 +2677,13 @@ class OptiManagerApp:
                 data = b"".join(response.iter_content(chunk_size=65536))
             with Image.open(io.BytesIO(data)) as downloaded_img:
                 pil_img = _prepare_cover_image(downloaded_img, TARGET_POSTER_W, TARGET_POSTER_H)
-
             if ENABLE_POSTER_CACHE:
-                try:
-                    tmp_path = cache_path.with_suffix(cache_path.suffix + ".tmp")
-                    pil_img.save(tmp_path, format="PNG")
-                    tmp_path.replace(cache_path)
-                except Exception:
-                    logging.debug("Failed to write poster cache file: %s", cache_path)
-
                 self._image_cache_put(cache_key, pil_img)
-            return pil_img, False
+            return pil_img, False, False
         except Exception as exc:
             logging.warning("Failed to load cover image from %s: %s", url, exc)
             fallback = self._default_poster_base.copy().convert("RGBA")
-            return fallback, True
+            return fallback, True, True
 
     def _apply_loaded_poster(self, index: int, label: ctk.CTkLabel, generation: int, pil_img: Image.Image):
         if generation != self._render_generation:
@@ -2692,6 +2723,7 @@ class OptiManagerApp:
 
     def _set_selected_game(self, index: int):
         self.selected_game_index = index
+        self._update_selected_game_header()
         self._refresh_all_card_visuals()
 
         # Popup confirmation logic
