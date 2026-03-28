@@ -12,8 +12,7 @@
 ## 📋 Requirements
 ---
 * **Internet Connection:** Required to load the latest game DB from Google Sheets.
-* **OptiScaler Version:** `v0.9.0-pre11 (20260311)_RC4.5` or later.
-    > ⚠️ **IMPORTANT:** GitHub version (v0.7.9) is **NOT supported** (No XeFG, No XeMFG)
+* **OptiScaler Version:** The latest OptiScaler will be downloaded automatically.
 
 &nbsp;
 
@@ -33,9 +32,11 @@
 
 <p>🔍 <b>Auto Game Scan:</b> Automatically detects Steam library folders.</p>
 
-<p>🛠️ <b>One-Click Install:</b> Installs OptiScaler files and **pre-configured & tested game specific <code>OptiScaler.ini</code> settings** automatically.</p>
+<p>🛠️ <b>One-Click Install:</b> Installs OptiScaler files and <b>pre-configured & tested game specific <code>OptiScaler.ini</code> settings</b> automatically.</p>
 
 <p>🚀 <b>Advanced Patches:</b> Automatic installation of additional modules (OptiPatcher, Unreal5 G/I bug fix) for selected games.</p>
+
+<p>🚀 <b>Advanced INI Edit:</b> Automatically edit Unreal Engine.ini & game INI for proper OptiScaler working</p>
 
 <p>🔔 <b>Smart Guidance:</b> User notifications and RTSS option change guides to ensure the best performance.</p>
 
@@ -45,7 +46,7 @@
 ---
 1.  **Launch the App:** It will scan your Steam libraries. (Manual folder selection is also available).
 2.  **Check Notice:** View the supported game list and latest update info.
-3.  **Select Game:** Choose the game you want to optimize.
+3.  **Select Game:** Choose the game you want to install optimized OptiScaler files and settings.
 4.  **Install:** Click the **Install** button.
 5.  **Run Game:** Follow the in-game instructions to enable upscaling/frame generation.
     > Press `Insert` to verify with the OptiScaler overlay.
