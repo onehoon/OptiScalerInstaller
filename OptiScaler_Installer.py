@@ -10,6 +10,7 @@ import time
 import tkinter.font as tkfont
 import math
 import hashlib
+import fnmatch
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 from tkinter import filedialog, messagebox
@@ -58,6 +59,8 @@ except ModuleNotFoundError as e:
 
  # Application Version
 APP_VERSION = "0.2.0"
+# Keep hardware detection separate from support policy so dual-GPU support can be enabled later.
+MULTI_GPU_SUPPORTED = False
 
  # Configure logging deterministically below (avoid calling basicConfig early)
 
@@ -72,10 +75,27 @@ else:
 if os.path.exists(_env_path):
     load_dotenv(_env_path)
 
+
+def _get_int_env(name: str, default: int = 0) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(str(raw).strip())
+    except (TypeError, ValueError):
+        logging.warning("[APP] Invalid integer env %s=%r, using %s", name, raw, default)
+        return default
+
+
  # Allow overriding these values via environment variables for easier testing/config
 SHEET_ID = os.environ.get("OPTISCALER_SHEET_ID", "")
-SHEET_GID = int(os.environ.get("OPTISCALER_SHEET_GID", "0"))
-DOWNLOAD_LINKS_SHEET_GID = int(os.environ.get("OPTISCALER_DOWNLOAD_LINKS_SHEET_GID", "0"))
+SHEET_GID = _get_int_env("OPTISCALER_SHEET_GID", 0)
+DOWNLOAD_LINKS_SHEET_GID = _get_int_env("OPTISCALER_DOWNLOAD_LINKS_SHEET_GID", 0)
+GPU_VENDOR_DB_GIDS = {
+    "intel": _get_int_env("DB_INTEL_GID", SHEET_GID),
+    "amd": _get_int_env("DB_AMD_GID", SHEET_GID),
+    "nvidia": _get_int_env("DB_NVIDIA_GID", SHEET_GID),
+}
 
 if not SHEET_ID:
     logging.warning("[APP] OPTISCALER_SHEET_ID not found in environment variables or .env file.")
@@ -84,9 +104,6 @@ OPTIPATCHER_URL = os.environ.get(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
-
-# Enable GPU validation
-ENFORCE_GPU_CHECK = True
 
 import logging.handlers
 
@@ -142,7 +159,7 @@ def _init_file_logger() -> Optional[Path]:
             fh.setFormatter(formatter)
             root_logger.addHandler(fh)
             get_prefixed_logger("APP").info("OptiScaler Installer version %s", APP_VERSION)
-            get_prefixed_logger("APP").info("File logging initialized at %s", log_path)
+            get_prefixed_logger("APP").info("File logging initialized")
             return log_path
         except Exception as e:
             try:
@@ -191,10 +208,10 @@ def _subprocess_no_window_kwargs() -> dict:
     return kwargs
 
 
-def get_graphics_adapter_info():
-    """Return a user-friendly GPU name string for the current Windows machine."""
+def get_graphics_adapter_snapshot() -> tuple[list[str], int, str]:
+    """Return unique GPU names, detected adapter count, and a user-facing summary string."""
     if os.name != "nt":
-        return "Unknown (non-Windows OS)"
+        return [], 0, "Unknown (non-Windows OS)"
 
     command = [
         "powershell",
@@ -212,29 +229,102 @@ def get_graphics_adapter_info():
             **_subprocess_no_window_kwargs(),
         )
         if result.returncode != 0:
-            return "Unknown"
+            return [], 0, "Unknown"
 
-        gpu_names = []
+        gpu_names_raw = []
         for line in result.stdout.splitlines():
             name = line.strip()
-            if name and name not in gpu_names:
-                gpu_names.append(name)
+            if name:
+                gpu_names_raw.append(name)
 
-        allowed_vendors = ("intel", "amd", "nvidia")
-        filtered_names = []
-        for name in gpu_names:
+        allowed_vendor_keywords = (
+            "intel", "amd", "nvidia",
+            "arc", "iris", "uhd",
+            "radeon",
+            "geforce", "rtx", "gtx", "quadro", "tesla",
+        )
+        filtered_names_raw = []
+        filtered_names_unique = []
+        for name in gpu_names_raw:
             lowered = name.lower()
             if "mirage driver" in lowered:
                 continue
-            if any(vendor in lowered for vendor in allowed_vendors):
-                filtered_names.append(name)
+            if any(keyword in lowered for keyword in allowed_vendor_keywords):
+                filtered_names_raw.append(name)
+                if name not in filtered_names_unique:
+                    filtered_names_unique.append(name)
 
-        if filtered_names:
-            return ", ".join(filtered_names)
+        if filtered_names_raw:
+            return filtered_names_unique, len(filtered_names_raw), ", ".join(filtered_names_unique)
     except Exception:
         pass
 
-    return "Unknown"
+    return [], 0, "Unknown"
+
+
+def get_graphics_adapter_info():
+    """Return a user-friendly GPU name string for the current Windows machine."""
+    return get_graphics_adapter_snapshot()[2]
+
+
+def _detect_gpu_vendors(gpu_info: str) -> list[str]:
+    lowered = str(gpu_info or "").strip().lower()
+    if not lowered:
+        return []
+
+    keyword_map = {
+        "nvidia": ("nvidia", "geforce", "rtx", "gtx", "quadro", "tesla"),
+        "amd": ("amd", "radeon"),
+        "intel": ("intel", "arc", "iris", "uhd"),
+    }
+    # Prefer discrete GPUs first when multiple adapters are present.
+    vendor_priority = ("nvidia", "amd", "intel")
+    return [
+        vendor
+        for vendor in vendor_priority
+        if any(keyword in lowered for keyword in keyword_map[vendor])
+    ]
+
+
+def _resolve_game_db_target_for_gpu(gpu_info: str) -> tuple[str, int]:
+    vendors = _detect_gpu_vendors(gpu_info)
+    for vendor in vendors:
+        gid = GPU_VENDOR_DB_GIDS.get(vendor, SHEET_GID) or SHEET_GID
+        if gid:
+            return vendor, gid
+    return "default", SHEET_GID
+
+
+def _split_gpu_rule_patterns(rule_text: str) -> list[str]:
+    text = str(rule_text or "").strip()
+    if not text:
+        return []
+
+    normalized = text.replace("\r", "\n").replace("\n", "|").replace(";", "|").replace(",", "|")
+    return [token.strip().lower() for token in normalized.split("|") if token.strip()]
+
+
+def matches_gpu_rule(rule_text: str, gpu_text: str) -> bool:
+    patterns = _split_gpu_rule_patterns(rule_text)
+    if not patterns:
+        return False
+
+    if any(pattern == "all" for pattern in patterns):
+        return True
+
+    normalized_gpu = str(gpu_text or "").strip().lower()
+    if normalized_gpu in {"", "checking gpu...", "unknown"}:
+        return False
+
+    for pattern in patterns:
+        if pattern in {"null", "none"}:
+            continue
+        if any(char in pattern for char in "*?[]"):
+            if fnmatch.fnmatch(normalized_gpu, pattern):
+                return True
+        elif pattern in normalized_gpu:
+            return True
+    return False
 
 
 def _is_korean_ui() -> bool:
@@ -477,6 +567,14 @@ class OptiManagerApp:
         self.game_db = {}
         self.module_download_links = {}
         self._supported_games_popup_shown = False
+        self._game_db_load_started = False
+        self.active_game_db_vendor = "default"
+        self.active_game_db_gid = SHEET_GID
+        self.gpu_names: list[str] = []
+        self.gpu_count = 0
+        self.is_multi_gpu = False
+        self.multi_gpu_blocked = False
+        self._multi_gpu_popup_shown = False
         self.sheet_status = False
         self.sheet_loading = True
         self.gpu_info = "Checking GPU..."
@@ -525,7 +623,6 @@ class OptiManagerApp:
         self.root.bind("<Configure>", self._on_root_resize)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(250, self._capture_startup_width)
-        self._start_game_db_load_async()
 
     def _show_game_selection_popup(self, message_text: str, on_confirm: callable = None, is_after_popup: bool = False):
         popup = ctk.CTkToplevel(self.root)
@@ -608,23 +705,92 @@ class OptiManagerApp:
 
     def _fetch_gpu_info_async(self):
         try:
-            info = get_graphics_adapter_info()
+            gpu_names, gpu_count, info = get_graphics_adapter_snapshot()
         except Exception:
             logging.exception("Error fetching GPU info")
+            gpu_names = []
+            gpu_count = 0
             info = "Unknown"
+        selected_vendor, selected_gid = _resolve_game_db_target_for_gpu(info)
         try:
-            self.root.after(0, lambda: self._update_gpu_ui(info))
+            self.root.after(
+                0,
+                lambda: self._update_gpu_ui(info, selected_vendor, selected_gid, gpu_names, gpu_count),
+            )
         except Exception:
             logging.exception("Failed to schedule GPU UI update")
 
-    def _update_gpu_ui(self, info: str):
+    def _is_multi_gpu_block_active(self) -> bool:
+        return self.is_multi_gpu and not MULTI_GPU_SUPPORTED
+
+    def _get_multi_gpu_block_title(self) -> str:
+        return "지원되지 않는 GPU 구성" if USE_KOREAN else "Unsupported GPU Configuration"
+
+    def _get_multi_gpu_block_message(self) -> str:
+        if USE_KOREAN:
+            return "듀얼 GPU 구성은 현재 지원되지 않습니다.\n단일 GPU 환경으로 전환한 뒤 다시 시도해 주세요."
+        return "Dual-GPU configurations are not currently supported.\nPlease switch to a single-GPU configuration and try again."
+
+    def _show_multi_gpu_block_popup(self):
+        if self._multi_gpu_popup_shown:
+            return
+        self._multi_gpu_popup_shown = True
+        messagebox.showerror(self._get_multi_gpu_block_title(), self._get_multi_gpu_block_message())
+
+    def _apply_multi_gpu_block_state(self):
+        self.multi_gpu_blocked = self._is_multi_gpu_block_active()
+        if not self.multi_gpu_blocked:
+            return
+
+        self._post_sheet_startup_done = True
+        self._supported_games_popup_shown = True
+        self.sheet_loading = False
+        self.sheet_status = False
+        self.game_db = {}
+        self.module_download_links = {}
+        self.found_exe_list = []
+        self.selected_game_index = None
+        self.install_precheck_running = False
+        self.install_precheck_ok = False
+        self.install_precheck_error = ""
+        self.install_precheck_dll_name = ""
+
+        if hasattr(self, "btn_select_folder") and self.btn_select_folder:
+            self.btn_select_folder.configure(state="disabled")
+        if hasattr(self, "lbl_game_path") and self.lbl_game_path:
+            text = "듀얼 GPU는 지원되지 않습니다." if USE_KOREAN else "Dual GPU is not supported."
+            self.lbl_game_path.configure(text=text, text_color="#FF8A8A")
+            self.root.after(0, self._align_supported_games_count_label)
+        if hasattr(self, "info_text") and self.info_text:
+            self._set_information_text(self._get_multi_gpu_block_message())
+
+        self._clear_cards()
+        self._update_selected_game_header()
+        self._update_sheet_status()
+        self._update_install_button_state()
+        self._show_multi_gpu_block_popup()
+
+    def _update_gpu_ui(self, info: str, selected_vendor: str, selected_gid: int, gpu_names: list[str], gpu_count: int):
         try:
             self.gpu_info = info
+            self.active_game_db_vendor = selected_vendor
+            self.active_game_db_gid = selected_gid or SHEET_GID
+            self.gpu_names = list(gpu_names or [])
+            self.gpu_count = max(0, int(gpu_count or 0))
+            self.is_multi_gpu = self.gpu_count > 1
+            self.multi_gpu_blocked = self._is_multi_gpu_block_active()
             if hasattr(self, 'gpu_lbl') and self.gpu_lbl:
                 self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+            if self.multi_gpu_blocked:
+                self._apply_multi_gpu_block_state()
+                return
+            self._start_game_db_load_async()
             self._update_install_button_state()
         except Exception:
             logging.exception("Failed to update GPU UI")
+
+    def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
+        return matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_info)
 
     def _align_supported_games_count_label(self):
         try:
@@ -869,29 +1035,6 @@ class OptiManagerApp:
         popup.after(0, lambda p=popup: self._center_popup_on_root(p))
         popup.after(80, lambda p=popup: self._center_popup_on_root(p))
 
-    def _selected_game_has_supported_gpu(self) -> bool:
-        if not ENFORCE_GPU_CHECK:
-            return True
-        if self.selected_game_index is None or not (0 <= self.selected_game_index < len(self.found_exe_list)):
-            return True
-
-        game_data = self.found_exe_list[self.selected_game_index]
-        required_vendor = self._resolve_install_gpu_vendor(game_data)
-        return self._is_gpu_supported_for_install(required_vendor)
-
-    def _show_unsupported_gpu_popup(self):
-        messagebox.showerror(
-            "Unsupported GPU",
-            "Current GPU not supported.",
-        )
-
-    def _notify_if_selected_game_gpu_unsupported(self):
-        gpu_text = str(getattr(self, "gpu_info", "") or "").strip().lower()
-        if gpu_text in {"", "checking gpu...", "unknown"}:
-            return
-        if not self._selected_game_has_supported_gpu():
-            self._show_unsupported_gpu_popup()
-
     def _update_install_button_state(self):
         if not hasattr(self, "apply_btn"):
             return
@@ -900,9 +1043,13 @@ class OptiManagerApp:
             self.selected_game_index is not None
             and 0 <= self.selected_game_index < len(self.found_exe_list)
         )
-        has_supported_gpu = self._selected_game_has_supported_gpu() if has_valid_game else True
+        has_supported_gpu = (
+            self._is_game_supported_for_current_gpu(self.found_exe_list[self.selected_game_index])
+            if has_valid_game else True
+        )
         can_install = (
-            self.sheet_status
+            not self.multi_gpu_blocked
+            and self.sheet_status
             and not self.sheet_loading
             and not self.install_in_progress
             and not self.app_update_in_progress
@@ -985,11 +1132,22 @@ class OptiManagerApp:
         return session
 
     def _start_game_db_load_async(self):
-        self._task_executor.submit(self._load_game_db_worker)
+        if self._game_db_load_started:
+            return
+        self._game_db_load_started = True
 
-    def _load_game_db_worker(self):
+        game_db_gid = int(getattr(self, "active_game_db_gid", SHEET_GID) or SHEET_GID)
+        game_db_vendor = str(getattr(self, "active_game_db_vendor", "default") or "default")
+        logging.info(
+            "[APP] Starting Game DB load for vendor=%s gpu=%s",
+            game_db_vendor,
+            self.gpu_info,
+        )
+        self._task_executor.submit(self._load_game_db_worker, game_db_gid, game_db_vendor)
+
+    def _load_game_db_worker(self, game_db_gid: int, game_db_vendor: str):
         try:
-            db = sheet_loader.load_game_db_from_public_sheet(SHEET_ID, SHEET_GID)
+            db = sheet_loader.load_game_db_from_public_sheet(SHEET_ID, game_db_gid)
             if not db:
                 raise ValueError("Sheet has no data.")
 
@@ -999,24 +1157,45 @@ class OptiManagerApp:
             except Exception as link_err:
                 logging.warning("Failed to load download-link sheet (gid=%s): %s", DOWNLOAD_LINKS_SHEET_GID, link_err)
 
-            self.root.after(0, lambda db=db, links=module_links: self._on_game_db_loaded(db, links, True, None))
+            self.root.after(
+                0,
+                lambda db=db, links=module_links, gid=game_db_gid, vendor=game_db_vendor:
+                    self._on_game_db_loaded(db, links, True, None, gid, vendor),
+            )
         except Exception as e:
-            self.root.after(0, lambda err=e: self._on_game_db_loaded({}, {}, False, err))
+            self.root.after(
+                0,
+                lambda err=e, gid=game_db_gid, vendor=game_db_vendor:
+                    self._on_game_db_loaded({}, {}, False, err, gid, vendor),
+            )
 
-    def _on_game_db_loaded(self, db, module_links, ok, err):
+    def _on_game_db_loaded(self, db, module_links, ok, err, game_db_gid=None, game_db_vendor="default"):
         self.sheet_loading = False
+        if game_db_gid is not None:
+            self.active_game_db_gid = int(game_db_gid)
+        if game_db_vendor:
+            self.active_game_db_vendor = str(game_db_vendor)
         self.game_db = db if ok else {}
         self.module_download_links = module_links if ok else {}
 
         self.sheet_status = ok
         if ok:
             logging.info(
-                "[APP] Game DB loaded successfully: games=%d, module_links=%d",
+                "[APP] Game DB loaded successfully: vendor=%s, games=%d, module_links=%d",
+                self.active_game_db_vendor,
                 len(self.game_db),
                 len(self.module_download_links),
             )
         else:
-            logging.error("[APP] Failed to load Game DB: %s", err)
+            logging.error(
+                "[APP] Failed to load Game DB for vendor=%s: %s",
+                self.active_game_db_vendor,
+                err,
+            )
+        if self.multi_gpu_blocked:
+            self._update_install_button_state()
+            self._update_sheet_status()
+            return
         self._refresh_optiscaler_archive_info_ui()
         self._update_install_button_state()
         self._update_sheet_status()
@@ -1114,6 +1293,10 @@ class OptiManagerApp:
 
     def _run_post_sheet_startup(self, ok: bool):
         if self._post_sheet_startup_done:
+            return
+
+        if self.multi_gpu_blocked:
+            self._post_sheet_startup_done = True
             return
 
         self._post_sheet_startup_done = True
@@ -1307,6 +1490,8 @@ class OptiManagerApp:
 
     def check_app_update(self) -> bool:
         """Check for app update using latest_installer_dl from module_download_links."""
+        if self.multi_gpu_blocked:
+            return False
         try:
             latest_info = self._get_installer_update_entry()
             if latest_info:
@@ -1466,6 +1651,8 @@ class OptiManagerApp:
 
     def _start_auto_scan(self):
         """Kick off a silent auto-scan of known Steam/game directories."""
+        if self.multi_gpu_blocked:
+            return
         scan_paths = self._get_auto_scan_paths()
         if not scan_paths:
             return
@@ -1481,9 +1668,13 @@ class OptiManagerApp:
         self._task_executor.submit(self._scan_worker, scan_paths)
 
     def _show_supported_games_popup(self):
+        if self.multi_gpu_blocked:
+            return
         names = []
         seen = set()
         for idx, entry in enumerate(self.game_db.values()):
+            if not self._is_game_supported_for_current_gpu(entry):
+                continue
             # Inclusion rule: A-column(exe) exists. Display text comes from B-column(game_name).
             # Rows without exe are already excluded when game_db is built.
             name = (str(entry.get("game_name_kr") or entry.get("game_name", "")).strip()
@@ -1857,6 +2048,14 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
 
     def _update_sheet_status(self):
+        if self.multi_gpu_blocked:
+            self.status_badge.configure(
+                text="  Dual GPU: Unsupported  " if not USE_KOREAN else "  듀얼 GPU: 미지원  ",
+                text_color="#FF8A8A",
+                fg_color="#4A2F34",
+            )
+            self.root.after(0, self._align_supported_games_count_label)
+            return
         if self.sheet_loading:
             self.status_badge.configure(
                 text="  Game DB: Loading  ",
@@ -2737,12 +2936,6 @@ class OptiManagerApp:
             game = self.found_exe_list[index]
             self._set_information_text(game.get("information", ""))
             self._run_install_precheck(game)
-            gpu_text = str(getattr(self, "gpu_info", "") or "").strip().lower()
-            if gpu_text not in {"", "checking gpu...", "unknown"} and not self._selected_game_has_supported_gpu():
-                self._game_popup_confirmed = True
-                self._update_install_button_state()
-                self._show_unsupported_gpu_popup()
-                return
             popup_msg = ""
             if USE_KOREAN:
                 popup_msg = game.get("popup_kr", "").strip()
@@ -2794,6 +2987,8 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
 
     def select_game_folder(self):
+        if self.multi_gpu_blocked:
+            return
         if self.sheet_loading:
             messagebox.showinfo("Game DB Loading", "Game DB is still loading. Please wait a moment.")
             return
@@ -2838,6 +3033,8 @@ class OptiManagerApp:
                                 continue
                             seen_paths.add(dedup_key)
                             entry = self.game_db[key]
+                            if not self._is_game_supported_for_current_gpu(entry):
+                                continue
                             _kr_display = entry.get("game_name_kr", "") if USE_KOREAN else ""
                             _kr_info = entry.get("information_kr", "") if USE_KOREAN else ""
                             game = {
@@ -2854,10 +3051,11 @@ class OptiManagerApp:
                                 "module_dl": entry.get("module_dl", ""),
                                 "optipatcher": entry.get("optipatcher", False),
                                 "unreal5_url": entry.get("unreal5_url", ""),
-                                "unreal5": entry.get("unreal5", False),
+                                "unreal5_rule": entry.get("unreal5_rule", ""),
                                 "reframework_url": entry.get("reframework_url", ""),
                                 "information": _kr_info or entry.get("information", ""),
                                 "cover_url": entry.get("cover_url", ""),
+                                "supported_gpu": entry.get("supported_gpu", ""),
                                 "sheet_order": int(entry.get("sheet_order", 10**9)),
                                 "popup_kr": entry.get("popup_kr", ""),
                                 "popup_en": entry.get("popup_en", ""),
@@ -2934,47 +3132,9 @@ class OptiManagerApp:
     # Install
     # ------------------------------------------------------------------
 
-    def _resolve_install_gpu_vendor(self, game_data):
-        # Priority: global rule from link sheet -> module-specific rule -> optiscaler rule.
-        # Rule format supports OR keyword matching via pipe, e.g. "140V|780M|890M".
-        global_vendor = str(self.module_download_links.get("__gpu_vendor__", "")).strip().lower()
-        if global_vendor:
-            return global_vendor
-
-        module_key = str(game_data.get("module_dl", "") or "").strip().lower()
-        entry = None
-        if module_key:
-            entry = self.module_download_links.get(module_key)
-        if not isinstance(entry, dict):
-            entry = self.module_download_links.get("optiscaler")
-        if isinstance(entry, dict):
-            return str(entry.get("gpu_vendor", "")).strip().lower()
-        return ""
-
-    def _parse_gpu_rule_keywords(self, required_vendor: str) -> list[str]:
-        text = str(required_vendor or "").strip().lower()
-        if not text:
-            return []
-
-        # Backward compatible aliases.
-        if text in {"all", "any", "*"}:
-            return []
-
-        # Primary delimiter is '|'. Also accept commas/semicolons for resilience.
-        normalized = text.replace(";", "|").replace(",", "|")
-        keywords = [token.strip() for token in normalized.split("|") if token.strip()]
-        return keywords
-
-    def _is_gpu_supported_for_install(self, required_vendor):
-        gpu_text = self.gpu_info.lower()
-        keywords = self._parse_gpu_rule_keywords(str(required_vendor or ""))
-        if not keywords:
-            return True
-
-        # OR condition: at least one keyword must appear in current GPU model text.
-        return any(keyword in gpu_text for keyword in keywords)
-
     def apply_optiscaler(self):
+        if self.multi_gpu_blocked:
+            return
         if self.install_in_progress:
             messagebox.showinfo("Installing", "Installation is already in progress. Please wait.")
             return
@@ -3019,10 +3179,6 @@ class OptiManagerApp:
             return
 
         game_data = dict(self.found_exe_list[self.selected_game_index])
-        if not self._selected_game_has_supported_gpu():
-            self._show_unsupported_gpu_popup()
-            return
-
         source_archive = self.opti_source_archive
         resolved_dll_name = self.install_precheck_dll_name
 
@@ -3064,8 +3220,8 @@ class OptiManagerApp:
 
             module_key = str(game_data.get("module_dl", "")).strip().lower()
 
-            unreal_link_entry = self.module_download_links.get(module_key) or self.module_download_links.get("unreal5")
-            unreal_url = str(game_data.get("unreal5_url", "")).strip()
+            unreal_link_entry = self.module_download_links.get("unreal5")
+            unreal_url = ""
             if isinstance(unreal_link_entry, dict) and unreal_link_entry.get("url"):
                 unreal_url = unreal_link_entry["url"]
 
@@ -3128,15 +3284,12 @@ class OptiManagerApp:
                     logger.info("#ingame_ini missing, skipped edits: %s", ingame_ini_path)
             elif ingame_ini_name:
                 logger.info("#ingame_ini configured but no #ingame_setting values provided: %s", ingame_ini_name)
-            else:
-                logger.info("#ingame_ini not configured for this game")
 
             try:
                 engine_loc = str(game_data.get("engine_ini_location", "")).strip()
                 engine_ini_content = str(game_data.get("engine_ini_type", "")).strip()
-                logger.info(f"engine.ini info for install: target={target_path}, engine_ini_location='{engine_loc}'")
-                
                 if engine_loc and engine_ini_content:
+                    logger.info(f"engine.ini info for install: target={target_path}, engine_ini_location='{engine_loc}'")
                     ini_path = ini_utils._find_or_create_engine_ini(engine_loc, workspace_root=target_path, logger=logger)
                     
                     if ini_path:
@@ -3152,7 +3305,8 @@ class OptiManagerApp:
             except Exception:
                 logger.exception("Failed while handling engine.ini for %s", target_path)
 
-            if game_data.get("unreal5") and unreal_url:
+            unreal5_rule = str(game_data.get("unreal5_rule", "") or "").strip()
+            if matches_gpu_rule(unreal5_rule, self.gpu_info) and unreal_url:
                 unreal_installed = installer_services.install_unreal5_from_url(unreal_url, target_path, logger=logger)
                 if unreal_installed:
                     logger.info(f"Installed Unreal5 patch from {unreal_url} to {target_path}")
@@ -3219,9 +3373,15 @@ class OptiManagerApp:
 
 if __name__ == "__main__":
     if "--edit-engine-ini" in sys.argv:
-        logging.info("Running engine.ini edits from Google Sheet (gid=%s)", SHEET_GID)
+        gpu_info = get_graphics_adapter_info()
+        _, selected_sheet_gid = _resolve_game_db_target_for_gpu(gpu_info)
+        logging.info(
+            "Running engine.ini edits from Google Sheet (gid=%s, gpu=%s)",
+            selected_sheet_gid,
+            gpu_info,
+        )
         try:
-            ini_utils.process_engine_ini_edits(SHEET_ID, gid=SHEET_GID)
+            ini_utils.process_engine_ini_edits(SHEET_ID, gid=selected_sheet_gid)
         except Exception:
             logging.exception("engine.ini edit run failed")
         sys.exit(0)

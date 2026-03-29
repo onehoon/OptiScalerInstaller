@@ -36,7 +36,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     reader = csv.reader(io.StringIO(text, newline=""))
     headers = next(reader, None)
     if not headers:
-        raise ValueError("Google Sheet has no header row")
+        raise ValueError("DB has no header row")
 
     columns = [c.strip().lower() for c in headers]
 
@@ -73,6 +73,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     engine_ini_type_keys = ["engine.ini_type", "engine_ini_type", "engine type", "engine_type"]
     display_kr_keys = ["game_name_kr", "display_kr", "name_kr"]
     information_kr_keys = ["#information_kr", "information_kr", "info_kr"]
+    supported_gpu_keys = ["supported_gpu", "supported gpu", "supported_gpus", "supported gpus", "gpu_support", "gpu support"]
 
     exe_col = next((c for c in columns if c in exe_keys), None)
     display_col = next((c for c in columns if c in display_keys), None)
@@ -89,6 +90,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     engine_ini_type_col = next((c for c in columns if c in engine_ini_type_keys), None)
     display_kr_col = next((c for c in columns if c in display_kr_keys), None)
     information_kr_col = next((c for c in columns if c in information_kr_keys), None)
+    supported_gpu_col = next((c for c in columns if c in supported_gpu_keys), None)
 
     if exe_col is None:
         exe_col = next((c for c in columns if "exe" in c or "file" in c), None)
@@ -112,10 +114,12 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         ingame_ini_col = next((c for c in columns if "ingame" in c and "ini" in c), None)
     if ingame_setting_col is None:
         ingame_setting_col = next((c for c in columns if "ingame" in c and "setting" in c), None)
+    if supported_gpu_col is None:
+        supported_gpu_col = next((c for c in columns if "supported" in c and "gpu" in c), None)
 
     if exe_col is None or display_col is None:
         raise ValueError(
-            f"Google Sheet header does not include required columns: "
+            f"DB header does not include required columns: "
             f"exe keys {exe_keys} and display keys {display_keys}. Actual headers: {columns}"
         )
 
@@ -134,6 +138,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     engine_ini_type_index = columns.index(engine_ini_type_col) if engine_ini_type_col else None
     display_kr_index = columns.index(display_kr_col) if display_kr_col else None
     information_kr_index = columns.index(information_kr_col) if information_kr_col else None
+    supported_gpu_index = columns.index(supported_gpu_col) if supported_gpu_col else None
 
     ini_marker_index = next((i for i, c in enumerate(columns) if c == "#ini"), None)
     ini_var_indices = {}
@@ -159,7 +164,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         dll_name = ""
         optipatcher_enabled = False
         unreal5_url = ""
-        unreal5_flag = False
+        unreal5_rule = ""
         reframework_url = ""
         module_dl = ""
         information = ""
@@ -168,16 +173,19 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         game_name_kr = ""
         information_kr = ""
         cover_url = ""
+        supported_gpu = ""
 
         if dll_index is not None and len(row) > dll_index:
             dll_name = row[dll_index].strip()
         if optipatcher_index is not None and len(row) > optipatcher_index:
             optipatcher_enabled = _is_true_value(row[optipatcher_index])
         if unreal5_index is not None and len(row) > unreal5_index:
-            val = row[unreal5_index].strip().lower()
-            if val in ("true", "1", "yes", "y", "on"):
-                unreal5_flag = True
-            unreal5_url = _normalize_optional_url(row[unreal5_index]) if "," not in val and (val.startswith("http") or val.endswith((".zip", ".7z"))) else ""
+            raw_unreal5 = str(row[unreal5_index]).strip()
+            val = raw_unreal5.lower()
+            if val in {"null", "none"}:
+                unreal5_rule = ""
+            elif raw_unreal5:
+                unreal5_rule = raw_unreal5
         if reframework_index is not None and len(row) > reframework_index:
             reframework_url = _normalize_optional_url(row[reframework_index])
         if information_index is not None and len(row) > information_index:
@@ -201,6 +209,8 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
             game_name_kr = row[display_kr_index].strip()
         if information_kr_index is not None and len(row) > information_kr_index:
             information_kr = row[information_kr_index].replace("\r\n", "\n").replace("\r", "\n").strip()
+        if supported_gpu_index is not None and len(row) > supported_gpu_index:
+            supported_gpu = str(row[supported_gpu_index]).strip()
 
         popup_kr = ""
         popup_en = ""
@@ -247,7 +257,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 "ini_settings": ini_settings,
                 "optipatcher": optipatcher_enabled,
                 "unreal5_url": unreal5_url,
-                "unreal5": unreal5_flag,
+                "unreal5_rule": unreal5_rule,
                 "reframework_url": reframework_url,
                 "module_dl": module_dl,
                 "engine_ini_location": engine_ini_location,
@@ -255,6 +265,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 "information": information,
                 "information_kr": information_kr,
                 "cover_url": cover_url,
+                "supported_gpu": supported_gpu,
                 "ingame_ini": ingame_ini_name,
                 "ingame_settings": ingame_settings,
                 "popup_kr": popup_kr,
@@ -296,7 +307,6 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
     module_idx = next((i for i, c in enumerate(cols) if c in {"module_dl", "module", "module_name"}), None)
     version_idx = next((i for i, c in enumerate(cols) if c in {"version", "ver", "filename", "file_name", "archive_name", "file"}), None)
     link_idx = next((i for i, c in enumerate(cols) if c in {"download", "download_link", "url", "downloadurl", "c"}), None)
-    gpu_vendor_idx = next((i for i, c in enumerate(cols) if c in {"gpu vendor", "gpu_vendor", "vendor", "gpu"}), None)
 
     if module_idx is None:
         module_idx = 0 if len(cols) > 0 else None
@@ -304,8 +314,6 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
         version_idx = 1 if len(cols) > 1 else None
     if link_idx is None:
         link_idx = 2 if len(cols) > 2 else None
-    if gpu_vendor_idx is None:
-        gpu_vendor_idx = 3 if len(cols) > 3 else None
 
     if module_idx is None or link_idx is None:
         return {}
@@ -349,16 +357,6 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
                 mapping["__exclude_list__"] = exclude_text
             continue
 
-        if module_key in {"gpu vendor", "gpu_vendor"}:
-            value = ""
-            if version_idx is not None and len(row) > version_idx:
-                value = str(row[version_idx]).strip().lower()
-            elif len(row) > module_idx + 1:
-                value = str(row[module_idx + 1]).strip().lower()
-            if value:
-                mapping["__gpu_vendor__"] = value
-            continue
-
         if len(row) <= max(module_idx, link_idx):
             continue
 
@@ -371,15 +369,10 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
         if version_idx is not None and len(row) > version_idx:
             version = str(row[version_idx]).strip()
 
-        gpu_vendor = ""
-        if gpu_vendor_idx is not None and len(row) > gpu_vendor_idx:
-            gpu_vendor = str(row[gpu_vendor_idx]).strip().lower()
-
         mapping[module_key] = {
             "url": download_url,
             "version": version,
             "filename": version,
-            "gpu_vendor": gpu_vendor,
         }
 
     return mapping

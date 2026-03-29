@@ -239,7 +239,7 @@ def backup_existing_optiscaler_proxy_dlls(target_path, logger=None):
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(dll_path), str(backup_path))
 
-        message = f"Backed up existing proxy DLL: {dll_path.name} -> {backup_path.name}"
+        message = f"Backed up existing OptiScaler DLL: {dll_path.name} -> {backup_path.name}"
         if logger:
             logger.info(message)
         else:

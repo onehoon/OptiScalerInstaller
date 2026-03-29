@@ -146,11 +146,9 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False, logger=
         applied.append(applied_key)
         if logger:
             logger.info(
-                "INI edit %s -> %s (was: %s) in %s",
+                "OptiScaler.ini edit %s -> %s",
                 applied_key,
                 new_value,
-                old_value_preview if old_value_preview else "<empty>",
-                ini_path,
             )
 
     try:
@@ -161,12 +159,6 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False, logger=
         else:
             logging.exception("Failed to write updated INI file")
         return
-
-    if logger:
-        logger.info("INI settings applied in-place: %s", applied)
-    else:
-        logging.info("INI settings applied in-place: %s", applied)
-
 
 def _parse_version_text_to_ini_entries(version_text: str):
     result = {}
