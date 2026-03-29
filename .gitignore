@@ -9,6 +9,6 @@ build/
 dist/
 *.spec
 *.pyc
-temp_version.txt
+*.txt
 *.log
 *.exe
