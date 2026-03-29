@@ -636,7 +636,7 @@ class OptiManagerApp:
         popup.withdraw()
 
         container = ctk.CTkFrame(popup, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=22, pady=(18, 12))
+        container.pack(fill="both", expand=True, padx=22, pady=(18, 6))
 
         text_widget = tk.Text(
             container,
@@ -649,7 +649,7 @@ class OptiManagerApp:
             width=58,
         )
         normal_font = tkfont.Font(family=FONT_UI, size=13)
-        text_widget.configure(font=normal_font)
+        text_widget.configure(font=normal_font, padx=0, pady=0, spacing1=0, spacing2=0, spacing3=0)
 
         def insert_with_red(text):
             idx = 0
@@ -724,7 +724,7 @@ class OptiManagerApp:
             text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             command=_confirm,
-        ).pack(pady=(0, 14))
+        ).pack(pady=(0, 8))
 
         popup.protocol("WM_DELETE_WINDOW", lambda: None)  # Block closing without confirm
         self._center_popup_on_root(popup, use_requested_size=True)
