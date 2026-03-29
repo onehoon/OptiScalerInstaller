@@ -666,7 +666,7 @@ class OptiManagerApp:
                 text_widget.insert("end", text[start+5:end], "red")
                 idx = end + 5
 
-        if is_after_popup and ("[RED]" in message_text and "[END]" in message_text):
+        if "[RED]" in message_text and "[END]" in message_text:
             text_widget.tag_configure("red", foreground="#FF4444")
             insert_with_red(message_text)
         else:
