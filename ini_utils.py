@@ -145,8 +145,10 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False, logger=
         applied_key = f"{current_section}:{norm_key}" if current_section else norm_key
         applied.append(applied_key)
         if logger:
+            ini_label = p.name or "INI"
             logger.info(
-                "OptiScaler.ini edit %s -> %s",
+                "%s edit %s -> %s",
+                ini_label,
                 applied_key,
                 new_value,
             )
