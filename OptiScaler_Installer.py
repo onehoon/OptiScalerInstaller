@@ -672,10 +672,37 @@ class OptiManagerApp:
         else:
             text_widget.insert("end", message_text)
 
-        line_count = max(1, min(16, message_text.count("\n") + 1))
-        text_widget.configure(height=line_count)
-        text_widget.configure(state="disabled")
         text_widget.pack(anchor="w", fill="x")
+
+        preferred_text_chars = 72
+        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
+        screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
+        avg_char_width = max(7, int(normal_font.measure("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52))
+        max_text_chars = max(preferred_text_chars, min(110, max(58, (screen_w - 140) // avg_char_width)))
+        max_popup_h = max(240, screen_h - 80)
+        width_steps = list(range(preferred_text_chars, max_text_chars + 1, 4))
+        if not width_steps:
+            width_steps = [preferred_text_chars]
+        if width_steps[-1] != max_text_chars:
+            width_steps.append(max_text_chars)
+
+        resolved_line_count = max(1, message_text.count("\n") + 1)
+        chosen_width = preferred_text_chars
+        for width_chars in width_steps:
+            text_widget.configure(width=width_chars)
+            popup.update_idletasks()
+            try:
+                display_line_info = text_widget.count("1.0", "end-1c", "displaylines")
+                resolved_line_count = max(1, int(display_line_info[0])) if display_line_info else resolved_line_count
+            except Exception:
+                logging.debug("Failed to measure popup display lines", exc_info=True)
+            text_widget.configure(height=resolved_line_count)
+            popup.update_idletasks()
+            chosen_width = width_chars
+            if popup.winfo_reqheight() <= max_popup_h:
+                break
+
+        text_widget.configure(width=chosen_width, height=resolved_line_count, state="disabled")
 
         def _confirm():
             try:
@@ -1749,8 +1776,17 @@ class OptiManagerApp:
             popup_w = popup.winfo_reqwidth() if use_requested_size else popup.winfo_width()
             popup_h = popup.winfo_reqheight() if use_requested_size else popup.winfo_height()
 
+            screen_w = max(1, int(self.root.winfo_screenwidth() or popup_w))
+            screen_h = max(1, int(self.root.winfo_screenheight() or popup_h))
+            margin = 12
             x = root_x + (root_w // 2) - (popup_w // 2)
             y = root_y + (root_h // 2) - (popup_h // 2)
+            min_x = margin if popup_w + (margin * 2) < screen_w else 0
+            min_y = margin if popup_h + (margin * 2) < screen_h else 0
+            max_x = max(min_x, screen_w - popup_w - margin)
+            max_y = max(min_y, screen_h - popup_h - margin)
+            x = max(min_x, min(x, max_x))
+            y = max(min_y, min(y, max_y))
             popup.geometry(f"+{x}+{y}")
         except Exception:
             logging.debug("Failed to center popup on root window")
