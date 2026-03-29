@@ -2103,7 +2103,7 @@ class OptiManagerApp:
             mid_bottom,
             text="Install",
             width=104,
-            height=58,
+            height=92,
             corner_radius=10,
             fg_color=_ACCENT_DISABLED,
             hover_color=_ACCENT_HOVER,
