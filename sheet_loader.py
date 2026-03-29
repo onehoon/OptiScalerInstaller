@@ -11,6 +11,25 @@ from network_utils import build_retry_session
 _file_session = build_retry_session()
 
 
+def _split_match_files(match_text: str) -> list[str]:
+    seen = set()
+    match_files = []
+    for token in str(match_text or "").split("|"):
+        normalized = token.strip().lower()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        match_files.append(normalized)
+    return match_files
+
+
+def _pick_match_anchor(match_files: list[str]) -> str:
+    for token in match_files:
+        if token.endswith(".exe"):
+            return token
+    return match_files[0] if match_files else ""
+
+
 def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
 
@@ -159,6 +178,8 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
             continue
 
         exe_path = row[exe_index].strip()
+        match_files = _split_match_files(exe_path)
+        match_rule_key = "|".join(match_files)
         game_name = row[display_index].strip()
         display_name = game_name or exe_path
         dll_name = ""
@@ -247,9 +268,12 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 else:
                     ini_settings[var_name] = val
 
-        if exe_path:
-            db[exe_path.lower()] = {
+        if match_rule_key:
+            db[match_rule_key] = {
                 "sheet_order": sheet_order,
+                "exe_path": exe_path,
+                "match_files": match_files,
+                "match_anchor": _pick_match_anchor(match_files),
                 "display": display_name,
                 "game_name": game_name,
                 "game_name_kr": game_name_kr,
