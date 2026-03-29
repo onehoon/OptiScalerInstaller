@@ -603,6 +603,21 @@ class OptiManagerApp:
             if popup.winfo_reqheight() <= max_popup_h:
                 break
 
+        text_widget.configure(width=chosen_width, height=resolved_line_count)
+        popup.update_idletasks()
+        while resolved_line_count > 1:
+            trial_height = resolved_line_count - 1
+            text_widget.configure(height=trial_height)
+            popup.update_idletasks()
+            try:
+                yview_end = float(text_widget.yview()[1])
+            except Exception:
+                yview_end = 1.0
+            if yview_end < 0.999:
+                text_widget.configure(height=resolved_line_count)
+                break
+            resolved_line_count = trial_height
+
         text_widget.configure(width=chosen_width, height=resolved_line_count, state="disabled")
 
         def _confirm():
