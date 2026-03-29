@@ -1910,8 +1910,8 @@ class OptiManagerApp:
         self.apply_btn = ctk.CTkButton(
             mid_bottom,
             text="Install",
-            width=130,
-            height=72,
+            width=104,
+            height=58,
             corner_radius=10,
             fg_color=_ACCENT_DISABLED,
             hover_color=_ACCENT_HOVER,
@@ -1924,7 +1924,7 @@ class OptiManagerApp:
 
         self.info_text = ctk.CTkTextbox(
             mid_bottom,
-            height=78,
+            height=92,
             corner_radius=8,
             fg_color="#2A303A",
             text_color="#E3EAF3",
