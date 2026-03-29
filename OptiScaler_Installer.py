@@ -2822,7 +2822,13 @@ class OptiManagerApp:
         """Background thread: walk one or more folders, post each found game to the main thread."""
         try:
             found_games = []
-            seen_paths = set()  # deduplicate by (exe_key, normalised_dir)
+            seen_paths = set()  # deduplicate by (sheet rule key, normalised_dir)
+            match_index = {}
+            for entry_key, entry in self.game_db.items():
+                required_files = tuple(entry.get("match_files") or [entry_key])
+                for token in required_files:
+                    match_index.setdefault(token, []).append((entry_key, entry))
+
             for game_folder in game_folders:
                 try:
                     folder_iter = os.walk(game_folder)
@@ -2830,42 +2836,72 @@ class OptiManagerApp:
                     logging.debug("Cannot walk %s: %s", game_folder, walk_err)
                     continue
                 for root_dir, _, files in folder_iter:
+                    if not files:
+                        continue
+
+                    file_lookup = {}
                     for file in files:
                         key = file.lower()
-                        if key in self.game_db:
-                            dedup_key = (key, os.path.normcase(root_dir))
-                            if dedup_key in seen_paths:
-                                continue
-                            seen_paths.add(dedup_key)
-                            entry = self.game_db[key]
-                            _kr_display = entry.get("game_name_kr", "") if USE_KOREAN else ""
-                            _kr_info = entry.get("information_kr", "") if USE_KOREAN else ""
-                            game = {
-                                "path": root_dir,
-                                "exe": file,
-                                "display": _kr_display or entry["display"],
-                                "game_name": entry.get("game_name", entry.get("display", "")),
-                                "dll_name": entry["dll_name"],
-                                "ini_settings": entry.get("ini_settings", {}),
-                                "ingame_ini": entry.get("ingame_ini", ""),
-                                "ingame_settings": entry.get("ingame_settings", {}),
-                                "engine_ini_location": entry.get("engine_ini_location", ""),
-                                "engine_ini_type": entry.get("engine_ini_type", ""),
-                                "module_dl": entry.get("module_dl", ""),
-                                "optipatcher": entry.get("optipatcher", False),
-                                "unreal5_url": entry.get("unreal5_url", ""),
-                                "unreal5": entry.get("unreal5", False),
-                                "reframework_url": entry.get("reframework_url", ""),
-                                "information": _kr_info or entry.get("information", ""),
-                                "cover_url": entry.get("cover_url", ""),
-                                "sheet_order": int(entry.get("sheet_order", 10**9)),
-                                "popup_kr": entry.get("popup_kr", ""),
-                                "popup_en": entry.get("popup_en", ""),
-                                "after_popup_kr": entry.get("after_popup_kr", ""),
-                                "after_popup_en": entry.get("after_popup_en", ""),
-                                "guidepage_after_installation": entry.get("guidepage_after_installation", ""),
-                            }
-                            found_games.append(game)
+                        if key not in file_lookup:
+                            file_lookup[key] = file
+
+                    candidate_entries = {}
+                    for key in file_lookup:
+                        for entry_key, entry in match_index.get(key, ()):
+                            candidate_entries[entry_key] = entry
+
+                    if not candidate_entries:
+                        continue
+
+                    normalized_root = os.path.normcase(root_dir)
+                    for entry_key, entry in candidate_entries.items():
+                        required_files = entry.get("match_files") or [entry_key]
+                        if not all(token in file_lookup for token in required_files):
+                            continue
+
+                        dedup_key = (entry_key, normalized_root)
+                        if dedup_key in seen_paths:
+                            continue
+                        seen_paths.add(dedup_key)
+
+                        anchor_key = str(entry.get("match_anchor", "")).strip().lower()
+                        matched_file = file_lookup.get(anchor_key)
+                        if not matched_file:
+                            matched_file = next(
+                                (file_lookup[token] for token in required_files if token.endswith(".exe") and token in file_lookup),
+                                "",
+                            )
+                        if not matched_file and required_files:
+                            matched_file = file_lookup.get(required_files[0], required_files[0])
+
+                        _kr_display = entry.get("game_name_kr", "") if USE_KOREAN else ""
+                        _kr_info = entry.get("information_kr", "") if USE_KOREAN else ""
+                        game = {
+                            "path": root_dir,
+                            "exe": matched_file,
+                            "display": _kr_display or entry["display"],
+                            "game_name": entry.get("game_name", entry.get("display", "")),
+                            "dll_name": entry["dll_name"],
+                            "ini_settings": entry.get("ini_settings", {}),
+                            "ingame_ini": entry.get("ingame_ini", ""),
+                            "ingame_settings": entry.get("ingame_settings", {}),
+                            "engine_ini_location": entry.get("engine_ini_location", ""),
+                            "engine_ini_type": entry.get("engine_ini_type", ""),
+                            "module_dl": entry.get("module_dl", ""),
+                            "optipatcher": entry.get("optipatcher", False),
+                            "unreal5_url": entry.get("unreal5_url", ""),
+                            "unreal5": entry.get("unreal5", False),
+                            "reframework_url": entry.get("reframework_url", ""),
+                            "information": _kr_info or entry.get("information", ""),
+                            "cover_url": entry.get("cover_url", ""),
+                            "sheet_order": int(entry.get("sheet_order", 10**9)),
+                            "popup_kr": entry.get("popup_kr", ""),
+                            "popup_en": entry.get("popup_en", ""),
+                            "after_popup_kr": entry.get("after_popup_kr", ""),
+                            "after_popup_en": entry.get("after_popup_en", ""),
+                            "guidepage_after_installation": entry.get("guidepage_after_installation", ""),
+                        }
+                        found_games.append(game)
 
             found_games.sort(key=lambda g: int(g.get("sheet_order", 10**9)))
             for game in found_games:
