@@ -516,6 +516,50 @@ def _prepare_cover_image(img: Image.Image, target_w: int = TARGET_POSTER_W, targ
     return img.convert("RGBA")
 
 
+def _estimate_wrapped_text_lines(text: str, font: tkfont.Font, max_width_px: int) -> int:
+    normalized = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    available_width = max(32, int(max_width_px or 0))
+    total_lines = 0
+
+    for paragraph in normalized.split("\n"):
+        if paragraph == "":
+            total_lines += 1
+            continue
+
+        remaining = paragraph
+        while remaining:
+            if font.measure(remaining) <= available_width:
+                total_lines += 1
+                break
+
+            fit_len = 0
+            lo, hi = 1, len(remaining)
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                if font.measure(remaining[:mid]) <= available_width:
+                    fit_len = mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+
+            if fit_len <= 0:
+                fit_len = 1
+
+            break_at = fit_len
+            for idx in range(fit_len - 1, 0, -1):
+                if remaining[idx].isspace():
+                    break_at = idx
+                    break
+
+            if break_at <= 0:
+                break_at = fit_len
+
+            total_lines += 1
+            remaining = remaining[break_at:].lstrip()
+
+    return max(1, total_lines)
+
+
 # ---------------------------------------------------------------------------
 # GUI
 # ---------------------------------------------------------------------------
@@ -666,6 +710,8 @@ class OptiManagerApp:
                 text_widget.insert("end", text[start+5:end], "red")
                 idx = end + 5
 
+        plain_message_text = re.sub(r"\[\s*(?:RED|END)\s*\]", "", message_text, flags=re.IGNORECASE)
+
         if "[RED]" in message_text and "[END]" in message_text:
             text_widget.tag_configure("red", foreground="#FF4444")
             insert_with_red(message_text)
@@ -686,36 +732,21 @@ class OptiManagerApp:
         if width_steps[-1] != max_text_chars:
             width_steps.append(max_text_chars)
 
-        resolved_line_count = max(1, message_text.count("\n") + 1)
+        resolved_line_count = max(1, plain_message_text.count("\n") + 1)
         chosen_width = preferred_text_chars
         for width_chars in width_steps:
             text_widget.configure(width=width_chars)
             popup.update_idletasks()
-            try:
-                display_line_info = text_widget.count("1.0", "end-1c", "displaylines")
-                resolved_line_count = max(1, int(display_line_info[0])) if display_line_info else resolved_line_count
-            except Exception:
-                logging.debug("Failed to measure popup display lines", exc_info=True)
+            resolved_line_count = _estimate_wrapped_text_lines(
+                plain_message_text,
+                normal_font,
+                max(32, int(text_widget.winfo_width() or 0)),
+            )
             text_widget.configure(height=resolved_line_count)
             popup.update_idletasks()
             chosen_width = width_chars
             if popup.winfo_reqheight() <= max_popup_h:
                 break
-
-        text_widget.configure(width=chosen_width, height=resolved_line_count)
-        popup.update_idletasks()
-        while resolved_line_count > 1:
-            trial_height = resolved_line_count - 1
-            text_widget.configure(height=trial_height)
-            popup.update_idletasks()
-            try:
-                yview_end = float(text_widget.yview()[1])
-            except Exception:
-                yview_end = 1.0
-            if yview_end < 0.999:
-                text_widget.configure(height=resolved_line_count)
-                break
-            resolved_line_count = trial_height
 
         text_widget.configure(width=chosen_width, height=resolved_line_count, state="disabled")
 
