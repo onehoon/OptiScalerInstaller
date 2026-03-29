@@ -57,7 +57,7 @@ except ModuleNotFoundError as e:
     ) from e
 
  # Application Version
-APP_VERSION = "0.1.4"
+APP_VERSION = "0.1.5"
 
  # Configure logging deterministically below (avoid calling basicConfig early)
 
@@ -673,11 +673,43 @@ class OptiManagerApp:
             command=_confirm,
         ).pack(pady=(0, 0))
 
+        def _apply_selection_popup_geometry():
+            try:
+                self.root.update_idletasks()
+                popup.update_idletasks()
+
+                popup_w = popup.winfo_reqwidth()
+                popup_h = popup.winfo_reqheight()
+                screen_w = max(1, int(self.root.winfo_screenwidth() or popup_w))
+                screen_h = max(1, int(self.root.winfo_screenheight() or popup_h))
+                margin = 12
+
+                if popup_w + (margin * 2) > screen_w:
+                    popup_w = max(200, screen_w - (margin * 2))
+                if popup_h + (margin * 2) > screen_h:
+                    popup_h = max(120, screen_h - (margin * 2))
+
+                root_x = self.root.winfo_x()
+                root_y = self.root.winfo_y()
+                root_w = self.root.winfo_width()
+                root_h = self.root.winfo_height()
+                x = root_x + (root_w // 2) - (popup_w // 2)
+                y = root_y + (root_h // 2) - (popup_h // 2)
+                min_x = margin if popup_w + (margin * 2) < screen_w else 0
+                min_y = margin if popup_h + (margin * 2) < screen_h else 0
+                max_x = max(min_x, screen_w - popup_w - margin)
+                max_y = max(min_y, screen_h - popup_h - margin)
+                x = max(min_x, min(x, max_x))
+                y = max(min_y, min(y, max_y))
+                popup.geometry(f"{popup_w}x{popup_h}+{x}+{y}")
+            except Exception:
+                logging.debug("Failed to size selection popup", exc_info=True)
+
         popup.protocol("WM_DELETE_WINDOW", lambda: None)  # Block closing without confirm
-        self._center_popup_on_root(popup, use_requested_size=True)
+        _apply_selection_popup_geometry()
         popup.deiconify()
-        popup.after(0, lambda p=popup: self._center_popup_on_root(p))
-        popup.after(80, lambda p=popup: self._center_popup_on_root(p))
+        popup.after(0, _apply_selection_popup_geometry)
+        popup.after(80, _apply_selection_popup_geometry)
 
     def _fetch_gpu_info_async(self):
         try:
