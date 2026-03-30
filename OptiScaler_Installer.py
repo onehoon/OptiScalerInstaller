@@ -58,7 +58,7 @@ except ModuleNotFoundError as e:
     ) from e
 
  # Application Version
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 # Keep hardware detection separate from support policy so dual-GPU support can be enabled later.
 MULTI_GPU_SUPPORTED = False
 
