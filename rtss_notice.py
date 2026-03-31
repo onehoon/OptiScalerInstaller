@@ -40,6 +40,8 @@ class RtssNoticeDecision:
 def _log_info_if_logger(logger: Any, message: str, *args) -> None:
     if logger:
         logger.info(message, *args)
+    else:
+        logging.info(message, *args)
 
 
 def _log_warning(logger: Any, message: str, *args) -> None:
@@ -119,7 +121,6 @@ def _evaluate_rtss_notice(
     use_korean: bool,
     logger: Any = None,
 ) -> RtssNoticeDecision:
-    _log_info_if_logger(logger, "[RTSS] Starting notice check")
     install_path = _get_rtss_install_path()
     profiles_dir = install_path / "Profiles"
     global_path = profiles_dir / "Global"
