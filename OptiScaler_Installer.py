@@ -1,9 +1,7 @@
 ﻿import os
 import io
-import shutil
 import subprocess
 import tempfile
-import threading
 import zipfile
 import tkinter as tk
 import time
@@ -20,7 +18,6 @@ from pathlib import Path
 import re
 import webbrowser
 from typing import Optional
-import unicodedata
 import ctypes
 import locale
 import stat
@@ -356,14 +353,10 @@ GRID_ROWS_VISIBLE = 2
 CARD_H_SPACING = 2
 CARD_V_SPACING = 2
 GRID_SIDE_PADDING = 12
-RESIZE_REFLOW_THRESHOLD_PX = 18
-SCROLLBAR_GUTTER = 18
 GRID_W = (CARD_W * GRID_COLS) + (CARD_H_SPACING * GRID_COLS) + (GRID_SIDE_PADDING * 2)
 GRID_H = CARD_H * GRID_ROWS_VISIBLE
 WINDOW_W = GRID_W
 WINDOW_H = 710
-PLACEHOLDER_BG = "#3a414c"
-PLACEHOLDER_FG = "#9fb0c5"
 LOCAL_APPDATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path(tempfile.gettempdir()))
 APP_CACHE_DIR = LOCAL_APPDATA_DIR / "OptiScalerInstaller"
 OPTISCALER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optiscaler"
@@ -1647,11 +1640,16 @@ class OptiManagerApp:
         container = ctk.CTkFrame(popup, fg_color="transparent")
         container.pack(fill="both", expand=True, padx=22, pady=(18, 12))
 
+        message_frame = ctk.CTkFrame(container, fg_color="transparent")
+        message_frame.pack(fill="both", expand=True)
+        message_frame.grid_columnconfigure(0, weight=1)
+        message_frame.grid_rowconfigure(0, weight=1)
+
         # Parse [RED]... [END] and color only the text between
         pattern = re.compile(r"\[\s*RED\s*\](.*?)\[\s*END\s*\]", re.IGNORECASE | re.DOTALL)
         last = 0
         message_text = tk.Text(
-            container,
+            message_frame,
             wrap="word",
             relief="flat",
             borderwidth=0,
@@ -1662,8 +1660,22 @@ class OptiManagerApp:
         )
         normal_font = tkfont.Font(family=FONT_UI, size=13)
         red_font = tkfont.Font(family=FONT_UI, size=14, weight="bold")
-        message_text.configure(font=normal_font)
+        message_text.configure(font=normal_font, padx=0, pady=0, spacing1=0, spacing2=0, spacing3=0)
         message_text.tag_configure("warning_red", foreground="#FF4D4F", font=red_font)
+        message_text.grid(row=0, column=0, sticky="nsew")
+
+        scrollbar = ctk.CTkScrollbar(message_frame, orientation="vertical", command=message_text.yview)
+        message_text.configure(yscrollcommand=scrollbar.set)
+        scrollbar_visible = False
+
+        def _set_scrollbar_visible(visible: bool):
+            nonlocal scrollbar_visible
+            if visible and not scrollbar_visible:
+                scrollbar.grid(row=0, column=1, sticky="ns", padx=(10, 0))
+                scrollbar_visible = True
+            elif not visible and scrollbar_visible:
+                scrollbar.grid_remove()
+                scrollbar_visible = False
 
         full_plain_text = ""
         for m in pattern.finditer(text):
@@ -1681,10 +1693,10 @@ class OptiManagerApp:
             message_text.insert("end", tail)
             full_plain_text += tail
 
-        line_count = max(1, min(16, full_plain_text.count("\n") + 1))
-        message_text.configure(height=line_count)
         message_text.configure(state="disabled")
-        message_text.pack(anchor="w", fill="x")
+
+        button_row = ctk.CTkFrame(container, fg_color="transparent")
+        button_row.pack(fill="x", pady=(10, 0))
 
         def _close_popup():
             try:
@@ -1696,7 +1708,7 @@ class OptiManagerApp:
                 on_close()
 
         ctk.CTkButton(
-            popup,
+            button_row,
             text="OK",
             width=100,
             height=34,
@@ -1706,13 +1718,123 @@ class OptiManagerApp:
             text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             command=_close_popup,
-        ).pack(pady=(0, 14))
+        ).pack()
+
+        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
+        screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
+        avg_char_width = max(7, int(normal_font.measure("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52))
+        zero_char_width = max(7, int(max(normal_font.measure("0"), red_font.measure("0"))))
+        min_text_chars = 34
+        max_text_chars = max(min_text_chars, min(110, max(min_text_chars, (screen_w - 140) // avg_char_width)))
+        self.root.update_idletasks()
+        root_w = max(1, int(self.root.winfo_width() or WINDOW_W))
+        desired_popup_w = min(max(360, root_w), max(360, screen_w - 40))
+        target_text_px = max(220, desired_popup_w - 72)
+        preferred_text_chars = max(
+            min_text_chars,
+            min(max_text_chars, int(math.ceil(target_text_px / max(1, zero_char_width)))),
+        )
+        max_popup_h = max(240, screen_h - 80)
+        line_height_px = max(normal_font.metrics("linespace"), red_font.metrics("linespace")) + 2
+
+        width_steps = list(range(preferred_text_chars, max_text_chars + 1, 4))
+        if not width_steps:
+            width_steps = [preferred_text_chars]
+        if width_steps[-1] != max_text_chars:
+            width_steps.append(max_text_chars)
+
+        chosen_width = preferred_text_chars
+        resolved_line_count = 1
+
+        def _layout_warning_popup():
+            nonlocal chosen_width, resolved_line_count
+
+            _set_scrollbar_visible(False)
+            for width_chars in width_steps:
+                message_text.configure(width=width_chars, height=1)
+                popup.update_idletasks()
+
+                resolved_line_count = _estimate_wrapped_text_lines(
+                    full_plain_text,
+                    normal_font,
+                    max(32, zero_char_width * width_chars),
+                )
+                message_text.configure(height=resolved_line_count)
+                popup.update_idletasks()
+
+                chosen_width = width_chars
+                if popup.winfo_reqheight() <= max_popup_h:
+                    break
+
+            popup.update_idletasks()
+            if popup.winfo_reqheight() > max_popup_h:
+                chrome_height = max(0, popup.winfo_reqheight() - message_text.winfo_reqheight())
+                max_text_height_px = max(96, max_popup_h - chrome_height)
+                max_visible_lines = max(4, int(max_text_height_px / max(1, line_height_px)))
+                message_text.configure(height=min(resolved_line_count, max_visible_lines))
+                _set_scrollbar_visible(True)
+                popup.update_idletasks()
+
+        def _sync_warning_popup_text_height():
+            try:
+                popup.update_idletasks()
+                actual_width_px = max(32, int(message_text.winfo_width() or (zero_char_width * chosen_width)))
+                actual_line_count = _estimate_wrapped_text_lines(
+                    full_plain_text,
+                    normal_font,
+                    actual_width_px,
+                )
+                target_lines = actual_line_count
+                if scrollbar_visible:
+                    chrome_height = max(0, popup.winfo_reqheight() - message_text.winfo_reqheight())
+                    max_text_height_px = max(96, max_popup_h - chrome_height)
+                    max_visible_lines = max(4, int(max_text_height_px / max(1, line_height_px)))
+                    target_lines = min(actual_line_count, max_visible_lines)
+                if int(message_text.cget("height")) != target_lines:
+                    message_text.configure(height=target_lines)
+                    popup.update_idletasks()
+            except Exception:
+                logging.debug("Failed to reflow startup warning popup text", exc_info=True)
+
+        def _apply_warning_popup_geometry():
+            try:
+                self.root.update_idletasks()
+                popup.update_idletasks()
+                _sync_warning_popup_text_height()
+
+                popup_w = max(desired_popup_w, int(popup.winfo_reqwidth()))
+                popup_h = max(1, int(popup.winfo_reqheight()))
+                margin = 12
+
+                if popup_w + (margin * 2) > screen_w:
+                    popup_w = max(220, screen_w - (margin * 2))
+                if popup_h + (margin * 2) > screen_h:
+                    popup_h = max(140, screen_h - (margin * 2))
+
+                root_x = self.root.winfo_x()
+                root_y = self.root.winfo_y()
+                root_w = self.root.winfo_width()
+                root_h = self.root.winfo_height()
+                x = root_x + (root_w // 2) - (popup_w // 2)
+                y = root_y + (root_h // 2) - (popup_h // 2)
+                min_x = margin if popup_w + (margin * 2) < screen_w else 0
+                min_y = margin if popup_h + (margin * 2) < screen_h else 0
+                max_x = max(min_x, screen_w - popup_w - margin)
+                max_y = max(min_y, screen_h - popup_h - margin)
+                x = max(min_x, min(x, max_x))
+                y = max(min_y, min(y, max_y))
+                logical_w = max(1, int(round(popup._reverse_window_scaling(popup_w))))
+                logical_h = max(1, int(round(popup._reverse_window_scaling(popup_h))))
+                popup.geometry(f"{logical_w}x{logical_h}+{x}+{y}")
+            except Exception:
+                logging.debug("Failed to size startup warning popup", exc_info=True)
 
         popup.protocol("WM_DELETE_WINDOW", _close_popup)
-        self._center_popup_on_root(popup, use_requested_size=True)
+        _layout_warning_popup()
         popup.deiconify()
-        popup.after(0, lambda p=popup: self._center_popup_on_root(p))
-        popup.after(80, lambda p=popup: self._center_popup_on_root(p))
+        _apply_warning_popup_geometry()
+        popup.after(0, _apply_warning_popup_geometry)
+        popup.after(80, _apply_warning_popup_geometry)
 
     def _get_auto_scan_paths(self) -> list:
         """Return existing directories to scan automatically on startup."""
@@ -3465,41 +3587,6 @@ class OptiManagerApp:
             self._show_after_install_popup(game)
         else:
             messagebox.showerror("Error", f"An error occurred during installation: {message}")
-
-    def _show_success_popup(self, message):
-        popup = ctk.CTkToplevel(self.root)
-        popup.title("Success")
-        popup.transient(self.root)
-        popup.grab_set()
-        popup.resizable(False, False)
-        popup.configure(fg_color=_SURFACE)
-
-        ctk.CTkLabel(
-            popup,
-            text=message,
-            font=ctk.CTkFont(family=FONT_HEADING, size=14, weight="bold"),
-            text_color="#2CC826",
-            padx=30,
-            pady=24,
-        ).pack()
-
-        ctk.CTkButton(
-            popup,
-            text="OK",
-            width=100,
-            height=34,
-            corner_radius=8,
-            fg_color=_ACCENT,
-            hover_color=_ACCENT_HOVER,
-            text_color="#000000",
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
-            command=popup.destroy,
-        ).pack(pady=(0, 20))
-
-        popup.update_idletasks()
-        x = self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (popup.winfo_width() // 2)
-        y = self.root.winfo_rooty() + (self.root.winfo_height() // 2) - (popup.winfo_height() // 2)
-        popup.geometry(f"+{x}+{y}")
 
 
 if __name__ == "__main__":

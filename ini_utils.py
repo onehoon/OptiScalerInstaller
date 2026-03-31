@@ -123,8 +123,6 @@ def apply_ini_settings(ini_path, settings, force_frame_generation=False, logger=
             updated_lines.append(original_line)
             continue
 
-        old_value_preview = str(old_rest).strip()
-
         if delimiter == "=":
             leading_ws, comment = _split_value_and_comment(old_rest)
             rebuilt_rest = f"{leading_ws}{new_value}"
@@ -214,96 +212,6 @@ def _set_file_readonly(path: Path):
         path.chmod(cur_mode & ~stat.S_IWRITE)
     except Exception:
         logging.exception("Failed to set %s readonly", path)
-
-
-def _get_engine_ini_path(raw_path: Optional[str], workspace_root: Optional[str] = None, logger=None) -> Optional[Path]:
-    if not raw_path:
-        return None
-
-    raw = str(raw_path).strip()
-    if not raw:
-        return None
-
-    try:
-        raw = os.path.expandvars(raw)
-    except Exception:
-        if logger:
-            logger.exception(f"Failed to expand env vars in engine.ini path: {raw}")
-        else:
-            logging.exception("Failed to expand env vars in engine.ini path: %s", raw)
-
-    try:
-        raw = os.path.expanduser(raw)
-    except Exception:
-        if logger:
-            logger.exception(f"Failed to expand user in engine.ini path: {raw}")
-        else:
-            logging.exception("Failed to expand user in engine.ini path: %s", raw)
-
-    p = Path(raw)
-    if not p.is_absolute():
-        base = Path(workspace_root) if workspace_root else Path.cwd()
-        p = base.joinpath(p)
-
-    try:
-        p = p.resolve(strict=False)
-    except Exception:
-        p = Path(str(p))
-
-    if p.suffix.lower() == ".ini" or p.name.lower() == "engine.ini":
-        target = p
-    else:
-        target = p / "Engine.ini"
-
-    parent = target.parent
-    try:
-        parent.mkdir(parents=True, exist_ok=True)
-        return target
-    except PermissionError as e:
-        msg = f"Permission denied creating {parent} (requested {raw_path}): {e}"
-        if logger:
-            logger.error(msg)
-        else:
-            logging.error("Permission denied creating %s (requested %s): %s", parent, raw_path, e)
-    except OSError as e:
-        msg = f"OS error creating {parent} (requested {raw_path}): {e}"
-        if logger:
-            logger.error(msg)
-        else:
-            logging.error("OS error creating %s (requested %s): %s", parent, raw_path, e)
-    except Exception as exc:
-        msg = f"Unexpected error creating {parent} for {raw_path}: {exc}"
-        if logger:
-            logger.exception(msg)
-        else:
-            logging.exception("Unexpected error creating %s for %s", parent, raw_path)
-
-    try:
-        la = os.environ.get("LOCALAPPDATA")
-        if la:
-            fallback = Path(la) / "OptiScalerInstaller" / target.name
-            fallback.parent.mkdir(parents=True, exist_ok=True)
-            if logger:
-                logger.info(f"Falling back to LOCALAPPDATA for engine.ini: {fallback}")
-            else:
-                logging.info("Falling back to LOCALAPPDATA for engine.ini: %s", fallback)
-            return fallback
-    except Exception as exc:
-        if logger:
-            logger.exception(f"Failed to fall back to LOCALAPPDATA for engine.ini: {exc}")
-        else:
-            logging.exception("Failed to fall back to LOCALAPPDATA for engine.ini")
-
-    try:
-        fallback = Path(tempfile.gettempdir()) / "OptiScalerInstaller" / target.name
-        fallback.parent.mkdir(parents=True, exist_ok=True)
-        logging.info("Falling back to temp dir for engine.ini: %s", fallback)
-        return fallback
-    except Exception:
-        logging.exception("Failed to fall back to temp dir for engine.ini")
-
-    return None
-
 
 def _find_or_create_engine_ini(folder_name: str, workspace_root: Optional[str] = None, logger=None) -> Optional[Path]:
     if workspace_root is None:
