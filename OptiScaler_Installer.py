@@ -517,6 +517,9 @@ class OptiManagerApp:
         self.optiscaler_archive_filename = ""
         self.app_update_in_progress = False
         self._post_sheet_startup_done = False
+        self._startup_popup_queue: list[dict[str, object]] = []
+        self._startup_popup_active = False
+        self._startup_popup_order = 0
         self.found_exe_list = []
         self.game_db = {}
         self.module_download_links = {}
@@ -662,16 +665,95 @@ class OptiManagerApp:
 
         text_widget.configure(width=chosen_width, height=resolved_line_count, state="disabled")
 
-        def _confirm():
+        fade_in_step = 0.14
+        fade_out_step = 0.18
+        fade_interval_ms = 18
+        fade_out_interval_ms = 16
+        fade_supported = False
+        fade_in_after_id = None
+        closing_popup = False
+        confirm_button: Optional[ctk.CTkButton] = None
+
+        def _popup_exists() -> bool:
+            try:
+                return bool(popup.winfo_exists())
+            except Exception:
+                return False
+
+        def _get_popup_alpha() -> float:
+            try:
+                return float(popup.attributes("-alpha"))
+            except Exception:
+                return 1.0
+
+        def _finalize_close():
             try:
                 popup.grab_release()
             except Exception:
                 pass
-            popup.destroy()
+            try:
+                popup.destroy()
+            except Exception:
+                pass
             if on_confirm:
                 self.root.after_idle(on_confirm)
 
-        ctk.CTkButton(
+        def _fade_in(opacity: float = 0.0):
+            nonlocal fade_in_after_id
+            if closing_popup or not _popup_exists():
+                return
+            next_opacity = min(1.0, opacity + fade_in_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                fade_in_after_id = None
+                logging.debug("Selection popup fade-in failed", exc_info=True)
+                try:
+                    popup.attributes("-alpha", 1.0)
+                except Exception:
+                    pass
+                return
+            if next_opacity < 1.0:
+                fade_in_after_id = popup.after(fade_interval_ms, _fade_in, next_opacity)
+            else:
+                fade_in_after_id = None
+
+        def _fade_out(opacity: float):
+            if not _popup_exists():
+                return
+            next_opacity = max(0.0, opacity - fade_out_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                _finalize_close()
+                return
+            if next_opacity > 0.0:
+                popup.after(fade_out_interval_ms, _fade_out, next_opacity)
+            else:
+                _finalize_close()
+
+        def _confirm():
+            nonlocal closing_popup, fade_in_after_id
+            if closing_popup:
+                return
+            closing_popup = True
+            if confirm_button is not None:
+                try:
+                    confirm_button.configure(state="disabled")
+                except Exception:
+                    pass
+            if fade_in_after_id is not None:
+                try:
+                    popup.after_cancel(fade_in_after_id)
+                except Exception:
+                    pass
+                fade_in_after_id = None
+            if fade_supported:
+                _fade_out(_get_popup_alpha())
+            else:
+                _finalize_close()
+
+        confirm_button = ctk.CTkButton(
             container,
             text="확인" if USE_KOREAN else "OK",
             width=100,
@@ -682,11 +764,11 @@ class OptiManagerApp:
             text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             command=_confirm,
-        ).pack(pady=(10, 0))
+        )
+        confirm_button.pack(pady=(10, 0))
 
         def _apply_selection_popup_geometry(use_requested_size: bool = False):
             try:
-                self.root.update_idletasks()
                 popup.update_idletasks()
 
                 if use_requested_size:
@@ -724,13 +806,21 @@ class OptiManagerApp:
 
         popup.protocol("WM_DELETE_WINDOW", lambda: None)  # Block closing without confirm
         _apply_selection_popup_geometry(use_requested_size=True)
+        try:
+            popup.attributes("-alpha", 0.0)
+            fade_supported = True
+        except Exception:
+            fade_supported = False
+            logging.debug("Popup alpha fade is not supported for selection popup", exc_info=True)
         popup.deiconify()
         popup.lift()
         try:
-            popup.focus_force()
+            popup.focus_set()
         except Exception:
             pass
-        popup.after_idle(_apply_selection_popup_geometry)
+        popup.after(0, _apply_selection_popup_geometry)
+        if fade_supported:
+            fade_in_after_id = popup.after(45, _fade_in, 0.0)
 
     def _fetch_gpu_info_async(self):
         try:
@@ -1196,6 +1286,55 @@ class OptiManagerApp:
         entry = self.module_download_links.get("latest_installer_dl", {}) if hasattr(self, "module_download_links") else {}
         return entry if isinstance(entry, dict) else {}
 
+    def _enqueue_startup_popup(self, popup_id: str, priority: int, show_callback, blocking: bool = False) -> None:
+        self._startup_popup_order += 1
+        self._startup_popup_queue.append(
+            {
+                "id": popup_id,
+                "priority": int(priority),
+                "order": int(self._startup_popup_order),
+                "blocking": bool(blocking),
+                "show": show_callback,
+            }
+        )
+
+    def _run_next_startup_popup(self) -> None:
+        if self._startup_popup_active:
+            return
+        if not self._startup_popup_queue:
+            return
+
+        self._startup_popup_queue.sort(key=lambda item: (-int(item["priority"]), int(item["order"])))
+        popup_item = self._startup_popup_queue.pop(0)
+        popup_id = str(popup_item.get("id", "unknown"))
+        show_callback = popup_item.get("show")
+        is_blocking = bool(popup_item.get("blocking", False))
+        if not callable(show_callback):
+            logging.warning("[APP] Startup popup %s has no callable show callback", popup_id)
+            self.root.after_idle(self._run_next_startup_popup)
+            return
+
+        self._startup_popup_active = True
+        finished = False
+
+        def _finish_popup() -> None:
+            nonlocal finished
+            if finished:
+                return
+            finished = True
+            self._startup_popup_active = False
+            self.root.after_idle(self._run_next_startup_popup)
+
+        try:
+            if is_blocking:
+                show_callback()
+                _finish_popup()
+            else:
+                show_callback(_finish_popup)
+        except Exception:
+            logging.exception("[APP] Failed to show startup popup: %s", popup_id)
+            _finish_popup()
+
     def _run_post_sheet_startup(self, ok: bool):
         if self._post_sheet_startup_done:
             return
@@ -1205,36 +1344,55 @@ class OptiManagerApp:
             return
 
         self._post_sheet_startup_done = True
+        self._startup_popup_queue.clear()
+        self._startup_popup_active = False
 
         logger = None
         if getattr(self, "found_exe_list", None) and self.selected_game_index is not None:
             logger = get_prefixed_logger(self.found_exe_list[self.selected_game_index].get("game_name", "unknown"))
-        rtss_notice.check_and_show_rtss_notice(
-            root=self.root,
-            module_download_links=self.module_download_links,
-            use_korean=USE_KOREAN,
-            assets_dir=ASSETS_DIR,
-            theme=RTSS_NOTICE_THEME,
-            logger=logger,
+
+        self._enqueue_startup_popup(
+            "rtss_notice",
+            priority=100,
+            blocking=True,
+            show_callback=lambda: rtss_notice.check_and_show_rtss_notice(
+                root=self.root,
+                module_download_links=self.module_download_links,
+                use_korean=USE_KOREAN,
+                assets_dir=ASSETS_DIR,
+                theme=RTSS_NOTICE_THEME,
+                logger=logger,
+            ),
         )
 
         if not ok:
+            self._run_next_startup_popup()
             return
 
         self._start_optiscaler_archive_prepare()
+        self._start_auto_scan()
 
         warning_key = "__warning_kr__" if USE_KOREAN else "__warning_en__"
         warning_text = str(self.module_download_links.get(warning_key, "")).strip()
         if not self._supported_games_popup_shown:
             self._supported_games_popup_shown = True
             if warning_text:
-                self._show_startup_warning_popup(
-                    warning_text,
-                    on_close=self._show_supported_games_popup,
+                self._enqueue_startup_popup(
+                    "startup_warning",
+                    priority=80,
+                    blocking=False,
+                    show_callback=lambda done_callback, warning=warning_text: self._show_startup_warning_popup(
+                        warning,
+                        on_close=done_callback,
+                    ),
                 )
-            else:
-                self._show_supported_games_popup()
-        self._start_auto_scan()
+            self._enqueue_startup_popup(
+                "supported_games",
+                priority=20,
+                blocking=False,
+                show_callback=lambda done_callback: self._show_supported_games_popup(on_close=done_callback),
+            )
+        self._run_next_startup_popup()
 
     def _start_app_update(self, latest_info: dict) -> bool:
         if self.app_update_in_progress:
@@ -1494,16 +1652,96 @@ class OptiManagerApp:
         button_row = ctk.CTkFrame(container, fg_color="transparent")
         button_row.pack(fill="x", pady=(10, 0))
 
-        def _close_popup():
+        fade_in_step = 0.14
+        fade_out_step = 0.18
+        fade_interval_ms = 18
+        fade_out_interval_ms = 16
+        fade_supported = False
+        fade_in_after_id = None
+        closing_popup = False
+        close_button: Optional[ctk.CTkButton] = None
+
+        def _popup_exists() -> bool:
+            try:
+                return bool(popup.winfo_exists())
+            except Exception:
+                return False
+
+        def _get_popup_alpha() -> float:
+            try:
+                return float(popup.attributes("-alpha"))
+            except Exception:
+                return 1.0
+
+        def _finalize_close():
             try:
                 popup.grab_release()
             except Exception:
                 pass
-            popup.destroy()
+            try:
+                popup.destroy()
+            except Exception:
+                pass
             if callable(on_close):
                 on_close()
 
-        ctk.CTkButton(
+        def _fade_in(opacity: float = 0.0):
+            nonlocal fade_in_after_id
+            if closing_popup or not _popup_exists():
+                return
+            next_opacity = min(1.0, opacity + fade_in_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                fade_in_after_id = None
+                logging.debug("Startup warning popup fade-in failed", exc_info=True)
+                try:
+                    popup.attributes("-alpha", 1.0)
+                except Exception:
+                    pass
+                return
+            if next_opacity < 1.0:
+                fade_in_after_id = popup.after(fade_interval_ms, _fade_in, next_opacity)
+            else:
+                fade_in_after_id = None
+
+        def _fade_out(opacity: float):
+            if not _popup_exists():
+                return
+            next_opacity = max(0.0, opacity - fade_out_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                logging.debug("Startup warning popup fade-out failed", exc_info=True)
+                _finalize_close()
+                return
+            if next_opacity > 0.0:
+                popup.after(fade_out_interval_ms, _fade_out, next_opacity)
+            else:
+                _finalize_close()
+
+        def _close_popup():
+            nonlocal closing_popup, fade_in_after_id
+            if closing_popup:
+                return
+            closing_popup = True
+            if close_button is not None:
+                try:
+                    close_button.configure(state="disabled")
+                except Exception:
+                    pass
+            if fade_in_after_id is not None:
+                try:
+                    popup.after_cancel(fade_in_after_id)
+                except Exception:
+                    pass
+                fade_in_after_id = None
+            if fade_supported:
+                _fade_out(_get_popup_alpha())
+            else:
+                _finalize_close()
+
+        close_button = ctk.CTkButton(
             button_row,
             text="OK",
             width=100,
@@ -1514,7 +1752,8 @@ class OptiManagerApp:
             text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             command=_close_popup,
-        ).pack()
+        )
+        close_button.pack()
 
         screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
         screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
@@ -1522,7 +1761,6 @@ class OptiManagerApp:
         zero_char_width = max(7, int(max(normal_font.measure("0"), red_font.measure("0"))))
         min_text_chars = 34
         max_text_chars = max(min_text_chars, min(110, max(min_text_chars, (screen_w - 140) // avg_char_width)))
-        self.root.update_idletasks()
         root_w = max(1, int(self.root.winfo_width() or WINDOW_W))
         desired_popup_w = min(max(360, root_w), max(360, screen_w - 40))
         target_text_px = max(220, desired_popup_w - 72)
@@ -1594,7 +1832,6 @@ class OptiManagerApp:
 
         def _apply_warning_popup_geometry():
             try:
-                self.root.update_idletasks()
                 popup.update_idletasks()
                 _sync_warning_popup_text_height()
 
@@ -1627,10 +1864,22 @@ class OptiManagerApp:
 
         popup.protocol("WM_DELETE_WINDOW", _close_popup)
         _layout_warning_popup()
+        try:
+            popup.attributes("-alpha", 0.0)
+            fade_supported = True
+        except Exception:
+            fade_supported = False
+            logging.debug("Popup alpha fade is not supported for startup warning popup", exc_info=True)
         popup.deiconify()
+        popup.lift()
+        try:
+            popup.focus_set()
+        except Exception:
+            pass
         _apply_warning_popup_geometry()
         popup.after(0, _apply_warning_popup_geometry)
-        popup.after(80, _apply_warning_popup_geometry)
+        if fade_supported:
+            fade_in_after_id = popup.after(45, _fade_in, 0.0)
 
     def _get_auto_scan_paths(self) -> list:
         """Return existing directories to scan automatically on startup."""
@@ -1708,8 +1957,10 @@ class OptiManagerApp:
 
         self._task_executor.submit(self._scan_worker, scan_paths)
 
-    def _show_supported_games_popup(self):
+    def _show_supported_games_popup(self, on_close=None):
         if self.multi_gpu_blocked:
+            if callable(on_close):
+                on_close()
             return
         names = []
         seen = set()
@@ -1727,12 +1978,15 @@ class OptiManagerApp:
             names.append(name)
 
         if not names:
+            if callable(on_close):
+                on_close()
             return
 
-        self.root.update_idletasks()
+        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
         screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
-        root_h = max(1, int(self.root.winfo_height() or WINDOW_H))
-        max_popup_h = min(max(260, root_h - 4), max(260, screen_h - 16))
+        root_w = max(1, int(self.root.winfo_width() or WINDOW_W))
+        desired_popup_w = min(max(360, root_w), max(360, screen_w - 40))
+        max_popup_h = max(240, screen_h - 80)
 
         popup = ctk.CTkToplevel(self.root)
         popup.title("Supported Game List")
@@ -1752,11 +2006,12 @@ class OptiManagerApp:
         popup_chrome_h = 88
         max_list_h = max(120, max_popup_h - popup_chrome_h)
         use_scroll = desired_list_h > max_list_h
+        list_width = max(344, min(420, desired_popup_w - 40))
 
         if use_scroll:
             list_frame = ctk.CTkScrollableFrame(
                 container,
-                width=344,
+                width=list_width,
                 height=max_list_h,
                 corner_radius=8,
                 fg_color="#2A303A",
@@ -1766,7 +2021,7 @@ class OptiManagerApp:
         else:
             list_frame = ctk.CTkFrame(
                 container,
-                width=344,
+                width=list_width,
                 height=desired_list_h,
                 corner_radius=8,
                 fg_color="#2A303A",
@@ -1786,14 +2041,96 @@ class OptiManagerApp:
                 height=16,
             ).grid(row=i, column=0, sticky="ew", padx=10, pady=0)
 
-        def _close_popup():
+        fade_in_step = 0.14
+        fade_out_step = 0.18
+        fade_interval_ms = 18
+        fade_out_interval_ms = 16
+        fade_supported = False
+        fade_in_after_id = None
+        closing_popup = False
+        close_button: Optional[ctk.CTkButton] = None
+
+        def _popup_exists() -> bool:
+            try:
+                return bool(popup.winfo_exists())
+            except Exception:
+                return False
+
+        def _get_popup_alpha() -> float:
+            try:
+                return float(popup.attributes("-alpha"))
+            except Exception:
+                return 1.0
+
+        def _finalize_close():
             try:
                 popup.grab_release()
             except Exception:
                 pass
-            popup.destroy()
+            try:
+                popup.destroy()
+            except Exception:
+                pass
+            if callable(on_close):
+                on_close()
 
-        ctk.CTkButton(
+        def _fade_in(opacity: float = 0.0):
+            nonlocal fade_in_after_id
+            if closing_popup or not _popup_exists():
+                return
+            next_opacity = min(1.0, opacity + fade_in_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                fade_in_after_id = None
+                logging.debug("Supported-games popup fade-in failed", exc_info=True)
+                try:
+                    popup.attributes("-alpha", 1.0)
+                except Exception:
+                    pass
+                return
+            if next_opacity < 1.0:
+                fade_in_after_id = popup.after(fade_interval_ms, _fade_in, next_opacity)
+            else:
+                fade_in_after_id = None
+
+        def _fade_out(opacity: float):
+            if not _popup_exists():
+                return
+            next_opacity = max(0.0, opacity - fade_out_step)
+            try:
+                popup.attributes("-alpha", next_opacity)
+            except Exception:
+                logging.debug("Supported-games popup fade-out failed", exc_info=True)
+                _finalize_close()
+                return
+            if next_opacity > 0.0:
+                popup.after(fade_out_interval_ms, _fade_out, next_opacity)
+            else:
+                _finalize_close()
+
+        def _close_popup():
+            nonlocal closing_popup, fade_in_after_id
+            if closing_popup:
+                return
+            closing_popup = True
+            if close_button is not None:
+                try:
+                    close_button.configure(state="disabled")
+                except Exception:
+                    pass
+            if fade_in_after_id is not None:
+                try:
+                    popup.after_cancel(fade_in_after_id)
+                except Exception:
+                    pass
+                fade_in_after_id = None
+            if fade_supported:
+                _fade_out(_get_popup_alpha())
+            else:
+                _finalize_close()
+
+        close_button = ctk.CTkButton(
             container,
             text="OK",
             width=100,
@@ -1804,7 +2141,8 @@ class OptiManagerApp:
             text_color="#000000",
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             command=_close_popup,
-        ).pack()
+        )
+        close_button.pack()
 
         popup.update_idletasks()
         if use_scroll:
@@ -1828,7 +2166,6 @@ class OptiManagerApp:
 
         def _apply_supported_games_popup_geometry(use_requested_size: bool = False):
             try:
-                self.root.update_idletasks()
                 popup.update_idletasks()
 
                 if use_requested_size:
@@ -1861,17 +2198,24 @@ class OptiManagerApp:
 
         popup.protocol("WM_DELETE_WINDOW", _close_popup)
         _apply_supported_games_popup_geometry(use_requested_size=True)
+        try:
+            popup.attributes("-alpha", 0.0)
+            fade_supported = True
+        except Exception:
+            fade_supported = False
+            logging.debug("Popup alpha fade is not supported for supported-games popup", exc_info=True)
         popup.deiconify()
         popup.lift()
         try:
-            popup.focus_force()
+            popup.focus_set()
         except Exception:
             pass
-        popup.after_idle(_apply_supported_games_popup_geometry)
+        popup.after(0, _apply_supported_games_popup_geometry)
+        if fade_supported:
+            fade_in_after_id = popup.after(45, _fade_in, 0.0)
 
     def _center_popup_on_root(self, popup: ctk.CTkToplevel, use_requested_size: bool = False):
         try:
-            self.root.update_idletasks()
             popup.update_idletasks()
 
             root_x = self.root.winfo_x()

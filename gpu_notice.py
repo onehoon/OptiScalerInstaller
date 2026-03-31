@@ -109,7 +109,6 @@ def _center_gpu_popup_on_root(
     use_requested_size: bool = False,
 ) -> None:
     try:
-        root.update_idletasks()
         popup.update_idletasks()
 
         root_x = root.winfo_x()
@@ -141,7 +140,6 @@ def _center_gpu_popup_on_root(
 
 
 def _resolve_popup_width(root: ctk.CTk, min_width_px: int) -> int:
-    root.update_idletasks()
     root_w = max(1, int(root.winfo_width() or 512))
     screen_w = max(1, int(root.winfo_screenwidth() or root_w))
     return max(min_width_px, min(root_w, screen_w - (GPU_POPUP_MARGIN * 2)))
@@ -201,12 +199,11 @@ def show_unsupported_gpu_notice(
     popup.deiconify()
     popup.lift()
     try:
-        popup.focus_force()
+        popup.focus_set()
     except Exception:
         pass
     _center_gpu_popup_on_root(root, popup, target_width_px=desired_popup_width, use_requested_size=True)
     popup.after(0, lambda p=popup: _center_gpu_popup_on_root(root, p, target_width_px=desired_popup_width))
-    popup.after(80, lambda p=popup: _center_gpu_popup_on_root(root, p, target_width_px=desired_popup_width))
     popup.wait_window()
 
 
@@ -221,7 +218,6 @@ def select_dual_gpu_adapter(
         return None
 
     selected_adapter: Optional["GpuAdapterChoice"] = None
-    root.update_idletasks()
     screen_w = max(1, int(root.winfo_screenwidth() or 512))
     max_message_width = max(320, min(420, screen_w - 140))
     button_row_width = (DUAL_GPU_BUTTON_W * 2) + (DUAL_GPU_BUTTON_GAP * 2)
@@ -253,23 +249,93 @@ def select_dual_gpu_adapter(
     button_row.pack(anchor="center")
 
     choice_buttons: list[ctk.CTkButton] = []
+    fade_in_step = 0.14
+    fade_out_step = 0.18
+    fade_interval_ms = 18
+    fade_out_interval_ms = 16
+    fade_supported = False
+    fade_in_after_id = None
+    closing_popup = False
+
+    def _popup_exists() -> bool:
+        try:
+            return bool(popup.winfo_exists())
+        except Exception:
+            return False
+
+    def _get_popup_alpha() -> float:
+        try:
+            return float(popup.attributes("-alpha"))
+        except Exception:
+            return 1.0
+
+    def _finalize_close() -> None:
+        try:
+            popup.grab_release()
+        except Exception:
+            pass
+        try:
+            popup.destroy()
+        except Exception:
+            pass
+
+    def _fade_in(opacity: float = 0.0) -> None:
+        nonlocal fade_in_after_id
+        if closing_popup or not _popup_exists():
+            return
+        next_opacity = min(1.0, opacity + fade_in_step)
+        try:
+            popup.attributes("-alpha", next_opacity)
+        except Exception:
+            fade_in_after_id = None
+            logging.debug("GPU selection popup fade-in failed", exc_info=True)
+            try:
+                popup.attributes("-alpha", 1.0)
+            except Exception:
+                pass
+            return
+        if next_opacity < 1.0:
+            fade_in_after_id = popup.after(fade_interval_ms, _fade_in, next_opacity)
+        else:
+            fade_in_after_id = None
+
+    def _fade_out(opacity: float) -> None:
+        if not _popup_exists():
+            return
+        next_opacity = max(0.0, opacity - fade_out_step)
+        try:
+            popup.attributes("-alpha", next_opacity)
+        except Exception:
+            logging.debug("GPU selection popup fade-out failed", exc_info=True)
+            _finalize_close()
+            return
+        if next_opacity > 0.0:
+            popup.after(fade_out_interval_ms, _fade_out, next_opacity)
+        else:
+            _finalize_close()
 
     def _close_with_selection(adapter: "GpuAdapterChoice") -> None:
-        nonlocal selected_adapter
-        if selected_adapter is not None:
+        nonlocal selected_adapter, closing_popup, fade_in_after_id
+        if selected_adapter is not None or closing_popup:
             return
 
         selected_adapter = adapter
+        closing_popup = True
         for btn in choice_buttons:
             try:
                 btn.configure(state="disabled")
             except Exception:
                 pass
-        try:
-            popup.grab_release()
-        except Exception:
-            pass
-        popup.destroy()
+        if fade_in_after_id is not None:
+            try:
+                popup.after_cancel(fade_in_after_id)
+            except Exception:
+                pass
+            fade_in_after_id = None
+        if fade_supported:
+            _fade_out(_get_popup_alpha())
+        else:
+            _finalize_close()
 
     for col_idx, adapter in enumerate(adapter_choices):
         button_theme = _get_vendor_button_theme(getattr(adapter, "vendor", ""), theme)
@@ -292,14 +358,21 @@ def select_dual_gpu_adapter(
         choice_buttons.append(btn)
 
     popup.protocol("WM_DELETE_WINDOW", lambda: None)
+    _center_gpu_popup_on_root(root, popup, use_requested_size=True)
+    try:
+        popup.attributes("-alpha", 0.0)
+        fade_supported = True
+    except Exception:
+        fade_supported = False
+        logging.debug("Popup alpha fade is not supported for GPU selection popup", exc_info=True)
     popup.deiconify()
     popup.lift()
     try:
-        popup.focus_force()
+        popup.focus_set()
     except Exception:
         pass
-    _center_gpu_popup_on_root(root, popup, use_requested_size=True)
     popup.after(0, lambda p=popup: _center_gpu_popup_on_root(root, p))
-    popup.after(80, lambda p=popup: _center_gpu_popup_on_root(root, p))
+    if fade_supported:
+        fade_in_after_id = popup.after(45, _fade_in, 0.0)
     popup.wait_window()
     return selected_adapter

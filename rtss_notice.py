@@ -172,7 +172,6 @@ def _center_rtss_popup_on_root(
     use_requested_size: bool = False,
 ) -> None:
     try:
-        root.update_idletasks()
         popup.update_idletasks()
 
         root_x = root.winfo_x()
@@ -269,14 +268,94 @@ def _show_rtss_popup(
     except Exception:
         logging.debug("Failed to load RTSS notice image", exc_info=True)
 
-    def _close_popup():
+    fade_in_step = 0.14
+    fade_out_step = 0.18
+    fade_interval_ms = 18
+    fade_out_interval_ms = 16
+    fade_supported = False
+    fade_in_after_id = None
+    closing_popup = False
+    close_button: Optional[ctk.CTkButton] = None
+
+    def _popup_exists() -> bool:
+        try:
+            return bool(popup.winfo_exists())
+        except Exception:
+            return False
+
+    def _get_popup_alpha() -> float:
+        try:
+            return float(popup.attributes("-alpha"))
+        except Exception:
+            return 1.0
+
+    def _finalize_close() -> None:
         try:
             popup.grab_release()
         except Exception:
             pass
-        popup.destroy()
+        try:
+            popup.destroy()
+        except Exception:
+            pass
 
-    ctk.CTkButton(
+    def _fade_in(opacity: float = 0.0) -> None:
+        nonlocal fade_in_after_id
+        if closing_popup or not _popup_exists():
+            return
+        next_opacity = min(1.0, opacity + fade_in_step)
+        try:
+            popup.attributes("-alpha", next_opacity)
+        except Exception:
+            fade_in_after_id = None
+            logging.debug("RTSS popup fade-in failed", exc_info=True)
+            try:
+                popup.attributes("-alpha", 1.0)
+            except Exception:
+                pass
+            return
+        if next_opacity < 1.0:
+            fade_in_after_id = popup.after(fade_interval_ms, _fade_in, next_opacity)
+        else:
+            fade_in_after_id = None
+
+    def _fade_out(opacity: float) -> None:
+        if not _popup_exists():
+            return
+        next_opacity = max(0.0, opacity - fade_out_step)
+        try:
+            popup.attributes("-alpha", next_opacity)
+        except Exception:
+            logging.debug("RTSS popup fade-out failed", exc_info=True)
+            _finalize_close()
+            return
+        if next_opacity > 0.0:
+            popup.after(fade_out_interval_ms, _fade_out, next_opacity)
+        else:
+            _finalize_close()
+
+    def _close_popup():
+        nonlocal closing_popup, fade_in_after_id
+        if closing_popup:
+            return
+        closing_popup = True
+        if close_button is not None:
+            try:
+                close_button.configure(state="disabled")
+            except Exception:
+                pass
+        if fade_in_after_id is not None:
+            try:
+                popup.after_cancel(fade_in_after_id)
+            except Exception:
+                pass
+            fade_in_after_id = None
+        if fade_supported:
+            _fade_out(_get_popup_alpha())
+        else:
+            _finalize_close()
+
+    close_button = ctk.CTkButton(
         popup,
         text="OK",
         width=100,
@@ -287,13 +366,27 @@ def _show_rtss_popup(
         text_color=theme.button_text_color,
         font=ctk.CTkFont(family=theme.font_ui, size=12, weight="bold"),
         command=_close_popup,
-    ).pack(pady=(0, 14))
+    )
+    close_button.pack(pady=(0, 14))
 
     popup.protocol("WM_DELETE_WINDOW", _close_popup)
     _center_rtss_popup_on_root(root, popup, use_requested_size=True)
+    try:
+        popup.attributes("-alpha", 0.0)
+        fade_supported = True
+    except Exception:
+        fade_supported = False
+        logging.debug("Popup alpha fade is not supported for RTSS popup", exc_info=True)
     popup.deiconify()
+    popup.lift()
+    try:
+        popup.focus_set()
+    except Exception:
+        pass
     popup.after(0, lambda p=popup: _center_rtss_popup_on_root(root, p))
-    popup.after(80, lambda p=popup: _center_rtss_popup_on_root(root, p))
+    if fade_supported:
+        fade_in_after_id = popup.after(45, _fade_in, 0.0)
+    popup.wait_window()
 
 
 def check_and_show_rtss_notice(
