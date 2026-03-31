@@ -20,6 +20,7 @@ from typing import Optional
 import ctypes
 import locale
 import stat
+import gpu_notice
 import gpu_service
 import installer_services
 import ini_utils
@@ -58,8 +59,8 @@ import rtss_notice
 
  # Application Version
 APP_VERSION = "0.2.1"
-# Keep hardware detection separate from support policy so dual-GPU support can be enabled later.
-MULTI_GPU_SUPPORTED = False
+# Install flow supports up to two detected GPUs. Dual-GPU requires explicit user selection.
+MAX_SUPPORTED_GPU_COUNT = 2
 
  # Configure logging deterministically below (avoid calling basicConfig early)
 
@@ -103,6 +104,7 @@ OPTIPATCHER_URL = os.environ.get(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
+UI_LANGUAGE_ENV = "FORCE_UI_LANGUAGE"
 
 import logging.handlers
 
@@ -206,8 +208,31 @@ def _subprocess_no_window_kwargs() -> dict:
     kwargs["startupinfo"] = startupinfo
     return kwargs
 
+
+def _get_forced_ui_language() -> Optional[bool]:
+    raw = str(os.environ.get(UI_LANGUAGE_ENV, "") or "").strip().lower()
+    if raw in {"", "auto"}:
+        return None
+    if raw in {"ko", "kr", "korean"}:
+        return True
+    if raw in {"en", "english"}:
+        return False
+
+    logging.warning(
+        "[APP] Invalid %s=%r, using automatic UI language detection",
+        UI_LANGUAGE_ENV,
+        raw,
+    )
+    return None
+
+
 def _is_korean_ui() -> bool:
     """Return True if the Windows UI language is Korean (ko-KR, LCID 0x0412)."""
+    forced = _get_forced_ui_language()
+    if forced is not None:
+        logging.info("[APP] UI language forced by %s=%s", UI_LANGUAGE_ENV, "KO" if forced else "EN")
+        return forced
+
     try:
         lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
         return (lang_id & 0xFF) == 0x12  # Primary language ID for Korean
@@ -458,6 +483,12 @@ RTSS_NOTICE_THEME = rtss_notice.RtssNoticeTheme(
     accent_hover_color=_ACCENT_HOVER,
     font_ui=FONT_UI,
 )
+GPU_NOTICE_THEME = gpu_notice.GpuNoticeTheme(
+    surface_color=_SURFACE,
+    accent_color=_ACCENT,
+    accent_hover_color=_ACCENT_HOVER,
+    font_ui=FONT_UI,
+)
 
 
 class OptiManagerApp:
@@ -498,6 +529,9 @@ class OptiManagerApp:
         self.is_multi_gpu = False
         self.multi_gpu_blocked = False
         self._multi_gpu_popup_shown = False
+        self._gpu_selection_pending = False
+        self._gpu_context: Optional[gpu_service.GpuContext] = None
+        self._selected_gpu_adapter: Optional[gpu_service.GpuAdapterChoice] = None
         self.sheet_status = False
         self.sheet_loading = True
         self.gpu_info = "Checking GPU..."
@@ -718,6 +752,9 @@ class OptiManagerApp:
                 vendors=[],
                 selected_vendor="default",
                 selected_gid=SHEET_GID,
+                adapters=(),
+                selected_model_name="",
+                selected_display_name="",
             )
         try:
             self.root.after(
@@ -728,27 +765,15 @@ class OptiManagerApp:
             logging.exception("Failed to schedule GPU UI update")
 
     def _is_multi_gpu_block_active(self) -> bool:
-        return self.is_multi_gpu and not MULTI_GPU_SUPPORTED
-
-    def _get_multi_gpu_block_title(self) -> str:
-        return "지원되지 않는 GPU 구성" if USE_KOREAN else "Unsupported GPU Configuration"
-
-    def _get_multi_gpu_block_message(self) -> str:
-        if USE_KOREAN:
-            return "듀얼 GPU 구성은 현재 지원되지 않습니다.\n단일 GPU 환경으로 전환한 뒤 다시 시도해 주세요."
-        return "Dual-GPU configurations are not currently supported.\nPlease switch to a single-GPU configuration and try again."
-
-    def _show_multi_gpu_block_popup(self):
-        if self._multi_gpu_popup_shown:
-            return
-        self._multi_gpu_popup_shown = True
-        messagebox.showerror(self._get_multi_gpu_block_title(), self._get_multi_gpu_block_message())
+        return self.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
     def _apply_multi_gpu_block_state(self):
         self.multi_gpu_blocked = self._is_multi_gpu_block_active()
         if not self.multi_gpu_blocked:
             return
 
+        self._gpu_selection_pending = False
+        self._selected_gpu_adapter = None
         self._post_sheet_startup_done = True
         self._supported_games_popup_shown = True
         self.sheet_loading = False
@@ -765,31 +790,81 @@ class OptiManagerApp:
         if hasattr(self, "btn_select_folder") and self.btn_select_folder:
             self.btn_select_folder.configure(state="disabled")
         if hasattr(self, "lbl_game_path") and self.lbl_game_path:
-            text = "듀얼 GPU는 지원되지 않습니다." if USE_KOREAN else "Dual GPU is not supported."
+            text = "3개 이상의 GPU는 지원되지 않습니다." if USE_KOREAN else "3 or more GPUs are not supported."
             self.lbl_game_path.configure(text=text, text_color="#FF8A8A")
             self.root.after(0, self._align_supported_games_count_label)
         self._clear_cards()
         if hasattr(self, "info_text") and self.info_text:
-            self._set_information_text(self._get_multi_gpu_block_message())
+            self._set_information_text(gpu_notice.get_unsupported_gpu_message(USE_KOREAN))
         self._update_selected_game_header()
         self._update_sheet_status()
         self._update_install_button_state()
-        self._show_multi_gpu_block_popup()
+        if not self._multi_gpu_popup_shown:
+            self._multi_gpu_popup_shown = True
+            gpu_notice.show_unsupported_gpu_notice(self.root, USE_KOREAN, GPU_NOTICE_THEME)
+
+    def _apply_selected_gpu(
+        self,
+        gpu_context: gpu_service.GpuContext,
+        selected_adapter: Optional[gpu_service.GpuAdapterChoice] = None,
+    ):
+        self._gpu_context = gpu_context
+        self.gpu_names = list(gpu_context.gpu_names or [])
+        self.gpu_count = max(0, int(gpu_context.gpu_count or 0))
+        self.is_multi_gpu = gpu_context.is_multi_gpu
+        self.multi_gpu_blocked = False
+        self._gpu_selection_pending = False
+        self._selected_gpu_adapter = selected_adapter
+
+        if selected_adapter is not None:
+            self.active_game_db_vendor = str(selected_adapter.vendor or "default")
+            self.active_game_db_gid = int(selected_adapter.selected_gid or SHEET_GID)
+            self.gpu_info = str(selected_adapter.model_name or gpu_context.selected_model_name or gpu_context.gpu_info or "Unknown")
+        else:
+            self.active_game_db_vendor = str(gpu_context.selected_vendor or "default")
+            self.active_game_db_gid = int(gpu_context.selected_gid or SHEET_GID)
+            self.gpu_info = str(gpu_context.selected_model_name or gpu_context.gpu_info or "Unknown")
+
+        if hasattr(self, "gpu_lbl") and self.gpu_lbl:
+            self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+
+        self._update_sheet_status()
+        self._update_install_button_state()
 
     def _update_gpu_ui(self, gpu_context: gpu_service.GpuContext):
         try:
-            self.gpu_info = gpu_context.gpu_info
-            self.active_game_db_vendor = gpu_context.selected_vendor
-            self.active_game_db_gid = gpu_context.selected_gid or SHEET_GID
+            self._gpu_context = gpu_context
             self.gpu_names = list(gpu_context.gpu_names or [])
             self.gpu_count = max(0, int(gpu_context.gpu_count or 0))
             self.is_multi_gpu = gpu_context.is_multi_gpu
             self.multi_gpu_blocked = self._is_multi_gpu_block_active()
-            if hasattr(self, 'gpu_lbl') and self.gpu_lbl:
-                self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
             if self.multi_gpu_blocked:
+                self.gpu_info = str(gpu_context.gpu_info or "Unknown")
+                if hasattr(self, "gpu_lbl") and self.gpu_lbl:
+                    self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
                 self._apply_multi_gpu_block_state()
                 return
+            if self.gpu_count == 2 and len(gpu_context.adapters or ()) >= 2:
+                self._gpu_selection_pending = True
+                self._selected_gpu_adapter = None
+                self.gpu_info = "GPU 선택 대기 중" if USE_KOREAN else "Waiting for GPU selection"
+                if hasattr(self, "gpu_lbl") and self.gpu_lbl:
+                    self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+                self._update_sheet_status()
+                self._update_install_button_state()
+                selected_adapter = gpu_notice.select_dual_gpu_adapter(
+                    root=self.root,
+                    adapters=tuple(gpu_context.adapters[:2]),
+                    use_korean=USE_KOREAN,
+                    theme=GPU_NOTICE_THEME,
+                )
+                if selected_adapter is None:
+                    logging.warning("[GPU] Dual-GPU selection popup closed without a selection")
+                    return
+                self._apply_selected_gpu(gpu_context, selected_adapter)
+                self._start_game_db_load_async()
+                return
+            self._apply_selected_gpu(gpu_context)
             self._start_game_db_load_async()
             self._update_install_button_state()
         except Exception:
@@ -886,6 +961,7 @@ class OptiManagerApp:
         )
         can_install = (
             not self.multi_gpu_blocked
+            and not self._gpu_selection_pending
             and self.sheet_status
             and not self.sheet_loading
             and not self.install_in_progress
@@ -1665,10 +1741,11 @@ class OptiManagerApp:
         popup.title("Supported Game List")
         popup.transient(self.root)
         popup.grab_set()
+        popup.resizable(False, False)
         popup.configure(fg_color=_SURFACE)
         popup.withdraw()
-        popup.geometry("364x560")
-        popup.minsize(336, 460)
+        popup.geometry("388x592")
+        popup.minsize(352, 492)
 
         list_frame = ctk.CTkScrollableFrame(
             popup,
@@ -1703,10 +1780,37 @@ class OptiManagerApp:
             command=popup.destroy,
         ).pack(pady=(0, 14))
 
-        self._center_popup_on_root(popup, use_requested_size=True)
+        def _apply_supported_games_popup_geometry():
+            try:
+                self.root.update_idletasks()
+                popup.update_idletasks()
+
+                popup_w = max(1, int(popup.winfo_width() or popup.winfo_reqwidth() or 388))
+                popup_h = max(1, int(popup.winfo_height() or popup.winfo_reqheight() or 592))
+
+                screen_w = max(1, int(self.root.winfo_screenwidth() or popup_w))
+                screen_h = max(1, int(self.root.winfo_screenheight() or popup_h))
+                margin = 12
+
+                root_x = self.root.winfo_x()
+                root_y = self.root.winfo_y()
+                root_w = self.root.winfo_width()
+                x = root_x + (root_w // 2) - (popup_w // 2)
+                y = root_y
+                min_x = margin if popup_w + (margin * 2) < screen_w else 0
+                min_y = margin if popup_h + (margin * 2) < screen_h else 0
+                max_x = max(min_x, screen_w - popup_w - margin)
+                max_y = max(min_y, screen_h - popup_h - margin)
+                x = max(min_x, min(x, max_x))
+                y = max(min_y, min(y, max_y))
+                popup.geometry(f"+{x}+{y}")
+            except Exception:
+                logging.debug("Failed to size supported-games popup", exc_info=True)
+
         popup.deiconify()
-        popup.after(0, lambda p=popup: self._center_popup_on_root(p))
-        popup.after(80, lambda p=popup: self._center_popup_on_root(p))
+        _apply_supported_games_popup_geometry()
+        popup.after(0, _apply_supported_games_popup_geometry)
+        popup.after(80, _apply_supported_games_popup_geometry)
 
     def _center_popup_on_root(self, popup: ctk.CTkToplevel, use_requested_size: bool = False):
         try:
@@ -2032,9 +2136,17 @@ class OptiManagerApp:
     def _update_sheet_status(self):
         if self.multi_gpu_blocked:
             self.status_badge.configure(
-                text="  Dual GPU: Unsupported  " if not USE_KOREAN else "  듀얼 GPU: 미지원  ",
+                text="  GPU Config: Unsupported  " if not USE_KOREAN else "  GPU 구성: 미지원  ",
                 text_color="#FF8A8A",
                 fg_color="#4A2F34",
+            )
+            self.root.after(0, self._align_supported_games_count_label)
+            return
+        if self._gpu_selection_pending:
+            self.status_badge.configure(
+                text="  GPU Selection Required  " if not USE_KOREAN else "  GPU 선택 필요  ",
+                text_color="#FFCB62",
+                fg_color="#4B4330",
             )
             self.root.after(0, self._align_supported_games_count_label)
             return
