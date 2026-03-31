@@ -8,7 +8,6 @@ import time
 import tkinter.font as tkfont
 import math
 import hashlib
-import fnmatch
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 from tkinter import filedialog, messagebox
@@ -21,6 +20,7 @@ from typing import Optional
 import ctypes
 import locale
 import stat
+import gpu_service
 import installer_services
 import ini_utils
 import sheet_loader
@@ -53,6 +53,8 @@ except ModuleNotFoundError as e:
         f"Interpreter: {sys.executable}\n"
         f"Install with: \"{sys.executable}\" -m pip install python-dotenv"
     ) from e
+
+import rtss_notice
 
  # Application Version
 APP_VERSION = "0.2.1"
@@ -203,128 +205,6 @@ def _subprocess_no_window_kwargs() -> dict:
     startupinfo.wShowWindow = 0
     kwargs["startupinfo"] = startupinfo
     return kwargs
-
-
-def get_graphics_adapter_snapshot() -> tuple[list[str], int, str]:
-    """Return unique GPU names, detected adapter count, and a user-facing summary string."""
-    if os.name != "nt":
-        return [], 0, "Unknown (non-Windows OS)"
-
-    command = [
-        "powershell",
-        "-NoProfile",
-        "-Command",
-        "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name",
-    ]
-
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=8,
-            **_subprocess_no_window_kwargs(),
-        )
-        if result.returncode != 0:
-            return [], 0, "Unknown"
-
-        gpu_names_raw = []
-        for line in result.stdout.splitlines():
-            name = line.strip()
-            if name:
-                gpu_names_raw.append(name)
-
-        allowed_vendor_keywords = (
-            "intel", "amd", "nvidia",
-            "arc", "iris", "uhd",
-            "radeon",
-            "geforce", "rtx", "gtx", "quadro", "tesla",
-        )
-        filtered_names_unique = []
-        seen_filtered_names = set()
-        for name in gpu_names_raw:
-            lowered = name.lower()
-            if "mirage driver" in lowered:
-                continue
-            if any(keyword in lowered for keyword in allowed_vendor_keywords):
-                normalized_name = " ".join(lowered.split())
-                if normalized_name not in seen_filtered_names:
-                    seen_filtered_names.add(normalized_name)
-                    filtered_names_unique.append(name)
-
-        if filtered_names_unique:
-            # Only treat distinct GPU names as multi-GPU so duplicate WMI rows do not block installation.
-            return filtered_names_unique, len(filtered_names_unique), ", ".join(filtered_names_unique)
-    except Exception:
-        pass
-
-    return [], 0, "Unknown"
-
-
-def get_graphics_adapter_info():
-    """Return a user-friendly GPU name string for the current Windows machine."""
-    return get_graphics_adapter_snapshot()[2]
-
-
-def _detect_gpu_vendors(gpu_info: str) -> list[str]:
-    lowered = str(gpu_info or "").strip().lower()
-    if not lowered:
-        return []
-
-    keyword_map = {
-        "nvidia": ("nvidia", "geforce", "rtx", "gtx", "quadro", "tesla"),
-        "amd": ("amd", "radeon"),
-        "intel": ("intel", "arc", "iris", "uhd"),
-    }
-    # Prefer discrete GPUs first when multiple adapters are present.
-    vendor_priority = ("nvidia", "amd", "intel")
-    return [
-        vendor
-        for vendor in vendor_priority
-        if any(keyword in lowered for keyword in keyword_map[vendor])
-    ]
-
-
-def _resolve_game_db_target_for_gpu(gpu_info: str) -> tuple[str, int]:
-    vendors = _detect_gpu_vendors(gpu_info)
-    for vendor in vendors:
-        gid = GPU_VENDOR_DB_GIDS.get(vendor, SHEET_GID) or SHEET_GID
-        if gid:
-            return vendor, gid
-    return "default", SHEET_GID
-
-
-def _split_gpu_rule_patterns(rule_text: str) -> list[str]:
-    text = str(rule_text or "").strip()
-    if not text:
-        return []
-
-    normalized = text.replace("\r", "\n").replace("\n", "|").replace(";", "|").replace(",", "|")
-    return [token.strip().lower() for token in normalized.split("|") if token.strip()]
-
-
-def matches_gpu_rule(rule_text: str, gpu_text: str) -> bool:
-    patterns = _split_gpu_rule_patterns(rule_text)
-    if not patterns:
-        return False
-
-    if any(pattern == "all" for pattern in patterns):
-        return True
-
-    normalized_gpu = str(gpu_text or "").strip().lower()
-    if normalized_gpu in {"", "checking gpu...", "unknown"}:
-        return False
-
-    for pattern in patterns:
-        if pattern in {"null", "none"}:
-            continue
-        if any(char in pattern for char in "*?[]"):
-            if fnmatch.fnmatch(normalized_gpu, pattern):
-                return True
-        elif pattern in normalized_gpu:
-            return True
-    return False
-
 
 def _is_korean_ui() -> bool:
     """Return True if the Windows UI language is Korean (ko-KR, LCID 0x0412)."""
@@ -572,6 +452,12 @@ _PANEL = "#1E2128"
 _ACCENT_DISABLED = "#3A414C"
 FONT_HEADING = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
 FONT_UI = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
+RTSS_NOTICE_THEME = rtss_notice.RtssNoticeTheme(
+    surface_color=_SURFACE,
+    accent_color=_ACCENT,
+    accent_hover_color=_ACCENT_HOVER,
+    font_ui=FONT_UI,
+)
 
 
 class OptiManagerApp:
@@ -822,17 +708,21 @@ class OptiManagerApp:
 
     def _fetch_gpu_info_async(self):
         try:
-            gpu_names, gpu_count, info = get_graphics_adapter_snapshot()
+            gpu_context = gpu_service.detect_gpu_context(GPU_VENDOR_DB_GIDS, SHEET_GID)
         except Exception:
             logging.exception("Error fetching GPU info")
-            gpu_names = []
-            gpu_count = 0
-            info = "Unknown"
-        selected_vendor, selected_gid = _resolve_game_db_target_for_gpu(info)
+            gpu_context = gpu_service.GpuContext(
+                gpu_names=[],
+                gpu_count=0,
+                gpu_info="Unknown",
+                vendors=[],
+                selected_vendor="default",
+                selected_gid=SHEET_GID,
+            )
         try:
             self.root.after(
                 0,
-                lambda: self._update_gpu_ui(info, selected_vendor, selected_gid, gpu_names, gpu_count),
+                lambda: self._update_gpu_ui(gpu_context),
             )
         except Exception:
             logging.exception("Failed to schedule GPU UI update")
@@ -886,14 +776,14 @@ class OptiManagerApp:
         self._update_install_button_state()
         self._show_multi_gpu_block_popup()
 
-    def _update_gpu_ui(self, info: str, selected_vendor: str, selected_gid: int, gpu_names: list[str], gpu_count: int):
+    def _update_gpu_ui(self, gpu_context: gpu_service.GpuContext):
         try:
-            self.gpu_info = info
-            self.active_game_db_vendor = selected_vendor
-            self.active_game_db_gid = selected_gid or SHEET_GID
-            self.gpu_names = list(gpu_names or [])
-            self.gpu_count = max(0, int(gpu_count or 0))
-            self.is_multi_gpu = self.gpu_count > 1
+            self.gpu_info = gpu_context.gpu_info
+            self.active_game_db_vendor = gpu_context.selected_vendor
+            self.active_game_db_gid = gpu_context.selected_gid or SHEET_GID
+            self.gpu_names = list(gpu_context.gpu_names or [])
+            self.gpu_count = max(0, int(gpu_context.gpu_count or 0))
+            self.is_multi_gpu = gpu_context.is_multi_gpu
             self.multi_gpu_blocked = self._is_multi_gpu_block_active()
             if hasattr(self, 'gpu_lbl') and self.gpu_lbl:
                 self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
@@ -906,7 +796,7 @@ class OptiManagerApp:
             logging.exception("Failed to update GPU UI")
 
     def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
-        return matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_info)
+        return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_info)
 
     def _align_supported_games_count_label(self):
         try:
@@ -981,175 +871,6 @@ class OptiManagerApp:
                 logging.exception("Failed to open guide URL: %s", guide_url)
 
         self._show_game_selection_popup(msg, on_confirm=_on_confirm_open_guide, is_after_popup=True)
-
-    def _get_rtss_install_path(self) -> Path:
-        roots = [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]
-        subkeys = [r"SOFTWARE\WOW6432Node\Unwinder\RTSS", r"SOFTWARE\Unwinder\RTSS"]
-
-        for root in roots:
-            for subkey in subkeys:
-                try:
-                    with winreg.OpenKey(root, subkey, 0, winreg.KEY_READ) as key:
-                        val, _ = winreg.QueryValueEx(key, "InstallPath")
-                        if val:
-                            p = Path(val)
-                            # If the registry value points to RTSS.exe, use its parent folder
-                            if p.is_file() and p.name.lower() == "rtss.exe":
-                                p = p.parent
-                            if p.exists():
-                                return p
-                except Exception:
-                    continue
-        return Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "RivaTuner Statistics Server"
-
-    def _check_and_show_rtss_popup(self, logger=None):
-
-        try:
-            install_path = self._get_rtss_install_path()
-            profiles_dir = install_path / "Profiles"
-            global_path = profiles_dir / "Global"
-
-            # Do not show the popup if the RTSS folder or Global file does not exist
-            if not (profiles_dir.exists() and global_path.exists()):
-                if logger:
-                    logger.info(f"RTSS not installed or Global file missing at {global_path}")
-                return
-            lines = global_path.read_text(encoding="utf-8-sig", errors="ignore").splitlines()
-            ref_val, detours_val = None, None
-            for line in lines:
-                line = line.strip()
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    if k.strip() == "ReflexSetLatencyMarker":
-                        ref_val = v.strip()
-                    elif k.strip() == "UseDetours":
-                        detours_val = v.strip()
-            if logger:
-                logger.info(f"RTSS Global: UseDetours={detours_val}, ReflexSetLatencyMarker={ref_val}")
-
-            if ref_val == "0" and detours_val == "1":
-                if logger:
-                    logger.info("RTSS settings OK: UseDetours=1, ReflexSetLatencyMarker=0")
-                return
-
-            key = "rtss_kr" if USE_KOREAN else "rtss_en"
-            val = self.module_download_links.get(key, None)
-            msg = str(val or "").strip()
-            if not msg:
-                if USE_KOREAN:
-                    msg = (
-                        "RTSS 설정을 확인해주세요.\n\n"
-                        "[Global]\n"
-                        "UseDetours=1\n"
-                        "ReflexSetLatencyMarker=0\n\n"
-                        "위 설정이 적용되어 있는지 확인해 주세요."
-                    )
-                else:
-                    msg = "RTSS Configuration Check:\n\nPlease ensure the following settings in your Global profile:\nUseDetours=1\nReflexSetLatencyMarker=0"
-            self._show_rtss_popup(msg)
-        except Exception as e:
-            if logger:
-                logger.warning(f"Error during RTSS popup check: {e}")
-            else:
-                logging.warning(f"Error during RTSS popup check: {e}")
-
-    def _show_rtss_popup(self, message_text: str):
-
-        popup = ctk.CTkToplevel(self.root)
-        popup.title("RTSS Notice")
-        popup.transient(self.root)
-        popup.grab_set()
-        popup.resizable(False, False)
-        popup.configure(fg_color=_SURFACE)
-        popup.withdraw()
-
-        container = ctk.CTkFrame(popup, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=22, pady=(18, 12))
-
-
-        text = message_text or "(No message)"
-
-
-        # --- Create and fill message_widget before using it ---
-        pattern = re.compile(r"\[\s*RED\s*\](.*?)\[\s*END\s*\]", re.IGNORECASE | re.DOTALL)
-        last = 0
-        message_widget = tk.Text(
-            container,
-            wrap="word",
-            relief="flat",
-            borderwidth=0,
-            highlightthickness=0,
-            bg=_SURFACE,
-            fg="#E3EAF3",
-            width=58,
-        )
-        normal_font = tkfont.Font(family=FONT_UI, size=13)
-        red_font = tkfont.Font(family=FONT_UI, size=14, weight="bold")
-        message_widget.configure(font=normal_font)
-        message_widget.tag_configure("warning_red", foreground="#FF4D4F", font=red_font)
-
-        full_plain_text = ""
-        for m in pattern.finditer(text):
-            if m.start() > last:
-                normal = text[last:m.start()]
-                message_widget.insert("end", normal)
-                full_plain_text += normal
-            red_text = m.group(1)
-            if red_text:
-                message_widget.insert("end", red_text, ("warning_red",))
-                full_plain_text += red_text
-            last = m.end()
-        if last < len(text):
-            tail = text[last:]
-            message_widget.insert("end", tail)
-            full_plain_text += tail
-
-        line_count = max(1, min(16, full_plain_text.count("\n") + 1))
-        message_widget.configure(height=line_count)
-        message_widget.configure(state="disabled")
-        message_widget.pack(anchor="w", fill="x")
-
-        # --- Now show RTSS.webp image below the text ---
-        try:
-            img_path = Path(__file__).resolve().parent / "assets" / "RTSS.webp"
-            if img_path.exists():
-                pil_img = Image.open(img_path)
-                orig_w, orig_h = pil_img.size
-                new_w = int(orig_w * 0.75)
-                new_h = int(orig_h * 0.75)
-                ctk_image = ctk.CTkImage(light_image=pil_img, size=(new_w, new_h))
-                img_label = ctk.CTkLabel(container, image=ctk_image, text="")
-                img_label.image = ctk_image  # Prevent garbage collection
-                img_label.pack(pady=(12, 0))
-        except Exception:
-            pass
-
-
-        def _close_popup():
-            try:
-                popup.grab_release()
-            except Exception:
-                pass
-            popup.destroy()
-
-        ctk.CTkButton(
-            popup,
-            text="OK",
-            width=100,
-            height=34,
-            corner_radius=8,
-            fg_color=_ACCENT,
-            hover_color=_ACCENT_HOVER,
-            text_color="#000000",
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
-            command=_close_popup,
-        ).pack(pady=(0, 14))
-
-        popup.protocol("WM_DELETE_WINDOW", _close_popup)
-        self._center_popup_on_root(popup, use_requested_size=True)
-        popup.deiconify()
-        popup.after(0, lambda p=popup: self._center_popup_on_root(p))
-        popup.after(80, lambda p=popup: self._center_popup_on_root(p))
 
     def _update_install_button_state(self):
         if not hasattr(self, "apply_btn"):
@@ -1420,7 +1141,14 @@ class OptiManagerApp:
         logger = None
         if getattr(self, "found_exe_list", None) and self.selected_game_index is not None:
             logger = get_prefixed_logger(self.found_exe_list[self.selected_game_index].get("game_name", "unknown"))
-        self._check_and_show_rtss_popup(logger=logger)
+        rtss_notice.check_and_show_rtss_notice(
+            root=self.root,
+            module_download_links=self.module_download_links,
+            use_korean=USE_KOREAN,
+            assets_dir=ASSETS_DIR,
+            theme=RTSS_NOTICE_THEME,
+            logger=logger,
+        )
 
         if not ok:
             return
@@ -3559,7 +3287,7 @@ class OptiManagerApp:
                 logger.exception("Failed while handling engine.ini for %s", target_path)
 
             unreal5_rule = str(game_data.get("unreal5_rule", "") or "").strip()
-            if matches_gpu_rule(unreal5_rule, self.gpu_info) and unreal_url:
+            if gpu_service.matches_gpu_rule(unreal5_rule, self.gpu_info) and unreal_url:
                 unreal_installed = installer_services.install_unreal5_from_url(unreal_url, target_path, logger=logger)
                 if unreal_installed:
                     logger.info(f"Installed Unreal5 patch from {unreal_url} to {target_path}")
@@ -3591,8 +3319,8 @@ class OptiManagerApp:
 
 if __name__ == "__main__":
     if "--edit-engine-ini" in sys.argv:
-        gpu_info = get_graphics_adapter_info()
-        _, selected_sheet_gid = _resolve_game_db_target_for_gpu(gpu_info)
+        gpu_info = gpu_service.get_graphics_adapter_info()
+        _, selected_sheet_gid = gpu_service.resolve_game_db_target_for_gpu(gpu_info, GPU_VENDOR_DB_GIDS, SHEET_GID)
         logging.info(
             "Running engine.ini edits from Google Sheet (gid=%s, gpu=%s)",
             selected_sheet_gid,
