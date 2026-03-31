@@ -119,6 +119,7 @@ def _evaluate_rtss_notice(
     use_korean: bool,
     logger: Any = None,
 ) -> RtssNoticeDecision:
+    _log_info_if_logger(logger, "[RTSS] Starting notice check")
     install_path = _get_rtss_install_path()
     profiles_dir = install_path / "Profiles"
     global_path = profiles_dir / "Global"
@@ -137,13 +138,13 @@ def _evaluate_rtss_notice(
     ref_val, detours_val = _read_rtss_global_settings(global_path)
     _log_info_if_logger(
         logger,
-        "RTSS Global: UseDetours=%s, ReflexSetLatencyMarker=%s",
+        "[RTSS] Global settings: UseDetours=%s, ReflexSetLatencyMarker=%s",
         detours_val,
         ref_val,
     )
 
     if _is_rtss_config_ok(ref_val, detours_val):
-        _log_info_if_logger(logger, "RTSS settings OK: UseDetours=1, ReflexSetLatencyMarker=0")
+        _log_info_if_logger(logger, "[RTSS] Settings OK, notice not shown")
         return RtssNoticeDecision(
             should_show=False,
             message_text="",
@@ -153,6 +154,7 @@ def _evaluate_rtss_notice(
             detours_value=detours_val,
         )
 
+    _log_info_if_logger(logger, "[RTSS] Settings require notice, popup will be shown")
     return RtssNoticeDecision(
         should_show=True,
         message_text=_build_rtss_message(module_download_links, use_korean),
