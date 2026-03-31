@@ -661,17 +661,6 @@ class OptiManagerApp:
                 break
 
         text_widget.configure(width=chosen_width, height=resolved_line_count, state="disabled")
-        popup.update_idletasks()
-        actual_width_px = max(32, int(text_widget.winfo_width() or text_widget.winfo_reqwidth() or (zero_char_width * chosen_width)))
-        actual_line_count = _estimate_wrapped_text_lines(
-            plain_message_text,
-            normal_font,
-            actual_width_px,
-        )
-        if actual_line_count != resolved_line_count:
-            resolved_line_count = actual_line_count
-            text_widget.configure(height=resolved_line_count)
-            popup.update_idletasks()
 
         def _confirm():
             try:
