@@ -520,7 +520,7 @@ GPU_NOTICE_THEME = gpu_notice.GpuNoticeTheme(
 class OptiManagerApp:
     def __init__(self, root: ctk.CTk):
         self.root = root
-        self.root.title(f"OptiScaler Installer (v{APP_VERSION})")
+        self.root.title(f"OptiScaler Installer v{APP_VERSION}")
         screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
         screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
         target_w = min(WINDOW_W, max(WINDOW_MIN_W, screen_w - 40))
