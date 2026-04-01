@@ -348,6 +348,17 @@ def _build_expected_installer_exe_name(version_text: str, fallback_url: str = ""
     return ""
 
 
+def _format_optiscaler_version_display_name(raw_name: str) -> str:
+    name = Path(str(raw_name or "").strip()).name
+    if not name:
+        return ""
+
+    name = re.sub(r"(?i)\.(zip|7z)$", "", name).strip()
+    name = re.sub(r"(?i)^optiscaler", "", name).lstrip()
+    name = re.sub(r"^[-_]+", "", name).lstrip()
+    return re.sub(r"\s+", " ", name).strip()
+
+
 def _resolve_safe_child_path(base_dir: Path, child_path: str) -> Optional[Path]:
     raw_name = str(child_path or "").replace("\\", "/").strip()
     if not raw_name:
@@ -476,6 +487,7 @@ _STATUS_INDICATOR_ONLINE = "#7EE1AA"
 _STATUS_INDICATOR_WARNING = "#FFCB62"
 _STATUS_INDICATOR_OFFLINE = "#FF8A8A"
 _STATUS_INDICATOR_SIZE = 10
+_STATUS_INDICATOR_Y_OFFSET = 2
 _STATUS_INDICATOR_PULSE_MS = 620
 _CONTENT_SIDE_PAD = 20
 _META_RIGHT_PAD = 5
@@ -2135,7 +2147,13 @@ class OptiManagerApp:
             fg_color=_STATUS_INDICATOR_LOADING,
             corner_radius=_STATUS_INDICATOR_SIZE // 2,
         )
-        self.status_badge_dot.grid(row=0, column=0, padx=(0, 8), sticky="w")
+        self.status_badge_dot.grid(
+            row=0,
+            column=0,
+            padx=(0, 8),
+            pady=(_STATUS_INDICATOR_Y_OFFSET, 0),
+            sticky="w",
+        )
 
         self.status_badge_label = ctk.CTkLabel(
             self.status_badge,
@@ -2383,12 +2401,15 @@ class OptiManagerApp:
         else:
             version = ""
 
-        if archive_name:
-            version_text = f"Install Version: {archive_name}"
-        elif version:
-            version_text = f"Install Version: {version}"
+        archive_display_name = _format_optiscaler_version_display_name(archive_name)
+        version_display_name = _format_optiscaler_version_display_name(version)
+
+        if archive_display_name:
+            version_text = f"OptiScaler Version: {archive_display_name}"
+        elif version_display_name:
+            version_text = f"OptiScaler Version: {version_display_name}"
         else:
-            version_text = "Install Version: -"
+            version_text = "OptiScaler Version: -"
 
         if hasattr(self, "lbl_optiscaler_version_line"):
             self.lbl_optiscaler_version_line.configure(text=version_text, text_color="#AEB9C8")
