@@ -1263,6 +1263,32 @@ class OptiManagerApp:
         parsed = urlparse(url)
         return Path(parsed.path).name
 
+    def _list_stale_optiscaler_archive_paths(self, keep_filename: str) -> list[Path]:
+        cache_dir = Path(getattr(self, "optiscaler_cache_dir", OPTISCALER_CACHE_DIR))
+        if not cache_dir.exists():
+            return []
+
+        keep_name = Path(str(keep_filename or "")).name.casefold()
+        archive_suffixes = {".7z", ".zip", ".rar", ".tar", ".gz", ".xz", ".bz2"}
+        stale_paths: list[Path] = []
+        for cache_path in cache_dir.iterdir():
+            if not cache_path.is_file():
+                continue
+            if keep_name and cache_path.name.casefold() == keep_name:
+                continue
+            if cache_path.suffix.lower() not in archive_suffixes:
+                continue
+            stale_paths.append(cache_path)
+        return sorted(stale_paths)
+
+    def _cleanup_stale_optiscaler_archives(self, keep_filename: str):
+        for stale_path in self._list_stale_optiscaler_archive_paths(keep_filename):
+            try:
+                stale_path.unlink()
+                logging.info("[APP] Removed stale OptiScaler archive cache: %s", stale_path)
+            except OSError:
+                logging.warning("[APP] Failed to remove stale OptiScaler archive cache: %s", stale_path, exc_info=True)
+
     def _start_optiscaler_archive_prepare(self):
         entry = self._get_optiscaler_archive_entry()
         url = str(entry.get("url", "")).strip()
@@ -1290,6 +1316,7 @@ class OptiManagerApp:
             self.optiscaler_archive_downloading = False
             self.optiscaler_archive_error = ""
             logging.info("[APP] OptiScaler archive already cached: %s", cache_path)
+            self._cleanup_stale_optiscaler_archives(filename)
             self._update_install_button_state()
             return
 
@@ -1328,6 +1355,7 @@ class OptiManagerApp:
             self.optiscaler_archive_error = ""
             self.opti_source_archive = archive_path
             logging.info("[APP] OptiScaler archive is ready: %s", archive_path)
+            self._cleanup_stale_optiscaler_archives(archive_name)
 
         self._update_install_button_state()
 
