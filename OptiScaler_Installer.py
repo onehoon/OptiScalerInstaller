@@ -1,5 +1,6 @@
 ﻿import os
 import io
+import shutil
 import subprocess
 import tempfile
 import zipfile
@@ -264,6 +265,8 @@ _SM_CONVERTIBLESLATEMODE = 0x2003
 LOCAL_APPDATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path(tempfile.gettempdir()))
 APP_CACHE_DIR = LOCAL_APPDATA_DIR / "OptiScalerInstaller"
 OPTISCALER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optiscaler"
+FSR4_CACHE_DIR = APP_CACHE_DIR / "cache" / "fsr4"
+FSR4_SKIP_GPU_RULE = "*rx 90*"
 APP_BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 ASSETS_DIR = APP_BASE_DIR / "assets"
 DEFAULT_POSTER_CANDIDATES = [
@@ -556,12 +559,19 @@ class OptiManagerApp:
 
         self.game_folder = ""
         self.opti_source_archive = ""
+        self.fsr4_source_archive = ""
         self.optiscaler_cache_dir = OPTISCALER_CACHE_DIR
         self.optiscaler_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.fsr4_cache_dir = FSR4_CACHE_DIR
+        self.fsr4_cache_dir.mkdir(parents=True, exist_ok=True)
         self.optiscaler_archive_ready = False
         self.optiscaler_archive_downloading = False
         self.optiscaler_archive_error = ""
         self.optiscaler_archive_filename = ""
+        self.fsr4_archive_ready = False
+        self.fsr4_archive_downloading = False
+        self.fsr4_archive_error = ""
+        self.fsr4_archive_filename = ""
         self.app_update_in_progress = False
         self._post_sheet_startup_done = False
         self._startup_popup_queue: list[dict[str, object]] = []
@@ -940,6 +950,20 @@ class OptiManagerApp:
     def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
         return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_info)
 
+    def _matches_fsr4_skip_rule(self, rule_text: str) -> bool:
+        return gpu_service.matches_gpu_rule(FSR4_SKIP_GPU_RULE, rule_text)
+
+    def _should_apply_fsr4_for_game(self, game_data: Optional[dict] = None) -> bool:
+        if self._matches_fsr4_skip_rule(self.gpu_info):
+            return False
+
+        if isinstance(game_data, dict):
+            supported_gpu_rule = str(game_data.get("supported_gpu", "") or "").strip()
+            if supported_gpu_rule and self._matches_fsr4_skip_rule(supported_gpu_rule):
+                return False
+
+        return True
+
     def _measure_meta_label_width(self) -> int:
         try:
             meta_font = tkfont.Font(family=FONT_UI, size=12, weight="bold")
@@ -1076,6 +1100,17 @@ class OptiManagerApp:
             self._is_game_supported_for_current_gpu(self.found_exe_list[self.selected_game_index])
             if has_valid_game else True
         )
+        fsr4_required = (
+            self._should_apply_fsr4_for_game(self.found_exe_list[self.selected_game_index])
+            if has_valid_game else False
+        )
+        fsr4_ready = (
+            not fsr4_required
+            or (
+                self.fsr4_archive_ready
+                and not self.fsr4_archive_downloading
+            )
+        )
         can_install = (
             not self.multi_gpu_blocked
             and not self._gpu_selection_pending
@@ -1088,6 +1123,7 @@ class OptiManagerApp:
             and self.install_precheck_ok
             and self.optiscaler_archive_ready
             and not self.optiscaler_archive_downloading
+            and fsr4_ready
             and has_supported_gpu
             and getattr(self, "_game_popup_confirmed", False)
         )
@@ -1263,6 +1299,22 @@ class OptiManagerApp:
         parsed = urlparse(url)
         return Path(parsed.path).name
 
+    def _get_fsr4_archive_entry(self) -> dict:
+        entry = self.module_download_links.get("fsr4int8", {}) if hasattr(self, "module_download_links") else {}
+        return entry if isinstance(entry, dict) else {}
+
+    def _get_expected_fsr4_archive_name(self) -> str:
+        entry = self._get_fsr4_archive_entry()
+        filename = str(entry.get("filename", "") or entry.get("version", "")).strip()
+        if filename:
+            return Path(filename).name
+
+        url = str(entry.get("url", "")).strip()
+        if not url:
+            return ""
+        parsed = urlparse(url)
+        return Path(parsed.path).name
+
     def _list_stale_optiscaler_archive_paths(self, keep_filename: str) -> list[Path]:
         cache_dir = Path(getattr(self, "optiscaler_cache_dir", OPTISCALER_CACHE_DIR))
         if not cache_dir.exists():
@@ -1306,6 +1358,7 @@ class OptiManagerApp:
                 filename,
                 entry,
             )
+            self._start_fsr4_archive_prepare()
             self._update_install_button_state()
             return
 
@@ -1317,6 +1370,7 @@ class OptiManagerApp:
             self.optiscaler_archive_error = ""
             logging.info("[APP] OptiScaler archive already cached: %s", cache_path)
             self._cleanup_stale_optiscaler_archives(filename)
+            self._start_fsr4_archive_prepare()
             self._update_install_button_state()
             return
 
@@ -1356,6 +1410,99 @@ class OptiManagerApp:
             self.opti_source_archive = archive_path
             logging.info("[APP] OptiScaler archive is ready: %s", archive_path)
             self._cleanup_stale_optiscaler_archives(archive_name)
+
+        self._start_fsr4_archive_prepare()
+        self._update_install_button_state()
+
+    def _start_fsr4_archive_prepare(self):
+        if not self._should_apply_fsr4_for_game():
+            self.fsr4_archive_ready = False
+            self.fsr4_archive_downloading = False
+            self.fsr4_archive_error = ""
+            self.fsr4_archive_filename = ""
+            self.fsr4_source_archive = ""
+            logging.info("[APP] Skipping FSR4 preparation for GPU: %s", self.gpu_info)
+            self._update_install_button_state()
+            return
+
+        entry = self._get_fsr4_archive_entry()
+        url = str(entry.get("url", "")).strip()
+        filename = self._get_expected_fsr4_archive_name()
+        self.fsr4_archive_filename = filename
+
+        if not url or not filename:
+            self.fsr4_archive_ready = False
+            self.fsr4_archive_downloading = False
+            self.fsr4_archive_error = "Missing FSR4 download metadata in sheet."
+            self.fsr4_source_archive = ""
+            logging.warning(
+                "[APP] FSR4 preparation skipped: missing metadata (filename=%r, entry=%r)",
+                filename,
+                entry,
+            )
+            self._update_install_button_state()
+            return
+
+        cache_path = self.fsr4_cache_dir / filename
+        self.fsr4_source_archive = str(cache_path)
+        if cache_path.exists():
+            if cache_path.suffix.lower() == ".zip" and not zipfile.is_zipfile(cache_path):
+                logging.warning("[APP] Cached FSR4 file is invalid, removing and downloading again: %s", cache_path)
+                try:
+                    cache_path.unlink()
+                except OSError as exc:
+                    self.fsr4_archive_ready = False
+                    self.fsr4_archive_downloading = False
+                    self.fsr4_archive_error = f"Failed to remove invalid FSR4 cache: {exc}"
+                    self.fsr4_source_archive = ""
+                    self._update_install_button_state()
+                    return
+            else:
+                self.fsr4_archive_ready = True
+                self.fsr4_archive_downloading = False
+                self.fsr4_archive_error = ""
+                logging.info("[APP] FSR4 already cached: %s", cache_path)
+                self._update_install_button_state()
+                return
+
+        self.fsr4_archive_ready = False
+        self.fsr4_archive_downloading = True
+        self.fsr4_archive_error = ""
+        logging.info("[APP] Starting FSR4 download: %s", filename)
+        self._update_install_button_state()
+        self._download_executor.submit(self._download_fsr4_archive_worker, url, str(cache_path), filename)
+
+    def _download_fsr4_archive_worker(self, url: str, dest_path: str, archive_name: str):
+        try:
+            installer_services.download_to_file(url, dest_path, timeout=300)
+            if Path(dest_path).suffix.lower() == ".zip" and not zipfile.is_zipfile(dest_path):
+                Path(dest_path).unlink(missing_ok=True)
+                raise RuntimeError(f"Downloaded FSR4 file is not a valid zip file: {dest_path}")
+            logging.info("[APP] FSR4 download completed: %s", dest_path)
+            self.root.after(
+                0,
+                lambda path=dest_path, name=archive_name: self._on_fsr4_archive_ready(path, name, None),
+            )
+        except Exception as exc:
+            logging.error("[APP] FSR4 download failed: %s", exc)
+            self.root.after(
+                0,
+                lambda err=str(exc): self._on_fsr4_archive_ready("", archive_name, err),
+            )
+
+    def _on_fsr4_archive_ready(self, archive_path: str, archive_name: str, error_message: Optional[str]):
+        self.fsr4_archive_filename = archive_name
+        self.fsr4_archive_downloading = False
+        if error_message:
+            self.fsr4_archive_ready = False
+            self.fsr4_archive_error = error_message
+            self.fsr4_source_archive = ""
+            logging.warning("[APP] FSR4 is not ready: %s", error_message)
+        else:
+            self.fsr4_archive_ready = True
+            self.fsr4_archive_error = ""
+            self.fsr4_source_archive = archive_path
+            logging.info("[APP] FSR4 is ready: %s", archive_path)
 
         self._update_install_button_state()
 
@@ -3603,14 +3750,26 @@ class OptiManagerApp:
             messagebox.showwarning("Warning", "Please select a valid game item.")
             return
 
+        selected_game = self.found_exe_list[self.selected_game_index]
+        fsr4_required = self._should_apply_fsr4_for_game(selected_game)
+        if fsr4_required and self.fsr4_archive_downloading:
+            messagebox.showinfo("Preparing Download", "FSR4 download is still in progress. Please wait.")
+            return
+
+        if fsr4_required and (not self.fsr4_archive_ready or not getattr(self, "fsr4_source_archive", None)):
+            detail = self.fsr4_archive_error or "FSR4 is not ready yet."
+            messagebox.showwarning("Warning", detail)
+            return
+
         # Block install if popup not confirmed
         if not getattr(self, "_game_popup_confirmed", True):
             messagebox.showwarning("Notice", "Please confirm the popup before installing.")
             return
 
-        game_data = dict(self.found_exe_list[self.selected_game_index])
+        game_data = dict(selected_game)
         source_archive = self.opti_source_archive
         resolved_dll_name = self.install_precheck_dll_name
+        fsr4_source_archive = self.fsr4_source_archive if fsr4_required else ""
 
         self.install_in_progress = True
         self.apply_btn.configure(
@@ -3621,9 +3780,16 @@ class OptiManagerApp:
             border_color=_INSTALL_BUTTON_BORDER_DISABLED,
         )
 
-        self._task_executor.submit(self._apply_optiscaler_worker, game_data, source_archive, resolved_dll_name)
+        self._task_executor.submit(
+            self._apply_optiscaler_worker,
+            game_data,
+            source_archive,
+            resolved_dll_name,
+            fsr4_source_archive,
+            fsr4_required,
+        )
 
-    def _apply_optiscaler_worker(self, game_data, source_archive, resolved_dll_name):
+    def _apply_optiscaler_worker(self, game_data, source_archive, resolved_dll_name, fsr4_source_archive, fsr4_required):
         target_path = game_data["path"]
         game_name = str(game_data.get("game_name", "unknown")).strip() or "unknown"
         logger = get_prefixed_logger(game_name)
@@ -3748,6 +3914,30 @@ class OptiManagerApp:
                     logger.info(f"Installed Unreal5 patch from {unreal_url} to {target_path}")
                 else:
                     logger.info("Skipped Unreal5 patch because dxgi.dll is already present in %s", target_path)
+
+            if fsr4_required:
+                if not fsr4_source_archive:
+                    raise FileNotFoundError("FSR4 is not ready")
+
+                # Overwrite the DLL installed from the OptiScaler archive at the very end.
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    installer_services.extract_archive(fsr4_source_archive, tmpdir, logger=None)
+                    dll_candidates = [path for path in Path(tmpdir).rglob("*.dll") if path.is_file()]
+                    if not dll_candidates:
+                        raise FileNotFoundError("No DLL found inside FSR4 zip")
+                    if len(dll_candidates) > 1:
+                        raise RuntimeError("Multiple DLL files found inside FSR4 zip")
+
+                    source_dll = dll_candidates[0]
+                    destination_dll = Path(target_path) / source_dll.name
+                    try:
+                        os.chmod(destination_dll, 0o666)
+                    except OSError:
+                        pass
+                    shutil.copy2(source_dll, destination_dll)
+                    logger.info("Installed FSR4 DLL to %s", destination_dll)
+            else:
+                logger.info("Skipped FSR4 install for current GPU/game selection")
 
             logger.info("Install completed")
             self.root.after(

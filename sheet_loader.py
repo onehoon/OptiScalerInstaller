@@ -1,9 +1,11 @@
 import csv
 import io
 import logging
+import re
 import time
 import unicodedata
 from typing import Optional
+from urllib.parse import parse_qs, urlparse
 
 from network_utils import get_shared_retry_session
 
@@ -379,7 +381,7 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
             continue
 
         raw_link = str(row[link_idx]).strip()
-        download_url = _normalize_optional_url(raw_link)
+        download_url = _normalize_download_url(raw_link)
         if not download_url:
             continue
 
@@ -419,6 +421,29 @@ def _normalize_optional_url(value):
             candidate = "https://" + candidate
         return candidate
     return ""
+
+
+def _normalize_download_url(value):
+    normalized = _normalize_optional_url(value)
+    if not normalized:
+        return ""
+
+    try:
+        parsed = urlparse(normalized)
+        host = str(parsed.netloc or "").strip().lower()
+        if host in {"drive.google.com", "www.drive.google.com"}:
+            file_id = ""
+            match = re.search(r"/file/d/([^/]+)", parsed.path)
+            if match:
+                file_id = str(match.group(1) or "").strip()
+            else:
+                file_id = str((parse_qs(parsed.query).get("id") or [""])[0]).strip()
+            if file_id:
+                return f"https://drive.google.com/uc?export=download&id={file_id}"
+    except Exception:
+        logging.debug("Failed to normalize download URL: %s", normalized, exc_info=True)
+
+    return normalized
 
 
 def _norm_key(s: Optional[str]) -> str:
