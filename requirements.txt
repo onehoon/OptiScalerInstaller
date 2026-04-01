@@ -2,3 +2,4 @@ requests
 customtkinter
 Pillow
 py7zr
+python-dotenv
