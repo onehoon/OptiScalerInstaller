@@ -206,7 +206,7 @@ def resolve_proxy_dll_name(target_path, preferred_name="", logger=None) -> str:
                 )
             return candidate
         if logger:
-            logger.info("Proxy DLL name already in use by non-OptiScaler file, skipping: %s", candidate)
+            logger.info("OptiScaler DLL name already in use by non-OptiScaler file, skipping: %s", candidate)
 
     raise RuntimeError(
         "No available OptiScaler DLL names for installation. "

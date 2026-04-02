@@ -1,5 +1,5 @@
-"""Game-specific behavior and handlers."""
+"""Game-specific behavior, scanning, and handlers."""
 
-from . import handlers
+from . import handlers, scanner
 
-__all__ = ["handlers"]
+__all__ = ["handlers", "scanner"]

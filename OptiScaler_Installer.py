@@ -35,6 +35,7 @@ from installer.app import (
 from installer.common import subprocess_no_window_kwargs
 from installer.config import ini_utils
 from installer.data import sheet_loader
+from installer.games import scanner as game_scanner
 from installer.install import (
     OPTISCALER_ASI_NAME,
     install_optipatcher,
@@ -44,8 +45,6 @@ from installer.install import (
     services as installer_services,
 )
 from installer.system import gpu_service
-if os.name == "nt":
-    import winreg
 
 try:
     import customtkinter as ctk
@@ -2006,82 +2005,37 @@ class OptiManagerApp:
             fade_controller=fade_controller,
         )
 
-    def _get_auto_scan_paths(self) -> list:
-        """Return existing directories to scan automatically on startup."""
-        paths = []
-        seen = set()
-
-        # 1. Custom paths that should always be scanned if they exist
-        custom_candidates = [
-            Path("D:/") / "game",
-            Path("D:/") / "games",
-            Path("E:/") / "game",
-            Path("E:/") / "games",
-        ]
-
-        for p in custom_candidates:
-            if p.exists() and p.is_dir():
-                resolved = str(p).lower()
-                if resolved not in seen:
-                    seen.add(resolved)
-                    paths.append(str(p))
-
-        # 2. Steam Library Detection (Registry + VDF)
-        steam_paths = []
-        try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
-                base_steam_path_str, _ = winreg.QueryValueEx(key, "SteamPath")
-            
-            base_steam_path = Path(base_steam_path_str)
-            steam_paths.append(base_steam_path / "steamapps" / "common")
-
-            vdf_path = base_steam_path / "steamapps" / "libraryfolders.vdf"
-            if vdf_path.exists():
-                try:
-                    with open(vdf_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-                    matches = re.findall(r'"path"\s+"([^"]+)"', content, re.IGNORECASE)
-                    for match in matches:
-                        clean_path = match.replace("\\\\", "\\")
-                        steam_paths.append(Path(clean_path) / "steamapps" / "common")
-                except Exception as e:
-                    logging.warning("Error parsing libraryfolders.vdf: %s", e)
-        except Exception as e:
-            logging.debug("Steam registry detection failed: %s", e)
-
-        # 3. Fallback Steam paths (only if auto-detection found nothing valid)
-        if not any(p.exists() and p.is_dir() for p in steam_paths):
-            steam_paths.append(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Steam" / "steamapps" / "common")
-            steam_paths.append(Path("D:/") / "SteamLibrary" / "steamapps" / "common")
-            steam_paths.append(Path("E:/") / "SteamLibrary" / "steamapps" / "common")
-
-        for p in steam_paths:
-            if p.exists() and p.is_dir():
-                resolved = str(p).lower()
-                if resolved not in seen:
-                    seen.add(resolved)
-                    paths.append(str(p))
-
-        return paths
-
     def _start_auto_scan(self):
         """Kick off a silent auto-scan of known Steam/game directories."""
         if self.multi_gpu_blocked:
             return
-        scan_paths = self._get_auto_scan_paths()
+        scan_paths = game_scanner.get_auto_scan_paths(logger=logging.getLogger())
         if not scan_paths:
             return
 
+        self._begin_scan(scan_paths, is_auto=True)
+
+    def _begin_scan(self, scan_paths: list[str], *, is_auto: bool) -> None:
         self._set_supported_games_value(0)
         self._set_scan_status_message("Scanning...", "#F1F5F9")
         self.found_exe_list = []
         self._clear_cards()
         self._configure_card_columns(self._get_dynamic_column_count())
         self._scan_in_progress = True
-        self._auto_scan_active = True
+        self._auto_scan_active = bool(is_auto)
         self.btn_select_folder.configure(state="disabled")
 
-        self._task_executor.submit(self._scan_worker, scan_paths)
+        self._task_executor.submit(
+            game_scanner.run_scan_job,
+            scan_paths,
+            self.game_db,
+            use_korean=USE_KOREAN,
+            is_game_supported=self._is_game_supported_for_current_gpu,
+            schedule=lambda callback: self.root.after(0, callback),
+            on_game_found=self._on_game_found,
+            on_complete=self._on_scan_complete,
+            logger=logging.getLogger(),
+        )
 
     def _show_supported_games_popup(self, on_close=None):
         if self.multi_gpu_blocked:
@@ -3561,114 +3515,7 @@ class OptiManagerApp:
         if not self.game_folder:
             return
 
-        self._set_supported_games_value(0)
-        self._set_scan_status_message("Scanning...", "#F1F5F9")
-        self.found_exe_list = []
-        self._clear_cards()
-        self._configure_card_columns(self._get_dynamic_column_count())
-        self._scan_in_progress = True
-        self._auto_scan_active = False
-        self.btn_select_folder.configure(state="disabled")
-
-        self._task_executor.submit(self._scan_worker, [self.game_folder])
-
-    def _scan_worker(self, game_folders: list):
-        """Background thread: walk one or more folders, post each found game to the main thread."""
-        try:
-            found_games = []
-            seen_paths = set()  # deduplicate by (sheet rule key, normalised_dir)
-            match_index = {}
-            for entry_key, entry in self.game_db.items():
-                required_files = tuple(entry.get("match_files") or [entry_key])
-                for token in required_files:
-                    match_index.setdefault(token, []).append((entry_key, entry))
-
-            for game_folder in game_folders:
-                try:
-                    folder_iter = os.walk(game_folder)
-                except Exception as walk_err:
-                    logging.debug("Cannot walk %s: %s", game_folder, walk_err)
-                    continue
-                for root_dir, _, files in folder_iter:
-                    if not files:
-                        continue
-
-                    file_lookup = {}
-                    for file in files:
-                        key = file.lower()
-                        if key not in file_lookup:
-                            file_lookup[key] = file
-
-                    candidate_entries = {}
-                    for key in file_lookup:
-                        for entry_key, entry in match_index.get(key, ()):
-                            candidate_entries[entry_key] = entry
-
-                    if not candidate_entries:
-                        continue
-
-                    normalized_root = os.path.normcase(root_dir)
-                    for entry_key, entry in candidate_entries.items():
-                        required_files = entry.get("match_files") or [entry_key]
-                        if not all(token in file_lookup for token in required_files):
-                            continue
-
-                        dedup_key = (entry_key, normalized_root)
-                        if dedup_key in seen_paths:
-                            continue
-                        seen_paths.add(dedup_key)
-
-                        if not self._is_game_supported_for_current_gpu(entry):
-                            continue
-
-                        anchor_key = str(entry.get("match_anchor", "")).strip().lower()
-                        matched_file = file_lookup.get(anchor_key)
-                        if not matched_file:
-                            matched_file = next(
-                                (file_lookup[token] for token in required_files if token.endswith(".exe") and token in file_lookup),
-                                "",
-                            )
-                        if not matched_file and required_files:
-                            matched_file = file_lookup.get(required_files[0], required_files[0])
-
-                        _kr_display = entry.get("game_name_kr", "") if USE_KOREAN else ""
-                        _kr_info = entry.get("information_kr", "") if USE_KOREAN else ""
-                        game = {
-                            "path": root_dir,
-                            "exe": matched_file,
-                            "display": _kr_display or entry["display"],
-                            "game_name": entry.get("game_name", entry.get("display", "")),
-                            "dll_name": entry["dll_name"],
-                            "ultimate_asi_loader": entry.get("ultimate_asi_loader", False),
-                            "ini_settings": entry.get("ini_settings", {}),
-                            "ingame_ini": entry.get("ingame_ini", ""),
-                            "ingame_settings": entry.get("ingame_settings", {}),
-                            "engine_ini_location": entry.get("engine_ini_location", ""),
-                            "engine_ini_type": entry.get("engine_ini_type", ""),
-                            "module_dl": entry.get("module_dl", ""),
-                            "optipatcher": entry.get("optipatcher", False),
-                            "unreal5_url": entry.get("unreal5_url", ""),
-                            "unreal5_rule": entry.get("unreal5_rule", ""),
-                            "reframework_url": entry.get("reframework_url", ""),
-                            "information": _kr_info or entry.get("information", ""),
-                            "cover_url": entry.get("cover_url", ""),
-                            "supported_gpu": entry.get("supported_gpu", ""),
-                            "sheet_order": int(entry.get("sheet_order", 10**9)),
-                            "popup_kr": entry.get("popup_kr", ""),
-                            "popup_en": entry.get("popup_en", ""),
-                            "after_popup_kr": entry.get("after_popup_kr", ""),
-                            "after_popup_en": entry.get("after_popup_en", ""),
-                            "guidepage_after_installation": entry.get("guidepage_after_installation", ""),
-                        }
-                        found_games.append(game)
-
-            found_games.sort(key=lambda g: int(g.get("sheet_order", 10**9)))
-            for game in found_games:
-                self.root.after(0, lambda g=game: self._on_game_found(g))
-        except Exception as exc:
-            logging.error("Scan worker error: %s", exc)
-        finally:
-            self.root.after(0, self._on_scan_complete)
+        self._begin_scan([self.game_folder], is_auto=False)
 
     def _on_game_found(self, game: dict):
         """Main-thread callback: add one game card immediately as it is discovered."""
