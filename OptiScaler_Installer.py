@@ -22,11 +22,8 @@ import ctypes
 import locale
 import stat
 from installer.app import (
-    PopupFadeController,
-    create_modal_popup,
     gpu_notice,
     message_popup,
-    present_modal_popup,
     render_markup_to_text_widget,
     rtss_notice,
     strip_markup_text,
@@ -610,7 +607,6 @@ class OptiManagerApp:
         self.found_exe_list = []
         self.game_db = {}
         self.module_download_links = {}
-        self._supported_games_popup_shown = False
         self._game_db_load_started = False
         self.active_game_db_vendor = "default"
         self.active_game_db_gid = SHEET_GID
@@ -774,7 +770,6 @@ class OptiManagerApp:
         self._gpu_selection_pending = False
         self._selected_gpu_adapter = None
         self._post_sheet_startup_done = True
-        self._supported_games_popup_shown = True
         self.sheet_loading = False
         self.sheet_status = False
         self.game_db = {}
@@ -1523,23 +1518,15 @@ class OptiManagerApp:
 
         warning_key = "__warning_kr__" if USE_KOREAN else "__warning_en__"
         warning_text = str(self.module_download_links.get(warning_key, "")).strip()
-        if not self._supported_games_popup_shown:
-            self._supported_games_popup_shown = True
-            if warning_text:
-                self._enqueue_startup_popup(
-                    "startup_warning",
-                    priority=80,
-                    blocking=False,
-                    show_callback=lambda done_callback, warning=warning_text: self._show_startup_warning_popup(
-                        warning,
-                        on_close=done_callback,
-                    ),
-                )
+        if warning_text:
             self._enqueue_startup_popup(
-                "supported_games",
-                priority=20,
+                "startup_warning",
+                priority=80,
                 blocking=False,
-                show_callback=lambda done_callback: self._show_supported_games_popup(on_close=done_callback),
+                show_callback=lambda done_callback, warning=warning_text: self._show_startup_warning_popup(
+                    warning,
+                    on_close=done_callback,
+                ),
             )
         self._run_next_startup_popup()
 
@@ -1777,202 +1764,6 @@ class OptiManagerApp:
             on_complete=self._on_scan_complete,
             logger=logging.getLogger(),
         )
-
-    def _show_supported_games_popup(self, on_close=None):
-        if self.multi_gpu_blocked:
-            if callable(on_close):
-                on_close()
-            return
-        names = []
-        seen = set()
-        for idx, entry in enumerate(self.game_db.values()):
-            if not self._is_game_supported_for_current_gpu(entry):
-                continue
-            # Inclusion rule: A-column(exe) exists. Display text comes from B-column(game_name).
-            # Rows without exe are already excluded when game_db is built.
-            name = (str(entry.get("game_name_kr") or entry.get("game_name", "")).strip()
-                    if USE_KOREAN else str(entry.get("game_name", "")).strip())
-            dedupe_key = name.lower() if name else f"__blank__{idx}"
-            if dedupe_key in seen:
-                continue
-            seen.add(dedupe_key)
-            names.append(name)
-
-        if not names:
-            if callable(on_close):
-                on_close()
-            return
-
-        screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
-        screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
-        root_w = max(1, int(self.root.winfo_width() or WINDOW_W))
-        desired_popup_w = min(max(360, root_w), max(360, screen_w - 40))
-        max_popup_h = max(240, screen_h - 80)
-
-        popup = create_modal_popup(self.root, "Supported Game List", _SURFACE)
-
-        container = ctk.CTkFrame(popup, width=0, height=0, fg_color="transparent")
-        container.pack(fill="both", padx=18, pady=(16, 14))
-
-        list_font = ctk.CTkFont(family=FONT_UI, size=12)
-        metrics_font = tkfont.Font(family=FONT_UI, size=12)
-        row_height = max(20, int(metrics_font.metrics("linespace")) + 6)
-        desired_list_h = max(72, (len(names) * row_height) + 18)
-        popup_chrome_h = 88
-        max_list_h = max(120, max_popup_h - popup_chrome_h)
-        use_scroll = desired_list_h > max_list_h
-        list_width = max(344, min(420, desired_popup_w - 40))
-
-        if use_scroll:
-            list_frame = ctk.CTkScrollableFrame(
-                container,
-                width=list_width,
-                height=max_list_h,
-                corner_radius=8,
-                fg_color="#2A303A",
-                border_width=0,
-            )
-            list_frame.pack(fill="both", expand=True, pady=(0, 12))
-        else:
-            list_frame = ctk.CTkFrame(
-                container,
-                width=list_width,
-                height=desired_list_h,
-                corner_radius=8,
-                fg_color="#2A303A",
-                border_width=0,
-            )
-            list_frame.pack(fill="x", pady=(0, 12))
-        list_frame.grid_columnconfigure(0, weight=1)
-
-        for i, name in enumerate(names):
-            ctk.CTkLabel(
-                list_frame,
-                text=f"- {name}",
-                font=list_font,
-                text_color="#E3EAF3",
-                anchor="w",
-                justify="left",
-                height=16,
-            ).grid(row=i, column=0, sticky="ew", padx=10, pady=0)
-
-        close_button: Optional[ctk.CTkButton] = None
-        fade_controller = PopupFadeController(popup, debug_name="supported-games popup")
-
-        def _after_close():
-            if callable(on_close):
-                on_close()
-
-        def _close_popup():
-            if fade_controller.is_closing:
-                return
-            if close_button is not None:
-                try:
-                    close_button.configure(state="disabled")
-                except Exception:
-                    pass
-            fade_controller.close(_after_close)
-
-        close_button = ctk.CTkButton(
-            container,
-            text="OK",
-            width=100,
-            height=34,
-            corner_radius=8,
-            fg_color=_POPUP_OK_BUTTON,
-            hover_color=_POPUP_OK_BUTTON_HOVER,
-            text_color="#0B121A",
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
-            command=_close_popup,
-        )
-        close_button.pack()
-
-        popup.update_idletasks()
-        if use_scroll:
-            list_req_h = max(1, int(list_frame.winfo_reqheight() or max_list_h))
-            chrome_h = max(72, int(popup.winfo_reqheight() or 0) - list_req_h)
-            target_list_h = max(120, min(max_list_h, max_popup_h - chrome_h))
-            list_frame.configure(height=target_list_h)
-            popup.update_idletasks()
-            current_popup_h = max(1, int(popup.winfo_reqheight() or 0))
-            slack_h = max(0, max_popup_h - current_popup_h)
-            if slack_h > 0:
-                grown_list_h = min(desired_list_h, target_list_h + slack_h)
-                if grown_list_h > target_list_h:
-                    list_frame.configure(height=grown_list_h)
-                    popup.update_idletasks()
-                    target_list_h = grown_list_h
-            overflow_h = max(0, int(popup.winfo_reqheight() or 0) - max_popup_h)
-            if overflow_h > 0:
-                list_frame.configure(height=max(120, target_list_h - overflow_h))
-                popup.update_idletasks()
-
-        def _apply_supported_games_popup_geometry(use_requested_size: bool = False):
-            try:
-                popup.update_idletasks()
-
-                if use_requested_size:
-                    popup_w = max(1, int(popup.winfo_reqwidth()))
-                    popup_h = max(1, int(popup.winfo_reqheight()))
-                else:
-                    popup_w = max(1, int(popup.winfo_width() or popup.winfo_reqwidth()))
-                    popup_h = max(1, int(popup.winfo_height() or popup.winfo_reqheight()))
-                screen_w = max(1, int(self.root.winfo_screenwidth() or popup_w))
-                screen_h = max(1, int(self.root.winfo_screenheight() or popup_h))
-                margin = 12
-
-                root_x = self.root.winfo_x()
-                root_y = self.root.winfo_y()
-                root_w = self.root.winfo_width()
-                root_h = self.root.winfo_height()
-                x = root_x + (root_w // 2) - (popup_w // 2)
-                y = root_y + (root_h // 2) - (popup_h // 2)
-                min_x = margin if popup_w + (margin * 2) < screen_w else 0
-                min_y = margin if popup_h + (margin * 2) < screen_h else 0
-                max_x = max(min_x, screen_w - popup_w - margin)
-                max_y = max(min_y, screen_h - popup_h - margin)
-                x = max(min_x, min(x, max_x))
-                y = max(min_y, min(y, max_y))
-                logical_w = max(1, int(round(popup._reverse_window_scaling(popup_w))))
-                logical_h = max(1, int(round(popup._reverse_window_scaling(popup_h))))
-                popup.geometry(f"{logical_w}x{logical_h}+{x}+{y}")
-            except Exception:
-                logging.debug("Failed to size supported-games popup", exc_info=True)
-
-        popup.protocol("WM_DELETE_WINDOW", _close_popup)
-        present_modal_popup(
-            popup,
-            initial_layout=lambda: _apply_supported_games_popup_geometry(use_requested_size=True),
-            after_idle_layout=_apply_supported_games_popup_geometry,
-            fade_controller=fade_controller,
-        )
-
-    def _center_popup_on_root(self, popup: ctk.CTkToplevel, use_requested_size: bool = False):
-        try:
-            popup.update_idletasks()
-
-            root_x = self.root.winfo_x()
-            root_y = self.root.winfo_y()
-            root_w = self.root.winfo_width()
-            root_h = self.root.winfo_height()
-
-            popup_w = popup.winfo_reqwidth() if use_requested_size else popup.winfo_width()
-            popup_h = popup.winfo_reqheight() if use_requested_size else popup.winfo_height()
-
-            screen_w = max(1, int(self.root.winfo_screenwidth() or popup_w))
-            screen_h = max(1, int(self.root.winfo_screenheight() or popup_h))
-            margin = 12
-            x = root_x + (root_w // 2) - (popup_w // 2)
-            y = root_y + (root_h // 2) - (popup_h // 2)
-            min_x = margin if popup_w + (margin * 2) < screen_w else 0
-            min_y = margin if popup_h + (margin * 2) < screen_h else 0
-            max_x = max(min_x, screen_w - popup_w - margin)
-            max_y = max(min_y, screen_h - popup_h - margin)
-            x = max(min_x, min(x, max_x))
-            y = max(min_y, min(y, max_y))
-            popup.geometry(f"+{x}+{y}")
-        except Exception:
-            logging.debug("Failed to center popup on root window")
 
     # ------------------------------------------------------------------
     # UI builder

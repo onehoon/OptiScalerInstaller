@@ -1,5 +1,6 @@
 # Local configuration and scripts
 build.py
+game_wiki.py
 .env
 .vscode/
 
