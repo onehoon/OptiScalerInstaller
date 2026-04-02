@@ -5,7 +5,7 @@ from typing import Any, Iterable, Mapping
 
 import installer_services
 
-from .mod_precheck import build_mod_conflict_notice, scan_target_mod_conflicts
+from .install_precheck import build_mod_conflict_notice, scan_target_mod_conflicts
 
 
 def _normalize_handler_token(value: Any) -> str:
