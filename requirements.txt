@@ -3,3 +3,4 @@ customtkinter
 Pillow
 py7zr
 python-dotenv
+pytest

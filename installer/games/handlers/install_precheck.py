@@ -5,6 +5,7 @@ import fnmatch
 from pathlib import Path
 from typing import Iterable
 
+from ...i18n import build_mod_conflict_finding_text, build_mod_conflict_notice_text, lang_from_bool
 from ...install import services as installer_services
 
 _MONITORED_DLL_NAMES = (
@@ -232,35 +233,7 @@ def scan_target_mod_conflicts(target_path: str, logger=None) -> tuple[ModConflic
 
 def _format_finding(finding: ModConflictFinding, use_korean: bool) -> str:
     detected = ", ".join(finding.evidence)
-    if finding.kind == "reshade":
-        return (
-            f"ReShade related files were detected: {detected}"
-            if not use_korean
-            else f"ReShade related files were detected: {detected}"
-        )
-    if finding.kind == "special_k":
-        return (
-            f"Special K related files were detected: {detected}"
-            if not use_korean
-            else f"Special K related files were detected: {detected}"
-        )
-    if finding.kind == "ultimate_asi_loader":
-        return (
-            f"Ultimate ASI Loader related files were detected: {detected}"
-            if not use_korean
-            else f"Ultimate ASI Loader related files were detected: {detected}"
-        )
-    if finding.kind == "renodx":
-        return (
-            f"RenoDX addon files were detected: {detected}"
-            if not use_korean
-            else f"RenoDX addon files were detected: {detected}"
-        )
-    return (
-        f"MOD-related files were detected: {detected}"
-        if not use_korean
-        else f"MOD-related files were detected: {detected}"
-    )
+    return build_mod_conflict_finding_text(finding.kind, detected, lang_from_bool(use_korean))
 
 
 def build_mod_conflict_notice(findings: Iterable[ModConflictFinding], use_korean: bool) -> str:
@@ -268,22 +241,8 @@ def build_mod_conflict_notice(findings: Iterable[ModConflictFinding], use_korean
     if not normalized_findings:
         return ""
 
-    header = (
-        "Existing MOD files were detected. Please review the current DLL setup before installing."
-        if not use_korean
-        else "Existing MOD files were detected. Please review the current DLL setup before installing."
-    )
-    footer = (
-        "This is a safety notice. DLL-based mods that share proxy names can conflict with installation or runtime behavior."
-        if not use_korean
-        else "This is a safety notice. DLL-based mods that share proxy names can conflict with installation or runtime behavior."
-    )
-
-    lines = [header, ""]
-    for finding in normalized_findings:
-        lines.append(f"- {_format_finding(finding, use_korean)}")
-    lines.extend(("", footer))
-    return "\n".join(lines).strip()
+    lines = [_format_finding(finding, use_korean) for finding in normalized_findings]
+    return build_mod_conflict_notice_text(lines, lang_from_bool(use_korean))
 
 
 __all__ = [

@@ -10,6 +10,7 @@ import customtkinter as ctk
 from PIL import Image
 from .popup_markup import create_popup_markup_text, estimate_wrapped_text_lines
 from .popup_utils import PopupFadeController, create_modal_popup, present_modal_popup
+from ..i18n import get_app_strings, lang_from_bool, pick_sheet_text
 
 if os.name == "nt":
     import winreg
@@ -94,25 +95,13 @@ def _is_rtss_config_ok(ref_val: Optional[str], detours_val: Optional[str]) -> bo
 
 
 def _build_rtss_message(module_download_links: Mapping[str, object], use_korean: bool) -> str:
-    key = "rtss_kr" if use_korean else "rtss_en"
-    raw_message = str(module_download_links.get(key, "") or "").strip()
+    lang = lang_from_bool(use_korean)
+    strings = get_app_strings(lang)
+    raw_message = pick_sheet_text(module_download_links, "rtss", lang)
     if raw_message:
         return raw_message
 
-    if use_korean:
-        return (
-            "RTSS 설정을 확인해주세요.\n\n"
-            "[Global]\n"
-            "UseDetours=1\n"
-            "ReflexSetLatencyMarker=0\n\n"
-            "위 설정이 적용되어 있는지 확인해 주세요."
-        )
-    return (
-        "RTSS Configuration Check:\n\n"
-        "Please ensure the following settings in your Global profile:\n"
-        "UseDetours=1\n"
-        "ReflexSetLatencyMarker=0"
-    )
+    return strings.rtss.fallback_message
 
 
 def _evaluate_rtss_notice(
@@ -202,13 +191,15 @@ def _show_rtss_popup(
     message_text: str,
     assets_dir: Path,
     theme: RtssNoticeTheme,
+    use_korean: bool,
 ) -> None:
-    popup = create_modal_popup(root, "RTSS Notice", theme.surface_color)
+    strings = get_app_strings(lang_from_bool(use_korean))
+    popup = create_modal_popup(root, strings.rtss.notice_title, theme.surface_color)
 
     container = ctk.CTkFrame(popup, fg_color="transparent")
     container.pack(fill="both", expand=True, padx=22, pady=(18, 12))
 
-    text = message_text or "(No message)"
+    text = message_text or strings.rtss.no_message
     message_block = create_popup_markup_text(
         container,
         text,
@@ -255,7 +246,7 @@ def _show_rtss_popup(
 
     close_button = ctk.CTkButton(
         popup,
-        text="OK",
+        text=strings.common.ok,
         width=100,
         height=34,
         corner_radius=8,
@@ -299,5 +290,5 @@ def check_and_show_rtss_notice(
         )
 
     if decision.should_show:
-        _show_rtss_popup(root, decision.message_text, assets_dir, theme)
+        _show_rtss_popup(root, decision.message_text, assets_dir, theme, use_korean)
     return decision

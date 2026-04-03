@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+from ...i18n import lang_from_bool, pick_sheet_text, translate_default_precheck_error
 from ...install import services as installer_services
 
 from .install_precheck import build_mod_conflict_notice, scan_target_mod_conflicts
@@ -25,15 +26,7 @@ def _iter_game_tokens(game_data: Mapping[str, Any]) -> Iterable[str]:
 
 
 def _translate_default_precheck_error(raw_error: str, use_korean: bool) -> str:
-    error_text = str(raw_error or "").strip()
-    checked_prefix = "Checked: "
-    if use_korean and error_text.startswith("No available OptiScaler DLL names for installation. "):
-        checked_names = error_text.split(checked_prefix, 1)[1] if checked_prefix in error_text else ""
-        translated = "설치에 사용할 수 있는 OptiScaler DLL 이름이 없습니다."
-        if checked_names:
-            translated += f" 확인한 이름: {checked_names}"
-        return translated
-    return error_text
+    return translate_default_precheck_error(raw_error, lang_from_bool(use_korean))
 
 
 @dataclass(frozen=True)
@@ -73,12 +66,10 @@ class BaseGameHandler:
         return any(token in expected for token in _iter_game_tokens(game_data))
 
     def get_selection_popup_message(self, game_data: Mapping[str, Any], use_korean: bool) -> str:
-        key = "popup_kr" if use_korean else "popup_en"
-        return str(game_data.get(key, "") or "").strip()
+        return pick_sheet_text(game_data, "popup", lang_from_bool(use_korean))
 
     def get_after_install_popup_message(self, game_data: Mapping[str, Any], use_korean: bool) -> str:
-        key = "after_popup_kr" if use_korean else "after_popup_en"
-        return str(game_data.get(key, "") or "").strip()
+        return pick_sheet_text(game_data, "after_popup", lang_from_bool(use_korean))
 
     def get_after_install_guide_url(self, game_data: Mapping[str, Any]) -> str:
         return str(game_data.get("guidepage_after_installation", "") or "").strip()

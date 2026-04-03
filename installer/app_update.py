@@ -13,6 +13,7 @@ import webbrowser
 import zipfile
 
 from .common import subprocess_no_window_kwargs
+from .i18n import get_app_strings, lang_from_bool
 from .install import services as installer_services
 
 
@@ -153,6 +154,7 @@ class InstallerUpdateManager:
         self.root = root
         self.current_version = str(current_version or "")
         self.use_korean = bool(use_korean)
+        self._strings = get_app_strings(lang_from_bool(self.use_korean))
         self._on_busy_state_changed = on_busy_state_changed
         self._on_update_failed = on_update_failed
         self._on_exit_requested = on_exit_requested
@@ -239,12 +241,8 @@ class InstallerUpdateManager:
             self._on_busy_state_changed()
 
     def _confirm_update(self, latest_version: str) -> bool:
-        title = "업데이트 확인" if self.use_korean else "Update Available"
-        detail = (
-            f"최신 버전(v{latest_version})이 있습니다.\n지금 업데이트하시겠습니까?"
-            if self.use_korean
-            else f"A new version (v{latest_version}) is available.\nDo you want to update now?"
-        )
+        title = self._strings.update.available_title
+        detail = self._strings.update.available_body_template.format(version=latest_version)
         return bool(messagebox.askyesno(title, detail))
 
     def _open_latest_release_page(self) -> None:

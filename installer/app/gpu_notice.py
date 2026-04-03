@@ -7,6 +7,7 @@ from typing import Optional, Sequence, TYPE_CHECKING
 import customtkinter as ctk
 from .popup_markup import create_popup_markup_text, estimate_wrapped_text_lines
 from .popup_utils import PopupFadeController, close_modal_popup, create_modal_popup, present_modal_popup
+from ..i18n import get_app_strings, lang_from_bool
 
 if TYPE_CHECKING:
     from ..system.gpu_service import GpuAdapterChoice
@@ -54,32 +55,18 @@ NVIDIA_BUTTON_THEME = GpuVendorButtonTheme(
 
 
 def get_unsupported_gpu_title(use_korean: bool) -> str:
-    return "지원되지 않는 GPU 구성" if use_korean else "Unsupported GPU Configuration"
+    return get_app_strings(lang_from_bool(use_korean)).gpu.unsupported_title
 
 
 def get_unsupported_gpu_message(use_korean: bool) -> str:
-    if use_korean:
-        return "3개 이상의 GPU가 감지되었습니다.\n현재 설치는 지원되지 않습니다."
-    return "3 or more GPUs were detected.\nThis installation is not supported."
+    return get_app_strings(lang_from_bool(use_korean)).gpu.unsupported_message
 
 
 def _get_dual_gpu_selection_message(use_korean: bool) -> str:
-    if use_korean:
-        return (
-            "듀얼 GPU가 감지되었습니다.\n"
-            "OptiScaler를 어느 GPU 기준으로 설치할지 선택해 주세요.\n"
-            "선택한 GPU에 맞는 설정으로 설치됩니다.\n"
-            "다른 GPU로 실행 시 정상적으로 동작하지 않을 수 있습니다."
-        )
-    return (
-        "Dual GPUs were detected.\n"
-        "Select which GPU OptiScaler should be installed for.\n"
-        "Installation will use settings for the selected GPU.\n"
-        "It may not work correctly if the game is run on the other GPU."
-    )
+    return get_app_strings(lang_from_bool(use_korean)).gpu.dual_selection_message
 
 
-def _get_vendor_display_name(vendor: str) -> str:
+def _get_vendor_display_name(vendor: str, use_korean: bool) -> str:
     normalized = str(vendor or "").strip().lower()
     if normalized == "nvidia":
         return "NVIDIA"
@@ -87,7 +74,7 @@ def _get_vendor_display_name(vendor: str) -> str:
         return "AMD"
     if normalized == "intel":
         return "Intel"
-    return "Unknown"
+    return get_app_strings(lang_from_bool(use_korean)).gpu.vendor_unknown
 
 
 def _get_vendor_button_theme(vendor: str, theme: GpuNoticeTheme) -> GpuVendorButtonTheme:
@@ -153,17 +140,18 @@ def show_unsupported_gpu_notice(
     use_korean: bool,
     theme: GpuNoticeTheme,
 ) -> None:
+    strings = get_app_strings(lang_from_bool(use_korean))
     desired_popup_width = _resolve_popup_width(root, UNSUPPORTED_GPU_POPUP_MIN_W)
     message_width = max(280, desired_popup_width - 88)
 
-    popup = create_modal_popup(root, get_unsupported_gpu_title(use_korean), theme.surface_color)
+    popup = create_modal_popup(root, strings.gpu.unsupported_title, theme.surface_color)
 
     container = ctk.CTkFrame(popup, fg_color="transparent")
     container.pack(fill="both", expand=True, padx=22, pady=(20, 18))
 
     message_block = create_popup_markup_text(
         container,
-        get_unsupported_gpu_message(use_korean),
+        strings.gpu.unsupported_message,
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
@@ -182,7 +170,7 @@ def show_unsupported_gpu_notice(
 
     ctk.CTkButton(
         container,
-        text="확인" if use_korean else "OK",
+        text=strings.common.ok,
         width=100,
         height=34,
         corner_radius=8,
@@ -217,6 +205,7 @@ def select_dual_gpu_adapter(
     use_korean: bool,
     theme: GpuNoticeTheme,
 ) -> Optional["GpuAdapterChoice"]:
+    strings = get_app_strings(lang_from_bool(use_korean))
     adapter_choices = list(adapters[:2])
     if len(adapter_choices) < 2:
         return None
@@ -229,7 +218,7 @@ def select_dual_gpu_adapter(
 
     popup = create_modal_popup(
         root,
-        "GPU Selection" if not use_korean else "GPU 선택",
+        strings.gpu.dual_selection_title,
         theme.surface_color,
     )
 
@@ -238,7 +227,7 @@ def select_dual_gpu_adapter(
 
     message_block = create_popup_markup_text(
         container,
-        _get_dual_gpu_selection_message(use_korean),
+        strings.gpu.dual_selection_message,
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
@@ -273,7 +262,7 @@ def select_dual_gpu_adapter(
 
     for col_idx, adapter in enumerate(adapter_choices):
         button_theme = _get_vendor_button_theme(adapter.vendor, theme)
-        vendor_label = _get_vendor_display_name(adapter.vendor)
+        vendor_label = _get_vendor_display_name(adapter.vendor, use_korean)
         model_label = str(adapter.display_name or adapter.model_name or "").strip()
         button_text = vendor_label if not model_label else f"{vendor_label}\n{model_label}"
         btn = ctk.CTkButton(

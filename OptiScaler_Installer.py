@@ -19,7 +19,6 @@ import re
 import webbrowser
 from typing import Callable, Optional
 import ctypes
-import locale
 import stat
 from installer import app_update
 from installer.app import (
@@ -32,6 +31,14 @@ from installer.app import (
 from installer.config import ini_utils
 from installer.data import sheet_loader
 from installer.games import scanner as game_scanner
+from installer.i18n import (
+    detect_ui_language,
+    get_app_strings,
+    is_korean,
+    pick_module_message,
+    pick_sheet_text,
+    translate_default_precheck_error,
+)
 from installer.install import (
     OPTISCALER_ASI_NAME,
     install_optipatcher,
@@ -135,7 +142,6 @@ OPTIPATCHER_URL = os.environ.get(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
-UI_LANGUAGE_ENV = "FORCE_UI_LANGUAGE"
 
 import logging.handlers
 
@@ -227,45 +233,9 @@ try:
 except ModuleNotFoundError as e:
     logging.error("[APP] requests module not installed. Install: python -m pip install requests")
     raise e
-
-def _get_forced_ui_language() -> Optional[bool]:
-    raw = str(os.environ.get(UI_LANGUAGE_ENV, "") or "").strip().lower()
-    if raw in {"", "auto"}:
-        return None
-    if raw in {"ko", "kr", "korean"}:
-        return True
-    if raw in {"en", "english"}:
-        return False
-
-    logging.warning(
-        "[APP] Invalid %s=%r, using automatic UI language detection",
-        UI_LANGUAGE_ENV,
-        raw,
-    )
-    return None
-
-
-def _is_korean_ui() -> bool:
-    """Return True if the Windows UI language is Korean (ko-KR, LCID 0x0412)."""
-    forced = _get_forced_ui_language()
-    if forced is not None:
-        logging.info("[APP] UI language forced by %s=%s", UI_LANGUAGE_ENV, "KO" if forced else "EN")
-        return forced
-
-    try:
-        lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-        return (lang_id & 0xFF) == 0x12  # Primary language ID for Korean
-    except Exception:
-        pass
-    try:
-        lang = locale.getlocale()[0] or ""
-        return lang.lower().startswith("ko")
-    except Exception:
-        pass
-    return False
-
-
-USE_KOREAN: bool = _is_korean_ui()
+APP_LANG = detect_ui_language()
+APP_STRINGS = get_app_strings(APP_LANG)
+USE_KOREAN: bool = is_korean(APP_LANG)
 # ---------------------------------------------------------------------------
 # Image helpers
 # ---------------------------------------------------------------------------
@@ -523,8 +493,8 @@ _CARD_TITLE_OVERLAY_TEXT = "#FFFFFF"
 _SURFACE = "#2A2E35"
 _PANEL = "#1E2128"
 _ACCENT_DISABLED = "#3A414C"
-FONT_HEADING = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
-FONT_UI = "Malgun Gothic" if USE_KOREAN else "Segoe UI"
+FONT_HEADING = APP_STRINGS.main.heading_font_family
+FONT_UI = APP_STRINGS.main.ui_font_family
 RTSS_NOTICE_THEME = rtss_notice.RtssNoticeTheme(
     surface_color=_SURFACE,
     accent_color=_ACCENT,
@@ -548,7 +518,9 @@ MESSAGE_POPUP_THEME = message_popup.MessagePopupTheme(
 class OptiManagerApp:
     def __init__(self, root: ctk.CTk):
         self.root = root
-        self.root.title(f"OptiScaler Installer v{APP_VERSION}")
+        self.lang = APP_LANG
+        self.txt = APP_STRINGS
+        self.root.title(self.txt.main.window_title_template.format(version=APP_VERSION))
         screen_w = max(1, int(self.root.winfo_screenwidth() or WINDOW_W))
         screen_h = max(1, int(self.root.winfo_screenheight() or WINDOW_H))
         target_w = min(WINDOW_W, max(WINDOW_MIN_W, screen_w - 40))
@@ -620,7 +592,7 @@ class OptiManagerApp:
         self._selected_gpu_adapter: Optional[gpu_service.GpuAdapterChoice] = None
         self.sheet_status = False
         self.sheet_loading = True
-        self.gpu_info = "Checking GPU..."
+        self.gpu_info = self.txt.main.checking_gpu
         self.install_in_progress = False
         self.selected_game_index = None
         self._game_popup_confirmed = False
@@ -720,6 +692,15 @@ class OptiManagerApp:
         except Exception:
             logging.debug("[APP] Failed to apply UMPC startup window workaround", exc_info=True)
 
+    def _normalize_gpu_info_text(self, value: object) -> str:
+        text = str(value or "").strip()
+        if not text or text.lower().startswith("unknown"):
+            return self.txt.main.unknown_gpu
+        return text
+
+    def _format_gpu_label_text(self, gpu_info: str) -> str:
+        return self.txt.main.gpu_label_template.format(gpu=self._normalize_gpu_info_text(gpu_info))
+
     def _show_game_selection_popup(
         self,
         message_text: str,
@@ -729,8 +710,8 @@ class OptiManagerApp:
             root=self.root,
             message_text=message_text,
             theme=MESSAGE_POPUP_THEME,
-            title="Installer Notice",
-            confirm_text="확인" if USE_KOREAN else "OK",
+            title=self.txt.dialogs.installer_notice_title,
+            confirm_text=self.txt.common.ok,
             on_close=(lambda: self.root.after_idle(on_confirm)) if callable(on_confirm) else None,
             allow_window_close=False,
             scrollable=False,
@@ -752,7 +733,7 @@ class OptiManagerApp:
             gpu_context = gpu_service.GpuContext(
                 gpu_names=[],
                 gpu_count=0,
-                gpu_info="Unknown",
+                gpu_info=self.txt.main.unknown_gpu,
                 selected_vendor="default",
                 selected_gid=SHEET_GID,
                 adapters=(),
@@ -790,7 +771,7 @@ class OptiManagerApp:
 
         if hasattr(self, "btn_select_folder") and self.btn_select_folder:
             self.btn_select_folder.configure(state="disabled")
-        text = "3개 이상의 GPU는 지원되지 않습니다." if USE_KOREAN else "3 or more GPUs are not supported."
+        text = self.txt.gpu.unsupported_message
         self._set_supported_games_value(None)
         self._set_scan_status_message(text, "#FF8A8A")
         self._clear_cards()
@@ -819,14 +800,16 @@ class OptiManagerApp:
         if selected_adapter is not None:
             self.active_game_db_vendor = str(selected_adapter.vendor or "default")
             self.active_game_db_gid = int(selected_adapter.selected_gid or SHEET_GID)
-            self.gpu_info = str(selected_adapter.model_name or gpu_context.selected_model_name or gpu_context.gpu_info or "Unknown")
+            self.gpu_info = self._normalize_gpu_info_text(
+                selected_adapter.model_name or gpu_context.selected_model_name or gpu_context.gpu_info
+            )
         else:
             self.active_game_db_vendor = str(gpu_context.selected_vendor or "default")
             self.active_game_db_gid = int(gpu_context.selected_gid or SHEET_GID)
-            self.gpu_info = str(gpu_context.selected_model_name or gpu_context.gpu_info or "Unknown")
+            self.gpu_info = self._normalize_gpu_info_text(gpu_context.selected_model_name or gpu_context.gpu_info)
 
         if hasattr(self, "gpu_lbl") and self.gpu_lbl:
-            self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+            self.gpu_lbl.configure(text=self._format_gpu_label_text(self.gpu_info))
 
         self._set_supported_games_value(None)
         self._set_scan_status_message("")
@@ -841,17 +824,17 @@ class OptiManagerApp:
             self.is_multi_gpu = gpu_context.is_multi_gpu
             self.multi_gpu_blocked = self._is_multi_gpu_block_active()
             if self.multi_gpu_blocked:
-                self.gpu_info = str(gpu_context.gpu_info or "Unknown")
+                self.gpu_info = self._normalize_gpu_info_text(gpu_context.gpu_info)
                 if hasattr(self, "gpu_lbl") and self.gpu_lbl:
-                    self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+                    self.gpu_lbl.configure(text=self._format_gpu_label_text(self.gpu_info))
                 self._apply_multi_gpu_block_state()
                 return
             if self.gpu_count == 2 and len(gpu_context.adapters or ()) >= 2:
                 self._gpu_selection_pending = True
                 self._selected_gpu_adapter = None
-                self.gpu_info = "GPU 선택 대기 중" if USE_KOREAN else "Waiting for GPU selection"
+                self.gpu_info = self.txt.main.waiting_for_gpu_selection
                 if hasattr(self, "gpu_lbl") and self.gpu_lbl:
-                    self.gpu_lbl.configure(text=f"GPU: {self.gpu_info}")
+                    self.gpu_lbl.configure(text=self._format_gpu_label_text(self.gpu_info))
                 self._set_supported_games_value(None)
                 self._set_scan_status_message("")
                 self._update_sheet_status()
@@ -892,7 +875,7 @@ class OptiManagerApp:
         return True
 
     def _get_supported_games_meta_label_text(self) -> str:
-        return "설치된 지원 게임:" if USE_KOREAN else "Installed Supported Games:"
+        return self.txt.main.supported_games_label
 
     def _measure_meta_label_width(self, *candidate_texts: str) -> int:
         try:
@@ -924,9 +907,7 @@ class OptiManagerApp:
     def _open_supported_games_wiki(self, _event=None) -> None:
         wiki_url = SUPPORTED_GAMES_WIKI_URL
         if not wiki_url:
-            detail = "지원 게임 위키 주소가 설정되지 않았습니다." if USE_KOREAN else "Supported games wiki URL is not configured."
-            title = "알림" if USE_KOREAN else "Notice"
-            messagebox.showinfo(title, detail)
+            messagebox.showinfo(self.txt.common.notice, self.txt.dialogs.wiki_not_configured_detail)
             return
 
         try:
@@ -934,9 +915,7 @@ class OptiManagerApp:
                 raise RuntimeError("webbrowser.open returned False")
         except Exception:
             logging.exception("Failed to open supported games wiki URL: %s", wiki_url)
-            detail = "지원 게임 위키를 열지 못했습니다." if USE_KOREAN else "Failed to open the supported games wiki."
-            title = "오류" if USE_KOREAN else "Error"
-            messagebox.showerror(title, detail)
+            messagebox.showerror(self.txt.common.error, self.txt.dialogs.wiki_open_failed_detail)
 
     def _set_scan_status_message(self, text: str = "", text_color: str = _SCAN_STATUS_TEXT):
         if not hasattr(self, "lbl_scan_status") or not self.lbl_scan_status.winfo_exists():
@@ -1017,14 +996,9 @@ class OptiManagerApp:
             logging.debug("Failed to update selected game header", exc_info=True)
 
     def _show_after_install_popup(self, game: dict):
-        is_kr = USE_KOREAN
-        msg = ""
-        if is_kr:
-            msg = game.get("after_popup_kr", "").strip()
-        else:
-            msg = game.get("after_popup_en", "").strip()
+        msg = pick_sheet_text(game, "after_popup", self.lang)
         if not msg:
-            msg = "설치가 완료되었습니다." if is_kr else "Installation Success"
+            msg = self.txt.dialogs.installation_completed
         # If a guide URL is provided in the sheet, open it after the user confirms the popup.
         guide_url = (game.get("guidepage_after_installation") or "").strip()
 
@@ -1081,7 +1055,7 @@ class OptiManagerApp:
 
         self.apply_btn.configure(
             state="normal" if can_install else "disabled",
-            text="Install" if not self.install_in_progress else "Installing...",
+            text=self.txt.main.install_button if not self.install_in_progress else self.txt.main.installing_button,
             fg_color=_INSTALL_BUTTON if can_install else _INSTALL_BUTTON_DISABLED,
             hover_color=_INSTALL_BUTTON_HOVER if can_install else _INSTALL_BUTTON_DISABLED,
             border_color=_INSTALL_BUTTON_BORDER if can_install else _INSTALL_BUTTON_BORDER_DISABLED,
@@ -1093,8 +1067,7 @@ class OptiManagerApp:
 
     def _on_close(self):
         if self.install_in_progress:
-            msg = "설치가 진행 중입니다. 완료 후 종료해 주세요." if USE_KOREAN else "Installation is in progress. Please wait."
-            messagebox.showwarning("Warning", msg)
+            messagebox.showwarning(self.txt.common.warning, self.txt.dialogs.close_while_installing_body)
             return
 
         try:
@@ -1543,8 +1516,7 @@ class OptiManagerApp:
         self._start_optiscaler_archive_prepare()
         self._start_auto_scan()
 
-        warning_key = "__warning_kr__" if USE_KOREAN else "__warning_en__"
-        warning_text = str(self.module_download_links.get(warning_key, "")).strip()
+        warning_text = pick_module_message(self.module_download_links, "warning", self.lang)
         if warning_text:
             self._enqueue_startup_popup(
                 "startup_warning",
@@ -1572,8 +1544,8 @@ class OptiManagerApp:
             root=self.root,
             message_text=warning_text,
             theme=MESSAGE_POPUP_THEME,
-            title="Notice",
-            confirm_text="OK",
+            title=self.txt.common.notice,
+            confirm_text=self.txt.common.ok,
             on_close=on_close,
             allow_window_close=True,
             scrollable=True,
@@ -1593,8 +1565,8 @@ class OptiManagerApp:
             root=self.root,
             message_text=message_text,
             theme=MESSAGE_POPUP_THEME,
-            title="스캔 결과" if USE_KOREAN else "Scan Result",
-            confirm_text="OK",
+            title=self.txt.main.scan_result_title,
+            confirm_text=self.txt.common.ok,
             on_close=on_close,
             allow_window_close=True,
             scrollable=True,
@@ -1610,11 +1582,7 @@ class OptiManagerApp:
         if self._initial_auto_scan_empty_popup_shown:
             return
         self._initial_auto_scan_empty_popup_shown = True
-        detail = (
-            "자동 스캔에서 지원되는 게임을 찾지 못했습니다.\n게임이 설치된 폴더를 직접 선택해 주세요."
-            if USE_KOREAN
-            else "No supported games were found during automatic scan.\nPlease choose your game installation folder manually."
-        )
+        detail = self.txt.main.auto_scan_no_results
         self._enqueue_startup_popup(
             "auto_scan_no_results",
             priority=60,
@@ -1639,7 +1607,7 @@ class OptiManagerApp:
 
     def _begin_scan(self, scan_paths: list[str], *, is_auto: bool) -> None:
         self._set_supported_games_value(0)
-        self._set_scan_status_message("Scanning...", "#F1F5F9")
+        self._set_scan_status_message(self.txt.main.scanning, "#F1F5F9")
         self.found_exe_list = []
         self._clear_cards()
         self._configure_card_columns(self._get_dynamic_column_count())
@@ -1682,7 +1650,7 @@ class OptiManagerApp:
 
         title_lbl = ctk.CTkLabel(
             hdr,
-            text=f"OptiScaler Installer",
+            text=self.txt.main.app_title,
             font=ctk.CTkFont(family=FONT_HEADING, size=20, weight="bold"),
             text_color=_TITLE_TEXT,
         )
@@ -1694,7 +1662,7 @@ class OptiManagerApp:
 
         self.gpu_lbl = ctk.CTkLabel(
             sub_frame,
-            text=f"GPU: {self.gpu_info}",
+            text=self._format_gpu_label_text(self.gpu_info),
             font=ctk.CTkFont(family=FONT_UI, size=11),
             text_color="#C5CFDB",
             anchor="w",
@@ -1727,13 +1695,13 @@ class OptiManagerApp:
 
         self.status_badge_label = ctk.CTkLabel(
             self.status_badge,
-            text="Game DB",
+            text=self.txt.main.status_game_db,
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
             text_color=_STATUS_TEXT,
             anchor="w",
         )
         self.status_badge_label.grid(row=0, column=1, sticky="w")
-        self._set_status_badge_state("Game DB", _STATUS_INDICATOR_LOADING, pulse=True)
+        self._set_status_badge_state(self.txt.main.status_game_db, _STATUS_INDICATOR_LOADING, pulse=True)
 
         # Separator line
         sep = ctk.CTkFrame(hdr, height=1, fg_color="#4A5361", corner_radius=0)
@@ -1749,7 +1717,7 @@ class OptiManagerApp:
 
         sec_lbl = ctk.CTkLabel(
             row,
-            text="1. Scan Game Folder",
+            text=self.txt.main.scan_section_title,
             font=ctk.CTkFont(family=FONT_HEADING, size=12, weight="bold"),
             text_color="#F1F5F9",
         )
@@ -1757,7 +1725,7 @@ class OptiManagerApp:
 
         self.btn_select_folder = ctk.CTkButton(
             row,
-            text="Browse...",
+            text=self.txt.main.browse_button,
             width=110,
             height=32,
             corner_radius=8,
@@ -1826,7 +1794,7 @@ class OptiManagerApp:
 
         self.lbl_supported_games_wiki_link = ctk.CTkLabel(
             header_row,
-            text="지원 게임 목록 보기" if USE_KOREAN else "Check Supported Games",
+            text=self.txt.main.supported_games_link,
             font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold", underline=True),
             text_color=_LINK_ACTIVE if SUPPORTED_GAMES_WIKI_URL else _STATUS_TEXT,
             anchor="w",
@@ -1906,7 +1874,7 @@ class OptiManagerApp:
 
         sec_lbl = ctk.CTkLabel(
             title_line,
-            text="3. Install Information",
+            text=self.txt.main.install_section_title,
             font=ctk.CTkFont(family=FONT_HEADING, size=12, weight="bold"),
             text_color="#F1F5F9",
         )
@@ -1929,7 +1897,7 @@ class OptiManagerApp:
 
         self.apply_btn = ctk.CTkButton(
             mid_bottom,
-            text="Install",
+            text=self.txt.main.install_button,
             width=104,
             height=87,
             corner_radius=10,
@@ -1959,7 +1927,7 @@ class OptiManagerApp:
         self._apply_information_text_shift()
 
         self._refresh_optiscaler_archive_info_ui()
-        self._set_information_text("Select a game to view information.")
+        self._set_information_text(self.txt.main.select_game_hint)
         self._update_install_button_state()
         self.root.after(0, self._align_supported_games_count_label)
 
@@ -1984,11 +1952,11 @@ class OptiManagerApp:
         version_display_name = _format_optiscaler_version_display_name(version)
 
         if archive_display_name:
-            version_text = f"OptiScaler Version: {archive_display_name}"
+            version_text = self.txt.main.version_line_template.format(value=archive_display_name)
         elif version_display_name:
-            version_text = f"OptiScaler Version: {version_display_name}"
+            version_text = self.txt.main.version_line_template.format(value=version_display_name)
         else:
-            version_text = "OptiScaler Version: -"
+            version_text = self.txt.main.version_line_template.format(value="-")
 
         if hasattr(self, "lbl_optiscaler_version_line"):
             self.lbl_optiscaler_version_line.configure(text=version_text, text_color="#AEB9C8")
@@ -2017,21 +1985,21 @@ class OptiManagerApp:
     def _update_sheet_status(self):
         if self.multi_gpu_blocked:
             self._set_status_badge_state(
-                "GPU Config" if not USE_KOREAN else "GPU 구성",
+                self.txt.main.status_gpu_config,
                 _STATUS_INDICATOR_OFFLINE,
             )
             self.root.after(0, self._align_supported_games_count_label)
             return
         if self._gpu_selection_pending:
             self._set_status_badge_state(
-                "GPU Select" if not USE_KOREAN else "GPU 선택",
+                self.txt.main.status_gpu_select,
                 _STATUS_INDICATOR_WARNING,
             )
             self.root.after(0, self._align_supported_games_count_label)
             return
         if self.sheet_loading:
             self._set_status_badge_state(
-                "Game DB",
+                self.txt.main.status_game_db,
                 _STATUS_INDICATOR_LOADING,
                 pulse=True,
             )
@@ -2039,12 +2007,12 @@ class OptiManagerApp:
             return
         if self.sheet_status:
             self._set_status_badge_state(
-                "Game DB",
+                self.txt.main.status_game_db,
                 _STATUS_INDICATOR_ONLINE,
             )
         else:
             self._set_status_badge_state(
-                "Game DB",
+                self.txt.main.status_game_db,
                 _STATUS_INDICATOR_OFFLINE,
             )
         self.root.after(0, self._align_supported_games_count_label)
@@ -2054,7 +2022,7 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
 
     def _set_information_text(self, text=""):
-        info_text = (text or "").strip() or "No information available."
+        info_text = (text or "").strip() or self.txt.main.no_information
         text_widget = getattr(self.info_text, "_textbox", self.info_text)
         self._apply_information_text_shift()
         self.info_text.configure(state="normal")
@@ -2949,11 +2917,7 @@ class OptiManagerApp:
             game = self.found_exe_list[index]
             self._set_information_text(game.get("information", ""))
             self._run_install_precheck(game)
-            popup_msg = ""
-            if USE_KOREAN:
-                popup_msg = game.get("popup_kr", "").strip()
-            else:
-                popup_msg = game.get("popup_en", "").strip()
+            popup_msg = pick_sheet_text(game, "popup", self.lang)
             if popup_msg:
                 def _on_confirm():
                     self._game_popup_confirmed = True
@@ -2985,14 +2949,7 @@ class OptiManagerApp:
             self.install_precheck_error = ""
             self.install_precheck_dll_name = resolved_name
         except Exception as exc:
-            raw_error = str(exc)
-            checked_prefix = "Checked: "
-            if USE_KOREAN and raw_error.startswith("No available OptiScaler DLL names for installation. "):
-                checked_names = raw_error.split(checked_prefix, 1)[1] if checked_prefix in raw_error else ""
-                translated = "설치에 사용할 수 있는 OptiScaler DLL 이름이 없습니다."
-                if checked_names:
-                    translated += f" 확인한 이름: {checked_names}"
-                raw_error = translated
+            raw_error = translate_default_precheck_error(str(exc), self.lang)
             self.install_precheck_ok = False
             self.install_precheck_error = raw_error
             self.install_precheck_dll_name = ""
@@ -3009,12 +2966,12 @@ class OptiManagerApp:
         if self.multi_gpu_blocked:
             return
         if self.sheet_loading:
-            messagebox.showinfo("Game DB Loading", "Game DB is still loading. Please wait a moment.")
+            messagebox.showinfo(self.txt.dialogs.game_db_loading_title, self.txt.dialogs.game_db_loading_body)
             return
         if not self.sheet_status:
             messagebox.showerror(
-                "Game DB Error",
-                "Failed to connect to Google Sheet. Please check network or sheet permissions.",
+                self.txt.dialogs.game_db_error_title,
+                self.txt.dialogs.game_db_error_body,
             )
             return
 
@@ -3038,16 +2995,11 @@ class OptiManagerApp:
         self._set_supported_games_value(count)
         self._set_scan_status_message("")
         if count > 0:
-            self._set_information_text("Select a game to view information.")
+            self._set_information_text(self.txt.main.select_game_hint)
         elif is_auto:
             self._enqueue_initial_auto_scan_empty_popup()
         else:
-            detail = (
-                "선택하신 폴더에서 지원되는 게임을 찾지 못했습니다."
-                if USE_KOREAN
-                else "No supported games found in the selected folder."
-            )
-            self._show_scan_result_popup(detail)
+            self._show_scan_result_popup(self.txt.main.manual_scan_no_results)
         # Trigger retry check now that scan is done.
         self._pump_image_jobs()
 
@@ -3087,57 +3039,50 @@ class OptiManagerApp:
         if self.multi_gpu_blocked:
             return
         if self.install_in_progress:
-            messagebox.showinfo("Installing", "Installation is already in progress. Please wait.")
+            messagebox.showinfo(self.txt.dialogs.installing_title, self.txt.dialogs.installing_body)
             return
 
 
         if self.selected_game_index is None:
-            messagebox.showwarning("Warning", "Please select a game card to install.")
+            messagebox.showwarning(self.txt.common.warning, self.txt.dialogs.select_game_card_body)
             return
 
         if self.optiscaler_archive_downloading:
-            messagebox.showinfo("Preparing Archive", "OptiScaler archive download is still in progress. Please wait.")
+            messagebox.showinfo(self.txt.dialogs.preparing_archive_title, self.txt.dialogs.preparing_archive_body)
             return
 
         if self.install_precheck_running:
             return
 
         if not self.install_precheck_ok or not self.install_precheck_dll_name:
-            detail = self.install_precheck_error or (
-                "OptiScaler DLL compatibility check has not completed."
-                if not USE_KOREAN
-                else "OptiScaler DLL 호환성 확인이 아직 완료되지 않았습니다."
-            )
-            if USE_KOREAN:
-                detail = f"{detail}\n\nReShade, Special K 등 다른 MOD 사용 중이면 확인 후 다시 설치해 주세요."
-            else:
-                detail = f"{detail}\n\nIf you are using other mods such as ReShade or Special K, please verify them and try the installation again."
-            messagebox.showwarning("Warning", detail)
+            detail = self.install_precheck_error or self.txt.dialogs.precheck_incomplete_body
+            detail = f"{detail}\n\n{self.txt.dialogs.precheck_retry_mods_body}"
+            messagebox.showwarning(self.txt.common.warning, detail)
             return
 
         if not self.optiscaler_archive_ready or not getattr(self, "opti_source_archive", None):
-            detail = self.optiscaler_archive_error or "OptiScaler archive is not ready yet."
-            messagebox.showwarning("Warning", detail)
+            detail = self.optiscaler_archive_error or self.txt.dialogs.optiscaler_archive_not_ready
+            messagebox.showwarning(self.txt.common.warning, detail)
             return
 
         if self.selected_game_index < 0 or self.selected_game_index >= len(self.found_exe_list):
-            messagebox.showwarning("Warning", "Please select a valid game item.")
+            messagebox.showwarning(self.txt.common.warning, self.txt.dialogs.invalid_game_body)
             return
 
         selected_game = self.found_exe_list[self.selected_game_index]
         fsr4_required = self._should_apply_fsr4_for_game(selected_game)
         if fsr4_required and self.fsr4_archive_downloading:
-            messagebox.showinfo("Preparing Download", "FSR4 download is still in progress. Please wait.")
+            messagebox.showinfo(self.txt.dialogs.preparing_download_title, self.txt.dialogs.preparing_download_body)
             return
 
         if fsr4_required and (not self.fsr4_archive_ready or not getattr(self, "fsr4_source_archive", None)):
-            detail = self.fsr4_archive_error or "FSR4 is not ready yet."
-            messagebox.showwarning("Warning", detail)
+            detail = self.fsr4_archive_error or self.txt.dialogs.fsr4_not_ready
+            messagebox.showwarning(self.txt.common.warning, detail)
             return
 
         # Block install if popup not confirmed
         if not getattr(self, "_game_popup_confirmed", True):
-            messagebox.showwarning("Notice", "Please confirm the popup before installing.")
+            messagebox.showwarning(self.txt.common.notice, self.txt.dialogs.confirm_popup_body)
             return
 
         game_data = dict(selected_game)
@@ -3148,7 +3093,7 @@ class OptiManagerApp:
         self.install_in_progress = True
         self.apply_btn.configure(
             state="disabled",
-            text="Installing...",
+            text=self.txt.main.installing_button,
             fg_color=_INSTALL_BUTTON_DISABLED,
             hover_color=_INSTALL_BUTTON_DISABLED,
             border_color=_INSTALL_BUTTON_BORDER_DISABLED,
@@ -3336,7 +3281,10 @@ class OptiManagerApp:
             game = installed_game if isinstance(installed_game, dict) else {}
             self.root.after_idle(lambda g=dict(game): self._show_after_install_popup(g))
         else:
-            messagebox.showerror("Error", f"An error occurred during installation: {message}")
+            messagebox.showerror(
+                self.txt.common.error,
+                self.txt.dialogs.install_failed_body_template.format(message=message),
+            )
 
 
 if __name__ == "__main__":
