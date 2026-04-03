@@ -1,6 +1,6 @@
 # 🚀 OptiScaler Installer
 
-![20260325-235312](https://github.com/user-attachments/assets/00f34656-a2b6-4ad3-bce9-04e7a8daf102)
+<img width="1920" height="1128" alt="스크린샷 2026-04-03 213812" src="https://github.com/user-attachments/assets/5ace04fd-3cd4-4234-a792-63575fee5610" />
 
 <p align="center">
   <b>Simple and automated installer for OptiScaler.</b><br>
