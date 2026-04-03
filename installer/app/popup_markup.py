@@ -9,6 +9,11 @@ from typing import Iterator, Optional
 
 _OPEN_MARKUP_PATTERN = re.compile(r"\[\s*RED\s*\]", re.IGNORECASE)
 _CLOSE_MARKUP_PATTERN = re.compile(r"\[\s*END\s*[\]\}]", re.IGNORECASE)
+_PARAGRAPH_MARKUP_PATTERN = re.compile(r"\[\s*P\s*\]", re.IGNORECASE)
+_LINE_BREAK_MARKUP_PATTERN = re.compile(r"\[\s*BR\s*\]", re.IGNORECASE)
+_DOT_MARKUP_PATTERN = re.compile(r"\[\s*DOT\s*\][ \t]*", re.IGNORECASE)
+_INDENT_MARKUP_PATTERN = re.compile(r"\[\s*INDENT\s*\]", re.IGNORECASE)
+_INDENT_SPACES = 3
 
 
 @dataclass(frozen=True)
@@ -26,8 +31,18 @@ class PopupMarkupText:
     emphasis_font: tkfont.Font
 
 
+def normalize_popup_markup_text(raw_text: str) -> str:
+    text = str(raw_text or "").replace("\r\n", "\n").replace("\r", "\n")
+    text = _PARAGRAPH_MARKUP_PATTERN.sub("\n\n", text)
+    text = _LINE_BREAK_MARKUP_PATTERN.sub("\n", text)
+    text = _DOT_MARKUP_PATTERN.sub("\u2022 ", text)
+    # Keep indent width easy to tune in code while the sheet syntax stays stable.
+    text = _INDENT_MARKUP_PATTERN.sub(" " * _INDENT_SPACES, text)
+    return text
+
+
 def _iter_markup_segments(raw_text: str) -> Iterator[tuple[str, bool]]:
-    text = str(raw_text or "")
+    text = normalize_popup_markup_text(raw_text)
     cursor = 0
 
     while cursor < len(text):
@@ -59,7 +74,7 @@ def strip_markup_text(raw_text: str) -> str:
 
 
 def estimate_wrapped_text_lines(text: str, font: tkfont.Font, max_width_px: int) -> int:
-    normalized = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    normalized = normalize_popup_markup_text(text)
     available_width = max(32, int(max_width_px or 0))
     total_lines = 0
 
