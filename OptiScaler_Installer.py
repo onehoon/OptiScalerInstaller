@@ -652,6 +652,7 @@ class OptiManagerApp:
         self._startup_popup_queue: list[dict[str, object]] = []
         self._startup_popup_active = False
         self._startup_popup_order = 0
+        self._initial_auto_scan_empty_popup_shown = False
         self.found_exe_list = []
         self.game_db = {}
         self.module_download_links = {}
@@ -1818,12 +1819,55 @@ class OptiManagerApp:
             root_height_fallback=WINDOW_H,
         )
 
+    def _show_scan_result_popup(
+        self,
+        message_text: str,
+        on_close: Optional[Callable[[], None]] = None,
+    ) -> None:
+        message_popup.show_message_popup(
+            root=self.root,
+            message_text=message_text,
+            theme=MESSAGE_POPUP_THEME,
+            title="스캔 결과" if USE_KOREAN else "Scan Result",
+            confirm_text="OK",
+            on_close=on_close,
+            allow_window_close=True,
+            scrollable=True,
+            debug_name="scan result popup",
+            preferred_text_chars=42,
+            max_text_chars=72,
+            emphasis_font_size=14,
+            root_width_fallback=WINDOW_W,
+            root_height_fallback=WINDOW_H,
+        )
+
+    def _enqueue_initial_auto_scan_empty_popup(self) -> None:
+        if self._initial_auto_scan_empty_popup_shown:
+            return
+        self._initial_auto_scan_empty_popup_shown = True
+        detail = (
+            "자동 스캔에서 지원되는 게임을 찾지 못했습니다.\n게임이 설치된 폴더를 직접 선택해 주세요."
+            if USE_KOREAN
+            else "No supported games were found during automatic scan.\nPlease choose your game installation folder manually."
+        )
+        self._enqueue_startup_popup(
+            "auto_scan_no_results",
+            priority=60,
+            blocking=False,
+            show_callback=lambda done_callback, text=detail: self._show_scan_result_popup(
+                text,
+                on_close=done_callback,
+            ),
+        )
+        self._run_next_startup_popup()
+
     def _start_auto_scan(self):
         """Kick off a silent auto-scan of known Steam/game directories."""
         if self.multi_gpu_blocked:
             return
         scan_paths = game_scanner.get_auto_scan_paths(logger=logging.getLogger())
         if not scan_paths:
+            self._enqueue_initial_auto_scan_empty_popup()
             return
 
         self._begin_scan(scan_paths, is_auto=True)
@@ -3230,8 +3274,15 @@ class OptiManagerApp:
         self._set_scan_status_message("")
         if count > 0:
             self._set_information_text("Select a game to view information.")
-        elif not is_auto:
-            messagebox.showinfo("Scan Result", "No supported games found in selected folder.")
+        elif is_auto:
+            self._enqueue_initial_auto_scan_empty_popup()
+        else:
+            detail = (
+                "선택하신 폴더에서 지원되는 게임을 찾지 못했습니다."
+                if USE_KOREAN
+                else "No supported games found in the selected folder."
+            )
+            self._show_scan_result_popup(detail)
         # Trigger retry check now that scan is done.
         self._pump_image_jobs()
 
