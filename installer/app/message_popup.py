@@ -33,6 +33,25 @@ def _build_width_steps(start: int, stop: int) -> list[int]:
     return steps
 
 
+def _resolve_popup_font_size(popup: ctk.CTkToplevel, size: Optional[int]) -> Optional[int]:
+    if size is None:
+        return None
+
+    logical_size = int(size)
+    if logical_size < 0:
+        return logical_size
+
+    try:
+        if hasattr(popup, "_get_window_scaling"):
+            scale = float(popup._get_window_scaling())
+            if scale > 0:
+                return -max(1, int(round(logical_size * scale)))
+    except Exception:
+        logging.debug("Failed to resolve popup font scaling", exc_info=True)
+
+    return -max(1, logical_size)
+
+
 def _apply_popup_geometry(
     root: ctk.CTk,
     popup: ctk.CTkToplevel,
@@ -129,9 +148,9 @@ def show_message_popup(
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
-        base_font_size=base_font_size,
+        base_font_size=_resolve_popup_font_size(popup, base_font_size),
         emphasis_color=theme.emphasis_color,
-        emphasis_font_size=emphasis_font_size,
+        emphasis_font_size=_resolve_popup_font_size(popup, emphasis_font_size),
         emphasis_weight=emphasis_weight,
     )
     message_widget = message_block.widget

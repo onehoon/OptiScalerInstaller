@@ -14,11 +14,13 @@ from .popup_markup import (
 from .popup_utils import PopupFadeController, create_modal_popup, present_modal_popup
 from .scan_controller import ScanController, ScanControllerCallbacks
 from .startup_flow import StartupFlowController, StartupFlowCallbacks
+from .ui_presenters import BottomPanelPresenter, HeaderStatusPresenter
 
 __all__ = [
     "ArchivePreparationCallbacks",
     "ArchivePreparationController",
     "ArchivePreparationState",
+    "BottomPanelPresenter",
     "GameDbControllerCallbacks",
     "GameDbLoadController",
     "GameDbLoadResult",
@@ -31,6 +33,7 @@ __all__ = [
     "ScanControllerCallbacks",
     "StartupFlowController",
     "StartupFlowCallbacks",
+    "HeaderStatusPresenter",
     "create_modal_popup",
     "create_popup_markup_text",
     "estimate_wrapped_text_lines",

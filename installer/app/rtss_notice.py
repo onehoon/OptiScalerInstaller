@@ -157,6 +157,7 @@ def _evaluate_rtss_notice(
 def _center_rtss_popup_on_root(
     root: ctk.CTk,
     popup: ctk.CTkToplevel,
+    target_width_px: Optional[int] = None,
     use_requested_size: bool = False,
 ) -> None:
     try:
@@ -173,6 +174,8 @@ def _center_rtss_popup_on_root(
         screen_w = max(1, int(root.winfo_screenwidth() or popup_w))
         screen_h = max(1, int(root.winfo_screenheight() or popup_h))
         margin = 12
+        if target_width_px is not None:
+            popup_w = max(popup_w, min(int(target_width_px), screen_w - (margin * 2)))
         x = root_x + (root_w // 2) - (popup_w // 2)
         y = root_y + (root_h // 2) - (popup_h // 2)
         min_x = margin if popup_w + (margin * 2) < screen_w else 0
@@ -181,9 +184,29 @@ def _center_rtss_popup_on_root(
         max_y = max(min_y, screen_h - popup_h - margin)
         x = max(min_x, min(x, max_x))
         y = max(min_y, min(y, max_y))
-        popup.geometry(f"+{x}+{y}")
+        logical_w = max(1, int(round(popup._reverse_window_scaling(popup_w))))
+        logical_h = max(1, int(round(popup._reverse_window_scaling(popup_h))))
+        popup.geometry(f"{logical_w}x{logical_h}+{x}+{y}")
     except Exception:
         logging.debug("Failed to center RTSS popup on root window", exc_info=True)
+
+
+def _resolve_popup_font_size(popup: ctk.CTkToplevel, size: int) -> int:
+    logical_size = max(1, int(size))
+    try:
+        if hasattr(popup, "_get_window_scaling"):
+            scale = float(popup._get_window_scaling())
+            if scale > 0:
+                return -max(1, int(round(logical_size * scale)))
+    except Exception:
+        logging.debug("Failed to resolve RTSS popup font scaling", exc_info=True)
+    return -logical_size
+
+
+def _resolve_popup_width(root: ctk.CTk, min_width_px: int) -> int:
+    root_w = max(1, int(root.winfo_width() or 512))
+    screen_w = max(1, int(root.winfo_screenwidth() or root_w))
+    return max(min_width_px, min(root_w, screen_w - 24))
 
 
 def _show_rtss_popup(
@@ -194,6 +217,8 @@ def _show_rtss_popup(
     use_korean: bool,
 ) -> None:
     strings = get_app_strings(lang_from_bool(use_korean))
+    desired_popup_width = _resolve_popup_width(root, 420)
+    message_width = max(280, desired_popup_width - 72)
     popup = create_modal_popup(root, strings.rtss.notice_title, theme.surface_color)
 
     container = ctk.CTkFrame(popup, fg_color="transparent")
@@ -206,14 +231,18 @@ def _show_rtss_popup(
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
-        base_font_size=13,
+        base_font_size=_resolve_popup_font_size(popup, 13),
         emphasis_color=theme.warning_text_color,
-        emphasis_font_size=14,
+        emphasis_font_size=_resolve_popup_font_size(popup, 14),
     )
     message_widget = message_block.widget
-    wrap_width_px = max(32, int(message_block.base_font.measure("0")) * int(message_widget.cget("width")))
-    line_count = max(1, min(16, estimate_wrapped_text_lines(message_block.plain_text, message_block.base_font, wrap_width_px)))
-    message_widget.configure(height=line_count)
+    zero_char_width = max(
+        7,
+        int(max(message_block.base_font.measure("0"), message_block.emphasis_font.measure("0"))),
+    )
+    text_width_chars = max(28, (message_width + max(1, zero_char_width) - 1) // max(1, zero_char_width))
+    line_count = estimate_wrapped_text_lines(message_block.plain_text, message_block.base_font, message_width)
+    message_widget.configure(width=text_width_chars, height=line_count)
     message_widget.configure(state="disabled")
     message_widget.pack(anchor="w", fill="x")
 
@@ -261,8 +290,17 @@ def _show_rtss_popup(
     popup.protocol("WM_DELETE_WINDOW", _close_popup)
     present_modal_popup(
         popup,
-        initial_layout=lambda: _center_rtss_popup_on_root(root, popup, use_requested_size=True),
-        after_idle_layout=lambda p=popup: _center_rtss_popup_on_root(root, p),
+        initial_layout=lambda: _center_rtss_popup_on_root(
+            root,
+            popup,
+            target_width_px=desired_popup_width,
+            use_requested_size=True,
+        ),
+        after_idle_layout=lambda p=popup: _center_rtss_popup_on_root(
+            root,
+            p,
+            target_width_px=desired_popup_width,
+        ),
         fade_controller=fade_controller,
     )
     popup.wait_window()

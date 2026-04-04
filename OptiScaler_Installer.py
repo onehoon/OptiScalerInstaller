@@ -19,22 +19,23 @@ from installer.app import (
     ArchivePreparationCallbacks,
     ArchivePreparationController,
     ArchivePreparationState,
+    BottomPanelPresenter,
     GameDbControllerCallbacks,
     GameDbLoadController,
     GameDbLoadResult,
     GpuFlowCallbacks,
     GpuFlowController,
     GpuFlowState,
+    HeaderStatusPresenter,
     gpu_notice,
     message_popup,
-    render_markup_to_text_widget,
     rtss_notice,
     StartupFlowController,
     StartupFlowCallbacks,
-    strip_markup_text,
 )
 from installer.app.poster_queue import PosterQueueController
 from installer.app.scan_controller import ScanController, ScanControllerCallbacks
+from installer.app.ui_builder import MainUiTheme, build_main_ui
 from installer.common.poster_loader import PosterImageLoader, PosterLoaderConfig
 from installer.config import ini_utils
 from installer.data import sheet_loader
@@ -311,13 +312,29 @@ IMAGE_TIMEOUT_SECONDS = 10
 IMAGE_MAX_RETRIES = 3
 IMAGE_MAX_WORKERS = 4
 IMAGE_RETRY_DELAY_MS = int(os.environ.get("OPTISCALER_IMAGE_RETRY_DELAY_MS", "1500"))
-HI_DPI_SCALE = 2
-TARGET_POSTER_W = CARD_W * HI_DPI_SCALE
-TARGET_POSTER_H = CARD_H * HI_DPI_SCALE
+DEFAULT_POSTER_SCALE = 1.5
 INFO_TEXT_OFFSET_PX = 10
 POSTER_CACHE_VERSION = 2
 ENABLE_POSTER_CACHE = os.environ.get("OPTISCALER_ENABLE_POSTER_CACHE", "1").strip().lower() in {"1", "true", "yes", "on"}
 IMAGE_CACHE_MAX = int(os.environ.get("OPTISCALER_IMAGE_CACHE_MAX", "100"))
+
+
+def _get_ctk_scale(window: object | None = None, default: float = 1.0) -> float:
+    try:
+        if window is not None and hasattr(window, "_get_window_scaling"):
+            scale = float(window._get_window_scaling())
+            if scale > 0:
+                return scale
+    except Exception:
+        logging.debug("[APP] Failed to read CustomTkinter scaling", exc_info=True)
+    return float(default)
+
+
+def _resolve_startup_poster_target_size(window: object | None = None, default_scale: float = DEFAULT_POSTER_SCALE) -> tuple[int, int, float]:
+    scale = _get_ctk_scale(window, default_scale)
+    target_width = max(1, int(round(CARD_W * scale)))
+    target_height = max(1, int(round(CARD_H * scale)))
+    return target_width, target_height, scale
 
 
 def _format_optiscaler_version_display_name(raw_name: str) -> str:
@@ -394,6 +411,31 @@ MESSAGE_POPUP_THEME = message_popup.MessagePopupTheme(
     accent_hover_color=_POPUP_OK_BUTTON_HOVER,
     font_ui=FONT_UI,
 )
+MAIN_UI_THEME = MainUiTheme(
+    panel_color=_PANEL,
+    surface_color=_SURFACE,
+    title_text_color=_TITLE_TEXT,
+    font_heading=FONT_HEADING,
+    font_ui=FONT_UI,
+    status_indicator_size=_STATUS_INDICATOR_SIZE,
+    status_indicator_loading_color=_STATUS_INDICATOR_LOADING,
+    status_indicator_y_offset=_STATUS_INDICATOR_Y_OFFSET,
+    status_text_color=_STATUS_TEXT,
+    content_side_pad=_CONTENT_SIDE_PAD,
+    browse_button_color=_BROWSE_BUTTON,
+    browse_button_hover_color=_BROWSE_BUTTON_HOVER,
+    scan_status_text_color=_SCAN_STATUS_TEXT,
+    scan_meta_right_inset=_SCAN_META_RIGHT_INSET,
+    supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
+    link_active_color=_LINK_ACTIVE,
+    meta_right_pad=_META_RIGHT_PAD,
+    selected_game_highlight_color=_SELECTED_GAME_HIGHLIGHT,
+    grid_width=GRID_W,
+    grid_height=GRID_H,
+    install_button_disabled_color=_INSTALL_BUTTON_DISABLED,
+    install_button_text_color=_INSTALL_BUTTON_TEXT,
+    install_button_border_disabled_color=_INSTALL_BUTTON_BORDER_DISABLED,
+)
 
 
 class OptiManagerApp:
@@ -434,6 +476,15 @@ class OptiManagerApp:
                 target_w,
                 target_h,
             )
+        self._poster_target_width, self._poster_target_height, self._poster_target_scale = _resolve_startup_poster_target_size(
+            self.root
+        )
+        logging.info(
+            "[APP] Poster target size resolved from widget scale %.2f -> %sx%s",
+            self._poster_target_scale,
+            self._poster_target_width,
+            self._poster_target_height,
+        )
 
         self.game_folder = ""
         self.opti_source_archive = ""
@@ -484,16 +535,18 @@ class OptiManagerApp:
         self._base_root_width = None
         self._ctk_images: list = []   # keep refs alive
         self._archive_controller: Optional[ArchivePreparationController] = None
+        self._bottom_panel_presenter: Optional[BottomPanelPresenter] = None
         self._game_db_controller: Optional[GameDbLoadController] = None
         self._gpu_flow_controller: Optional[GpuFlowController] = None
+        self._header_status_presenter: Optional[HeaderStatusPresenter] = None
         self._scan_controller: Optional[ScanController] = None
         self._poster_loader = PosterImageLoader(
             PosterLoaderConfig(
                 cache_dir=COVER_CACHE_DIR,
                 assets_dir=ASSETS_DIR,
                 default_poster_candidates=tuple(DEFAULT_POSTER_CANDIDATES),
-                target_width=TARGET_POSTER_W,
-                target_height=TARGET_POSTER_H,
+                target_width=self._poster_target_width,
+                target_height=self._poster_target_height,
                 repo_raw_base_url=COVERS_REPO_RAW_BASE_URL,
                 bundled_cover_filename_map=BUNDLED_COVER_FILENAME_MAP,
                 timeout_seconds=IMAGE_TIMEOUT_SECONDS,
@@ -539,9 +592,23 @@ class OptiManagerApp:
         self._games_scrollregion_after_id = None
         self._games_viewport_after_id = None
         self._overflow_fit_after_id = None
-        self._status_indicator_after_id = None
-        self._status_indicator_pulse_visible = True
-        self._status_indicator_pulse_colors = (_STATUS_INDICATOR_LOADING, _STATUS_INDICATOR_LOADING_DIM)
+        self._header_status_presenter = HeaderStatusPresenter(
+            root=self.root,
+            status_text_color=_STATUS_TEXT,
+            scan_status_text_color=_SCAN_STATUS_TEXT,
+            status_indicator_loading_dim_color=_STATUS_INDICATOR_LOADING_DIM,
+            status_indicator_pulse_ms=_STATUS_INDICATOR_PULSE_MS,
+            supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
+            link_active_color=_LINK_ACTIVE,
+            link_hover_color=_LINK_HOVER,
+            logger=logging.getLogger(),
+        )
+        self._bottom_panel_presenter = BottomPanelPresenter(
+            info_text_offset_px=INFO_TEXT_OFFSET_PX,
+            version_name_formatter=_format_optiscaler_version_display_name,
+            info_emphasis_color=_STATUS_INDICATOR_WARNING,
+            logger=logging.getLogger(),
+        )
         self.setup_ui()
         self._create_archive_controller()
         self._create_game_db_controller()
@@ -642,12 +709,13 @@ class OptiManagerApp:
         return True
 
     def _set_supported_games_wiki_link_hover(self, hovered: bool) -> None:
-        if not hasattr(self, "lbl_supported_games_wiki_link") or not self.lbl_supported_games_wiki_link.winfo_exists():
+        presenter = self._header_status_presenter
+        if presenter is None:
             return
-        if not SUPPORTED_GAMES_WIKI_URL:
-            self.lbl_supported_games_wiki_link.configure(text_color=_STATUS_TEXT)
-            return
-        self.lbl_supported_games_wiki_link.configure(text_color=_LINK_HOVER if hovered else _LINK_ACTIVE)
+        presenter.set_supported_games_wiki_link_hover(
+            getattr(self, "lbl_supported_games_wiki_link", None),
+            hovered,
+        )
 
     def _open_supported_games_wiki(self, _event=None) -> None:
         wiki_url = SUPPORTED_GAMES_WIKI_URL
@@ -663,62 +731,25 @@ class OptiManagerApp:
             messagebox.showerror(self.txt.common.error, self.txt.dialogs.wiki_open_failed_detail)
 
     def _set_scan_status_message(self, text: str = "", text_color: str = _SCAN_STATUS_TEXT):
-        if not hasattr(self, "lbl_scan_status") or not self.lbl_scan_status.winfo_exists():
+        presenter = self._header_status_presenter
+        if presenter is None:
             return
-        message = str(text or "").strip()
-        if not message:
-            self.lbl_scan_status.configure(text="")
-            self.lbl_scan_status.grid_remove()
-            return
-
-        self.lbl_scan_status.configure(text=message, text_color=text_color)
-        self.lbl_scan_status.grid()
-
-    def _set_status_badge_state(self, label_text: str, indicator_color: str, pulse: bool = False):
-        if not hasattr(self, "status_badge_label") or not hasattr(self, "status_badge_dot"):
-            return
-        if not self.status_badge_label.winfo_exists() or not self.status_badge_dot.winfo_exists():
-            return
-
-        self.status_badge_label.configure(text=label_text, text_color=_STATUS_TEXT)
-        if pulse:
-            self._start_status_badge_pulse(indicator_color, _STATUS_INDICATOR_LOADING_DIM)
-            return
-
-        self._stop_status_badge_pulse()
-        self.status_badge_dot.configure(fg_color=indicator_color)
-
-    def _start_status_badge_pulse(self, active_color: str, dim_color: str):
-        self._stop_status_badge_pulse()
-        self._status_indicator_pulse_colors = (active_color, dim_color)
-        self._status_indicator_pulse_visible = True
-        self.status_badge_dot.configure(fg_color=active_color)
-        self._status_indicator_after_id = self.root.after(
-            _STATUS_INDICATOR_PULSE_MS,
-            self._tick_status_badge_pulse,
+        presenter.set_scan_status_message(
+            getattr(self, "lbl_scan_status", None),
+            text,
+            text_color,
         )
 
-    def _stop_status_badge_pulse(self):
-        try:
-            if self._status_indicator_after_id is not None:
-                self.root.after_cancel(self._status_indicator_after_id)
-        except Exception:
-            pass
-        self._status_indicator_after_id = None
-        self._status_indicator_pulse_visible = True
-
-    def _tick_status_badge_pulse(self):
-        self._status_indicator_after_id = None
-        if not hasattr(self, "status_badge_dot") or not self.root.winfo_exists() or not self.status_badge_dot.winfo_exists():
+    def _set_status_badge_state(self, label_text: str, indicator_color: str, pulse: bool = False):
+        presenter = self._header_status_presenter
+        if presenter is None:
             return
-
-        active_color, dim_color = self._status_indicator_pulse_colors
-        next_visible = not self._status_indicator_pulse_visible
-        self._status_indicator_pulse_visible = next_visible
-        self.status_badge_dot.configure(fg_color=active_color if next_visible else dim_color)
-        self._status_indicator_after_id = self.root.after(
-            _STATUS_INDICATOR_PULSE_MS,
-            self._tick_status_badge_pulse,
+        presenter.set_status_badge_state(
+            label_widget=getattr(self, "status_badge_label", None),
+            dot_widget=getattr(self, "status_badge_dot", None),
+            label_text=label_text,
+            indicator_color=indicator_color,
+            pulse=pulse,
         )
 
     def _get_selected_game_header_text(self) -> str:
@@ -733,12 +764,13 @@ class OptiManagerApp:
         return game_name
 
     def _update_selected_game_header(self):
-        try:
-            game_name = self._get_selected_game_header_text()
-            if hasattr(self, "lbl_selected_game_header") and self.lbl_selected_game_header.winfo_exists():
-                self.lbl_selected_game_header.configure(text=game_name)
-        except Exception:
-            logging.debug("Failed to update selected game header", exc_info=True)
+        presenter = self._header_status_presenter
+        if presenter is None:
+            return
+        presenter.update_selected_game_header(
+            getattr(self, "lbl_selected_game_header", None),
+            self._get_selected_game_header_text(),
+        )
 
     def _show_after_install_popup(self, game: dict):
         msg = pick_sheet_text(game, "after_popup", self.lang)
@@ -834,9 +866,8 @@ class OptiManagerApp:
         except Exception:
             pass
         try:
-            if self._status_indicator_after_id is not None:
-                self.root.after_cancel(self._status_indicator_after_id)
-                self._status_indicator_after_id = None
+            if self._header_status_presenter is not None:
+                self._header_status_presenter.shutdown()
         except Exception:
             pass
         try:
@@ -1196,391 +1227,61 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
 
     def setup_ui(self):
-        self.root.configure(fg_color=_PANEL)
-        self.root.grid_rowconfigure(2, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-
-        self._build_header()       # row 0
-        self._build_scan_row()     # row 1
-        self._build_grid_area()    # row 2, expands
-        self._build_bottom_bar()   # row 3
-
-    # -- Header -----------------------------------------------------------
-
-    def _build_header(self):
-        hdr = ctk.CTkFrame(self.root, fg_color=_PANEL, corner_radius=0)
-        hdr.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
-        hdr.grid_columnconfigure(0, weight=1)
-
-        title_lbl = ctk.CTkLabel(
-            hdr,
-            text=self.txt.main.app_title,
-            font=ctk.CTkFont(family=FONT_HEADING, size=20, weight="bold"),
-            text_color=_TITLE_TEXT,
-        )
-        title_lbl.grid(row=0, column=0, padx=24, pady=(18, 2), sticky="w")
-
-        sub_frame = ctk.CTkFrame(hdr, fg_color=_PANEL, corner_radius=0)
-        sub_frame.grid(row=1, column=0, padx=24, pady=(0, 14), sticky="ew")
-        sub_frame.grid_columnconfigure(0, weight=1)
-
-        self.gpu_lbl = ctk.CTkLabel(
-            sub_frame,
-            text=self._format_gpu_label_text(self.gpu_info),
-            font=ctk.CTkFont(family=FONT_UI, size=11),
-            text_color="#C5CFDB",
-            anchor="w",
-        )
-        self.gpu_lbl.grid(row=0, column=0, padx=(1, 0), sticky="w")
-
-        # Compact header status indicator
-        self.status_badge = ctk.CTkFrame(
-            sub_frame,
-            fg_color="transparent",
-            corner_radius=0,
-        )
-        self.status_badge.grid(row=0, column=1, sticky="e", padx=(8, 0))
-        self.status_badge.grid_columnconfigure(1, weight=1)
-
-        self.status_badge_dot = ctk.CTkFrame(
-            self.status_badge,
-            width=_STATUS_INDICATOR_SIZE,
-            height=_STATUS_INDICATOR_SIZE,
-            fg_color=_STATUS_INDICATOR_LOADING,
-            corner_radius=_STATUS_INDICATOR_SIZE // 2,
-        )
-        self.status_badge_dot.grid(
-            row=0,
-            column=0,
-            padx=(0, 8),
-            pady=(_STATUS_INDICATOR_Y_OFFSET, 0),
-            sticky="w",
-        )
-
-        self.status_badge_label = ctk.CTkLabel(
-            self.status_badge,
-            text=self.txt.main.status_game_db,
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
-            text_color=_STATUS_TEXT,
-            anchor="w",
-        )
-        self.status_badge_label.grid(row=0, column=1, sticky="w")
-        self._set_status_badge_state(self.txt.main.status_game_db, _STATUS_INDICATOR_LOADING, pulse=True)
-
-        # Separator line
-        sep = ctk.CTkFrame(hdr, height=1, fg_color="#4A5361", corner_radius=0)
-        sep.grid(row=2, column=0, sticky="ew")
-
-    # -- Scan row ----------------------------------------------------------
-
-    def _build_scan_row(self):
-        row = ctk.CTkFrame(self.root, fg_color=_SURFACE, corner_radius=0)
-        row.grid(row=1, column=0, sticky="ew", padx=0, pady=0)
-        row.grid_columnconfigure(2, weight=1)
-        self.scan_row = row
-
-        sec_lbl = ctk.CTkLabel(
-            row,
-            text=self.txt.main.scan_section_title,
-            font=ctk.CTkFont(family=FONT_HEADING, size=12, weight="bold"),
-            text_color="#F1F5F9",
-        )
-        sec_lbl.grid(row=0, column=0, padx=(_CONTENT_SIDE_PAD, 10), pady=(8, 8), sticky="w")
-
-        self.btn_select_folder = ctk.CTkButton(
-            row,
-            text=self.txt.main.browse_button,
-            width=110,
-            height=32,
-            corner_radius=8,
-            fg_color=_BROWSE_BUTTON,
-            hover_color=_BROWSE_BUTTON_HOVER,
-            text_color="#F1F5F9",
-            font=ctk.CTkFont(family=FONT_UI, size=11, weight="bold"),
-            command=self.select_game_folder,
-        )
-        self.btn_select_folder.grid(row=0, column=1, padx=4, pady=(8, 8), sticky="w")
-
-        self.lbl_scan_status = ctk.CTkLabel(
-            row,
-            text="",
-            font=ctk.CTkFont(family=FONT_UI, size=11),
-            text_color=_SCAN_STATUS_TEXT,
-            anchor="w",
-            justify="left",
-        )
-        self.lbl_scan_status.grid(
-            row=1,
-            column=0,
-            columnspan=4,
-            padx=(_CONTENT_SIDE_PAD, _SCAN_META_RIGHT_INSET),
-            pady=(0, 10),
-            sticky="w",
-        )
-        self.lbl_scan_status.grid_remove()
-
-    # -- Grid area (poster cards) -----------------------------------------
-
-    def _build_grid_area(self):
-        wrapper = ctk.CTkFrame(self.root, fg_color=_PANEL, corner_radius=0)
-        wrapper.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
-        wrapper.grid_rowconfigure(1, weight=1)
-        wrapper.grid_columnconfigure(0, weight=1)
-
-        header_row = ctk.CTkFrame(wrapper, fg_color="transparent", corner_radius=0)
-        header_row.grid(row=0, column=0, padx=(_CONTENT_SIDE_PAD, _CONTENT_SIDE_PAD), pady=(6, 6), sticky="ew")
-        header_row.grid_columnconfigure(1, weight=1)
-
-        self.lbl_supported_games_wiki_link = ctk.CTkLabel(
-            header_row,
-            text=self.txt.main.supported_games_link,
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold", underline=True),
-            text_color=_LINK_ACTIVE if SUPPORTED_GAMES_WIKI_URL else _STATUS_TEXT,
-            anchor="w",
-            justify="left",
-            cursor="hand2" if SUPPORTED_GAMES_WIKI_URL else "arrow",
-        )
-        self.lbl_supported_games_wiki_link.grid(row=0, column=0, padx=(14, 12), pady=(1, 0), sticky="w")
-        if SUPPORTED_GAMES_WIKI_URL:
-            self.lbl_supported_games_wiki_link.bind("<Enter>", lambda _event: self._set_supported_games_wiki_link_hover(True))
-            self.lbl_supported_games_wiki_link.bind("<Leave>", lambda _event: self._set_supported_games_wiki_link_hover(False))
-            self.lbl_supported_games_wiki_link.bind("<Button-1>", self._open_supported_games_wiki)
-
-        selected_header_row = ctk.CTkFrame(header_row, fg_color="transparent", corner_radius=0)
-        selected_header_row.grid(row=0, column=1, padx=(8, _META_RIGHT_PAD), pady=(1, 0), sticky="ew")
-        selected_header_row.grid_columnconfigure(0, weight=1)
-
-        game_name = self._get_selected_game_header_text()
-
-        self.lbl_selected_game_header = ctk.CTkLabel(
-            selected_header_row,
-            text=game_name,
-            font=ctk.CTkFont(family=FONT_UI, size=12, weight="bold"),
-            text_color=_SELECTED_GAME_HIGHLIGHT,
-            anchor="e",
-            justify="right",
-        )
-        self.lbl_selected_game_header.grid(row=0, column=1, sticky="e")
-
-        self.games_scroll = ctk.CTkScrollableFrame(
-            wrapper,
-            width=GRID_W,
-            height=GRID_H,
-            fg_color=_PANEL,
-            scrollbar_button_color="#566171",
-            scrollbar_button_hover_color="#6A7587",
-            corner_radius=0,
-        )
-        self.games_scroll.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 8))
-        self._configure_card_columns(self._grid_cols_current)
-        self.games_scroll.bind("<Configure>", self._on_games_area_resize)
-        try:
-            canvas = getattr(self.games_scroll, "_parent_canvas", None)
-            scrollbar = getattr(self.games_scroll, "_scrollbar", None)
-            if canvas is not None:
-                canvas.bind("<MouseWheel>", self._on_games_scroll, add="+")
-                canvas.bind("<Button-4>", self._on_games_scroll, add="+")
-                canvas.bind("<Button-5>", self._on_games_scroll, add="+")
-                canvas.bind("<ButtonRelease-1>", self._on_games_scroll, add="+")
-                # Also reflow columns when the inner canvas itself resizes.
-                canvas.bind("<Configure>", self._on_games_area_resize, add="+")
-            if canvas is not None and scrollbar is not None:
-                scrollbar.configure(command=self._on_games_scrollbar_command)
-        except Exception:
-            logging.debug("Failed to bind scroll events for image priority updates")
-
-        # Empty-state placeholder (kept hidden intentionally)
-        self.empty_label = ctk.CTkLabel(
-            self.games_scroll,
-            text="",
-            font=ctk.CTkFont(family=FONT_UI, size=13),
-            text_color="#9AA8BC",
-        )
-
-
-    # -- Bottom bar --------------------------------------------------------
-
-    def _build_bottom_bar(self):
-        bar = ctk.CTkFrame(self.root, fg_color=_SURFACE, corner_radius=0, height=142)
-        bar.grid(row=3, column=0, sticky="ew", padx=0, pady=0)
-        bar.grid_propagate(False)
-        bar.grid_columnconfigure(0, weight=1)
-
-        # Section label + latest version info on the same line
-        title_line = ctk.CTkFrame(bar, fg_color="transparent", corner_radius=0)
-        title_line.grid(row=0, column=0, padx=20, pady=(7, 2), sticky="ew")
-        title_line.grid_columnconfigure(1, weight=1)
-
-        sec_lbl = ctk.CTkLabel(
-            title_line,
-            text=self.txt.main.install_section_title,
-            font=ctk.CTkFont(family=FONT_HEADING, size=12, weight="bold"),
-            text_color="#F1F5F9",
-        )
-        sec_lbl.grid(row=0, column=0, sticky="w")
-
-        self.lbl_optiscaler_version_line = ctk.CTkLabel(
-            title_line,
-            text="",
-            font=ctk.CTkFont(family=FONT_UI, size=11),
-            text_color="#AEB9C8",
-            anchor="e",
-            justify="right",
-            wraplength=520,
-        )
-        self.lbl_optiscaler_version_line.grid(row=0, column=1, padx=(10, 0), pady=(2, 0), sticky="e")
-
-        mid_bottom = ctk.CTkFrame(bar, fg_color=_SURFACE, corner_radius=0)
-        mid_bottom.grid(row=1, column=0, sticky="ew", padx=20, pady=(2, 0))
-        mid_bottom.grid_columnconfigure(0, weight=1)
-
-        self.apply_btn = ctk.CTkButton(
-            mid_bottom,
-            text=self.txt.main.install_button,
-            width=104,
-            height=87,
-            corner_radius=10,
-            fg_color=_INSTALL_BUTTON_DISABLED,
-            hover_color=_INSTALL_BUTTON_DISABLED,
-            text_color=_INSTALL_BUTTON_TEXT,
-            border_width=1,
-            border_color=_INSTALL_BUTTON_BORDER_DISABLED,
-            font=ctk.CTkFont(family=FONT_UI, size=14, weight="bold"),
-            state="disabled",
-            command=self.apply_optiscaler,
-        )
-        self.apply_btn.grid(row=0, column=1, padx=(10, 0), pady=(0, 0))
-
-        self.info_text = ctk.CTkTextbox(
-            mid_bottom,
-            height=87,
-            corner_radius=8,
-            fg_color="#2A303A",
-            text_color="#E3EAF3",
-            font=ctk.CTkFont(family=FONT_UI, size=12),
-            state="disabled",
-            wrap="word",
-            border_width=0,
-        )
-        self.info_text.grid(row=0, column=0, sticky="ew", pady=(0, 0))
-        self._apply_information_text_shift()
-
-        self._refresh_optiscaler_archive_info_ui()
-        self._set_information_text(self.txt.main.select_game_hint)
-        self._update_install_button_state()
+        build_main_ui(self, MAIN_UI_THEME)
 
     def _refresh_optiscaler_archive_info_ui(self):
-        # Do not show placeholder version text before sheet load completes.
-        if getattr(self, "sheet_loading", False):
-            if hasattr(self, "lbl_optiscaler_version_line"):
-                self.lbl_optiscaler_version_line.configure(text="")
+        presenter = self._bottom_panel_presenter
+        if presenter is None:
             return
-
-        entry = self.module_download_links.get("optiscaler", {}) if hasattr(self, "module_download_links") else {}
-        archive_name = ""
-
-        if isinstance(entry, dict):
-            archive_name = str(entry.get("filename", "") or entry.get("version", "")).strip()
-            raw_version = str(entry.get("version", "")).replace("\r", " ").replace("\n", " ").strip()
-            version = re.sub(r"\s+", " ", raw_version)
-        else:
-            version = ""
-
-        archive_display_name = _format_optiscaler_version_display_name(archive_name)
-        version_display_name = _format_optiscaler_version_display_name(version)
-
-        if archive_display_name:
-            version_text = self.txt.main.version_line_template.format(value=archive_display_name)
-        elif version_display_name:
-            version_text = self.txt.main.version_line_template.format(value=version_display_name)
-        else:
-            version_text = self.txt.main.version_line_template.format(value="-")
-
-        if hasattr(self, "lbl_optiscaler_version_line"):
-            self.lbl_optiscaler_version_line.configure(text=version_text, text_color="#AEB9C8")
+        presenter.refresh_optiscaler_archive_info_ui(
+            getattr(self, "lbl_optiscaler_version_line", None),
+            sheet_loading=bool(getattr(self, "sheet_loading", False)),
+            module_download_links=self.module_download_links if hasattr(self, "module_download_links") else {},
+            version_line_template=self.txt.main.version_line_template,
+        )
 
     def _apply_information_text_shift(self):
-        # Keep inner spacing tight; avoid moving the inner widget itself to preserve border/glow rendering.
-        try:
-            text_widget = getattr(self.info_text, "_textbox", None)
-            if text_widget is None:
-                return
-            text_widget.configure(spacing1=0, spacing2=0, spacing3=0, pady=0)
-
-            # Shift text area upward by reducing top outer padding and giving the same room at bottom.
-            manager = text_widget.winfo_manager()
-            if manager == "pack":
-                text_widget.pack_configure(pady=(0, INFO_TEXT_OFFSET_PX))
-            elif manager == "grid":
-                text_widget.grid_configure(pady=(0, INFO_TEXT_OFFSET_PX))
-        except Exception as exc:
-            logging.debug("Could not adjust information textbox position: %s", exc)
+        presenter = self._bottom_panel_presenter
+        if presenter is None:
+            return
+        presenter.apply_information_text_shift(getattr(self, "info_text", None))
 
     # ------------------------------------------------------------------
     # Status indicator
     # ------------------------------------------------------------------
 
     def _update_sheet_status(self):
-        if self.multi_gpu_blocked:
-            self._set_status_badge_state(
-                self.txt.main.status_gpu_config,
-                _STATUS_INDICATOR_OFFLINE,
-            )
+        presenter = self._header_status_presenter
+        if presenter is None:
             return
-        if self._gpu_selection_pending:
-            self._set_status_badge_state(
-                self.txt.main.status_gpu_select,
-                _STATUS_INDICATOR_WARNING,
-            )
-            return
-        if self.sheet_loading:
-            self._set_status_badge_state(
-                self.txt.main.status_game_db,
-                _STATUS_INDICATOR_LOADING,
-                pulse=True,
-            )
-            return
-        if self.sheet_status:
-            self._set_status_badge_state(
-                self.txt.main.status_game_db,
-                _STATUS_INDICATOR_ONLINE,
-            )
-        else:
-            self._set_status_badge_state(
-                self.txt.main.status_game_db,
-                _STATUS_INDICATOR_OFFLINE,
-            )
+        presenter.update_sheet_status(
+            label_widget=getattr(self, "status_badge_label", None),
+            dot_widget=getattr(self, "status_badge_dot", None),
+            multi_gpu_blocked=self.multi_gpu_blocked,
+            gpu_selection_pending=self._gpu_selection_pending,
+            sheet_loading=self.sheet_loading,
+            sheet_status=self.sheet_status,
+            status_gpu_config_text=self.txt.main.status_gpu_config,
+            status_gpu_select_text=self.txt.main.status_gpu_select,
+            status_game_db_text=self.txt.main.status_game_db,
+            indicator_offline=_STATUS_INDICATOR_OFFLINE,
+            indicator_warning=_STATUS_INDICATOR_WARNING,
+            indicator_loading=_STATUS_INDICATOR_LOADING,
+            indicator_online=_STATUS_INDICATOR_ONLINE,
+        )
 
     # ------------------------------------------------------------------
     # Information text
     # ------------------------------------------------------------------
 
     def _set_information_text(self, text=""):
-        info_text = (text or "").strip() or self.txt.main.no_information
-        text_widget = getattr(self.info_text, "_textbox", self.info_text)
-        self._apply_information_text_shift()
-        self.info_text.configure(state="normal")
-        try:
-            text_widget.delete("1.0", "end")
-            self._insert_information_with_markup(info_text)
-        except Exception as exc:
-            logging.warning("Failed to render information markup, falling back to plain text: %s", exc)
-            text_widget.delete("1.0", "end")
-            fallback_text = strip_markup_text(info_text)
-            text_widget.insert("1.0", fallback_text)
-        finally:
-            self.info_text.configure(state="disabled")
-
-    def _insert_information_with_markup(self, raw_text: str):
-        text_widget = getattr(self.info_text, "_textbox", self.info_text)
-        render_markup_to_text_widget(
-            text_widget,
-            raw_text,
-            emphasis_tag="info_red_emphasis",
-            emphasis_color=_STATUS_INDICATOR_WARNING,
-            emphasis_size_offset=1,
-            emphasis_weight="bold",
-            trim_emphasis=True,
+        presenter = self._bottom_panel_presenter
+        if presenter is None:
+            return
+        presenter.set_information_text(
+            getattr(self, "info_text", None),
+            text=text,
+            no_information_text=self.txt.main.no_information,
         )
 
     # ------------------------------------------------------------------
@@ -1618,14 +1319,7 @@ class OptiManagerApp:
         self._update_install_button_state()
 
     def _get_effective_widget_scale(self) -> float:
-        try:
-            if hasattr(ctk, "get_widget_scaling"):
-                scale = float(ctk.get_widget_scaling())
-                if scale > 0:
-                    return scale
-        except Exception:
-            pass
-        return 1.0
+        return _get_ctk_scale(self.root, 1.0)
 
     def _get_forced_card_area_width(self) -> int:
         canvas = getattr(self.games_scroll, "_parent_canvas", None)
