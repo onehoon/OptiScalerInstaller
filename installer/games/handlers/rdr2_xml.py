@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -84,6 +85,25 @@ def resolve_rdr2_system_xml_path() -> Path:
     return Path(os.environ.get("USERPROFILE") or str(Path.home())) / "Documents" / RDR2_SYSTEM_XML_RELATIVE_PATH
 
 
+def _system_xml_backup_path(xml_path: Path) -> Path:
+    return xml_path.with_name(f"{xml_path.name}.bak")
+
+
+def _ensure_system_xml_backup(xml_path: Path, logger=None) -> Path:
+    backup_path = _system_xml_backup_path(xml_path)
+    if backup_path.exists():
+        if not backup_path.is_file():
+            raise RuntimeError(f"RDR2 system.xml backup path is not a file: {backup_path}")
+        if logger:
+            logger.info("Reusing existing RDR2 system.xml backup: %s", backup_path)
+        return backup_path
+
+    shutil.copy2(xml_path, backup_path)
+    if logger:
+        logger.info("Created RDR2 system.xml backup: %s", backup_path)
+    return backup_path
+
+
 def _ensure_child(parent: ET.Element, tag: str) -> ET.Element:
     child = parent.find(tag)
     if child is None:
@@ -121,6 +141,7 @@ def apply_rdr2_system_xml_settings(system_xml_path: str | Path | None = None, lo
 
     original_mode = xml_path.stat().st_mode
     original_readonly = not bool(original_mode & stat.S_IWRITE)
+    _ensure_system_xml_backup(xml_path, logger=logger)
 
     try:
         if original_readonly:
