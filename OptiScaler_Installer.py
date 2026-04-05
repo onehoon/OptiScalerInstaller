@@ -196,7 +196,7 @@ def _init_file_logger() -> Optional[Path]:
         if getattr(sys, 'frozen', False) and hasattr(sys, 'executable'):
             candidates.append(Path(sys.executable).resolve().parent)
         else:
-            candidates.append(Path(__file__).resolve().parent)
+            candidates.append(Path(__file__).resolve().parent / "logs")
     except Exception:
         pass
 

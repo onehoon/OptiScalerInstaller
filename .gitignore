@@ -14,6 +14,9 @@ temp_version.txt
 *.log
 *.exe
 
+# Log output directory (dev mode)
+logs/
+
 # Tests and local test artifacts
 tests/
 tests_runtime/
