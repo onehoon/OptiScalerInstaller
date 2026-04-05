@@ -7,22 +7,34 @@
   <b>Install and Play game! No need to set up OptiScaler option (Like Plug and Play)</b><br>
 </p>
 
+> [!NOTE]
+> This installer is not officially provided by OptiScaler.
+
 &nbsp;
 
 ## 📋 Requirements
 ---
 * **Internet Connection:** Required to load the latest game DB from Google Sheets.
+* **Windows 11** Required.
 * **OptiScaler Version:** The latest OptiScaler will be downloaded automatically.
 
 &nbsp;
 
-## 💻 Supported GPU
----
-- **Intel:** Lunar Lake, Meteor Lake
-- **AMD:** Radeon 780M, 890M, 8060S (AI Max+ 395)
-  > **Note:** The default installation option is **XeSS + XeFG**
-  >  
-  > If you prefer **FSR**, you can switch it manually via the OptiScaler overlay (Press `Insert` key in-game)
+## 💻 GPU Support and Applied Settings
+
+> [!NOTE]
+> After installation, optimized **OptiScaler** settings based on your GPU will be automatically applied.  
+> The upscaling and frame generation options shown below refer to **OptiScaler configuration**, not the game's native in-game graphics settings.
+
+| Vendor | Supported GPUs | Upscaling | Frame Generation |
+|---|---|---|---|
+| **Intel** | Arc Series | XeSS | **XeMFG** (default: 3x) |
+| **AMD** | 780/890M, 8060S, RX 60/70 Series | FSR4 INT8 | XeFG (2x) |
+| **NVIDIA** | RTX 20/30 Series | DLSS | XeFG (2x) |
+
+**Notes**
+- **AMD RX 9000, NVIDIA RTX 40/50 Series:** devices are supported only in games that do **not** support in-game FSR Frame Generation.  
+  **Examples:** *Kingdom Come: Deliverance II*, *Death Stranding Director’s Cut*
 
 &nbsp;
 
