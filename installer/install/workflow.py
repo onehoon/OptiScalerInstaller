@@ -146,7 +146,9 @@ def run_install_workflow(
 
     install_ctx.handler.finalize_install(app, install_ctx.game_data, install_ctx.target_path, logger)
     logger.info("Install completed")
-    return dict(install_ctx.game_data)
+    installed_game = dict(install_ctx.game_data)
+    installed_game["__installed_proxy_name__"] = str(install_ctx.final_dll_name or "")
+    return installed_game
 
 
 __all__ = [

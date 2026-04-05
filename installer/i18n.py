@@ -57,6 +57,7 @@ class DialogStrings:
     wiki_open_failed_detail: str
     close_while_installing_body: str
     installation_completed: str
+    installation_completed_with_name_template: str
     game_db_loading_title: str
     game_db_loading_body: str
     game_db_error_title: str
@@ -166,6 +167,10 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             wiki_open_failed_detail="지원 게임 위키를 열지 못했습니다.",
             close_while_installing_body="설치가 진행 중입니다. 완료 후 종료해 주세요.",
             installation_completed="설치가 완료되었습니다.",
+            installation_completed_with_name_template=(
+                "[RED]OptiScaler가 설치되었습니다.\n"
+                "삭제하시려면 OptiScaler 파일 ({name})을 삭제하거나 다른 이름으로 바꾸세요[END]"
+            ),
             game_db_loading_title="게임 DB 로딩 중",
             game_db_loading_body="게임 DB를 불러오는 중입니다. 잠시만 기다려 주세요.",
             game_db_error_title="게임 DB 오류",
@@ -269,6 +274,10 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             wiki_open_failed_detail="Failed to open the supported games wiki.",
             close_while_installing_body="Installation is in progress. Please wait.",
             installation_completed="Installation completed.",
+            installation_completed_with_name_template=(
+                "[RED]OptiScaler has been installed.\n"
+                "To remove it, delete or rename the OptiScaler file ({name}).[END]"
+            ),
             game_db_loading_title="Game DB Loading",
             game_db_loading_body="Game DB is still loading. Please wait a moment.",
             game_db_error_title="Game DB Error",
