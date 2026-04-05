@@ -10,6 +10,14 @@
 > [!NOTE]
 > This installer is not officially provided by OptiScaler.
 
+</p>
+
+> [!IMPORTANT]
+> **This installer is designed for users who are not familiar with manual OptiScaler installation and configuration.**  
+> It automatically applies optimized settings based on the selected game and GPU.
+>
+> **If you are already comfortable with manual OptiScaler setup or regularly use mods, this installer is not recommended.**
+
 &nbsp;
 
 ## 📋 Requirements
