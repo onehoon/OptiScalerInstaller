@@ -34,6 +34,7 @@ class AppUiShell:
         get_lbl_selected_game_header: Callable[[], Any] | None = None,
         get_lbl_optiscaler_version_line: Callable[[], Any] | None = None,
         get_info_text: Callable[[], Any] | None = None,
+        get_lbl_supported_games_wiki_link: Callable[[], Any] | None = None,
         scan_status_text_color: str,
         status_indicator_offline_color: str,
         status_indicator_warning_color: str,
@@ -52,6 +53,7 @@ class AppUiShell:
         self._get_lbl_selected_game_header = get_lbl_selected_game_header or (lambda: None)
         self._get_lbl_optiscaler_version_line = get_lbl_optiscaler_version_line or (lambda: None)
         self._get_info_text = get_info_text or (lambda: None)
+        self._get_lbl_supported_games_wiki_link = get_lbl_supported_games_wiki_link or (lambda: None)
         self._scan_status_text_color = str(scan_status_text_color or "")
         self._status_indicator_offline_color = str(status_indicator_offline_color or "")
         self._status_indicator_warning_color = str(status_indicator_warning_color or "")
@@ -79,7 +81,8 @@ class AppUiShell:
             return
         controller.show_precheck_popup(message_text, on_close=on_close)
 
-    def set_supported_games_wiki_link_hover(self, label_widget: Any, hovered: bool) -> None:
+    def set_supported_games_wiki_link_hover(self, hovered: bool) -> None:
+        label_widget = self._get_lbl_supported_games_wiki_link()
         presenter = self._get_header_presenter()
         if presenter is None:
             return
@@ -237,6 +240,7 @@ def create_ui_shell(
         get_lbl_selected_game_header=lambda: getattr(app, "lbl_selected_game_header", None),
         get_lbl_optiscaler_version_line=lambda: getattr(app, "lbl_optiscaler_version_line", None),
         get_info_text=lambda: getattr(app, "info_text", None),
+        get_lbl_supported_games_wiki_link=lambda: getattr(app, "lbl_supported_games_wiki_link", None),
         scan_status_text_color=scan_status_text_color,
         status_indicator_offline_color=status_indicator_offline_color,
         status_indicator_warning_color=status_indicator_warning_color,

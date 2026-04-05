@@ -58,7 +58,7 @@ def create_card_ui_controller(app: Any, config: UiControllerFactoryConfig) -> Ga
         image_refs=image_refs,
         callbacks=GameCardUiCallbacks(
             get_found_games=lambda: tuple(app.found_exe_list),
-            get_grid_column_count=lambda: max(1, int(getattr(app, "_grid_cols_current", config.grid_cols) or config.grid_cols)),
+            get_grid_column_count=lambda: config.grid_cols,
             get_dynamic_column_count=app._get_dynamic_column_count,
             get_card_render_controller=lambda: getattr(app, "_card_render_controller", None),
             select_game=app._set_selected_game,
@@ -86,15 +86,7 @@ def create_card_viewport_bundle(
     config: UiControllerFactoryConfig,
 ) -> tuple[CardViewportRuntime, CardViewportController]:
     runtime = CardViewportRuntime(
-        grid_cols_current=max(1, int(getattr(app, "_grid_cols_current", config.grid_cols) or config.grid_cols)),
-        resize_after_id=getattr(app, "_resize_after_id", None),
-        resize_visual_after_id=getattr(app, "_resize_visual_after_id", None),
-        resize_in_progress=bool(getattr(app, "_resize_in_progress", False)),
-        last_reflow_width=max(0, int(getattr(app, "_last_reflow_width", 0) or 0)),
-        base_root_width=getattr(app, "_base_root_width", None),
-        games_scrollregion_after_id=getattr(app, "_games_scrollregion_after_id", None),
-        games_viewport_after_id=getattr(app, "_games_viewport_after_id", None),
-        overflow_fit_after_id=getattr(app, "_overflow_fit_after_id", None),
+        grid_cols_current=config.grid_cols,
     )
     controller = CardViewportController(
         root=app.root,
@@ -106,7 +98,7 @@ def create_card_viewport_bundle(
             has_found_games=lambda: bool(app.found_exe_list),
             render_cards=lambda keep_selection: app._render_cards(keep_selection=keep_selection),
             get_effective_widget_scale=app._get_effective_widget_scale,
-            publish_runtime_state=app._sync_card_viewport_runtime_to_app,
+            publish_runtime_state=lambda: None,
         ),
         card_width=config.card_width,
         card_h_spacing=config.card_h_spacing,

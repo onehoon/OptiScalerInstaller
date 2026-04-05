@@ -152,18 +152,6 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
         callbacks=AppShutdownCallbacks(
             best_effort_steps=(
                 AppShutdownStep(
-                    "cancel scrollregion after",
-                    lambda: app._cancel_after_handle("_games_scrollregion_after_id"),
-                ),
-                AppShutdownStep(
-                    "cancel viewport after",
-                    lambda: app._cancel_after_handle("_games_viewport_after_id"),
-                ),
-                AppShutdownStep(
-                    "cancel overflow fit after",
-                    lambda: app._cancel_after_handle("_overflow_fit_after_id"),
-                ),
-                AppShutdownStep(
                     "shutdown header status presenter",
                     lambda: app._call_optional_method("_header_status_presenter", "shutdown"),
                 ),

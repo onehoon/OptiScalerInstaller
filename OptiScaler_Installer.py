@@ -382,7 +382,6 @@ class OptiManagerApp:
         self.txt = APP_STRINGS
         self._configure_startup_window()
         self._initialize_runtime_state()
-        self._initialize_controller_slots()
         self._initialize_infra()
         self._initialize_presenters()
         self._initialize_ui_and_controllers()
@@ -435,36 +434,6 @@ class OptiManagerApp:
         self.card_items: list = []
         self._ctk_images: list = []   # keep refs alive
         self._grid_cols_current = GRID_COLS
-        self._resize_after_id = None
-        self._resize_visual_after_id = None
-        self._resize_in_progress = False
-        self._last_reflow_width = 0
-        self._base_root_width = None
-        self._games_scrollregion_after_id = None
-        self._games_viewport_after_id = None
-        self._overflow_fit_after_id = None
-
-    def _initialize_controller_slots(self) -> None:
-        self._app_actions_controller = None
-        self._app_notice_controller = None
-        self._app_shutdown_controller = None
-        self._archive_controller = None
-        self._bottom_panel_presenter = None
-        self._game_db_controller = None
-        self._gpu_flow_controller = None
-        self._header_status_presenter = None
-        self._app_controllers = None
-        self._install_flow_controller = None
-        self._startup_runtime_coordinator = None
-        self._ui_shell = None
-        self._card_viewport_controller = None
-        self._card_viewport_runtime = None
-        self._card_ui_controller = None
-        self._card_render_controller = None
-        self._install_selection_controller = None
-        self._scan_entry_controller = None
-        self._scan_feedback_controller = None
-        self._scan_controller = None
 
     def _initialize_infra(self) -> None:
         self._initialize_poster_infra()
@@ -547,7 +516,6 @@ class OptiManagerApp:
         ui_controllers = build_ui_controllers(self, UI_CONTROLLER_FACTORY_CONFIG)
         bind_ui_controllers(self, ui_controllers)
         self._bind_viewport_scroll_events()
-        self._sync_card_viewport_runtime_to_app()
         self._app_controllers = build_app_controllers(self, APP_CONTROLLER_FACTORY_CONFIG)
         bind_app_controllers(self, self._app_controllers)
         self._create_ui_shell()
@@ -571,7 +539,7 @@ class OptiManagerApp:
             logging.exception("Failed to bind viewport scroll events to controller")
 
     def _start_background_services(self) -> None:
-        if self._gpu_flow_controller is not None:
+        if getattr(self, "_gpu_flow_controller", None) is not None:
             self._gpu_flow_controller.start_detection()
 
     def _bind_root_events(self) -> None:
@@ -639,10 +607,7 @@ class OptiManagerApp:
         shell = self._get_ui_shell()
         if shell is None:
             return
-        shell.set_supported_games_wiki_link_hover(
-            getattr(self, "lbl_supported_games_wiki_link", None),
-            hovered,
-        )
+        shell.set_supported_games_wiki_link_hover(hovered)
 
     def _open_supported_games_wiki(self, _event=None) -> None:
         shell = self._get_ui_shell()
@@ -685,52 +650,14 @@ class OptiManagerApp:
             return
         shell.show_after_install_popup(game)
 
-    def _cancel_after_handle(self, attr_name: str) -> None:
-        after_id = getattr(self, attr_name, None)
-        if after_id is None:
-            return
-        self.root.after_cancel(after_id)
-        setattr(self, attr_name, None)
-
     def _call_optional_method(self, attr_name: str, method_name: str, *args, **kwargs) -> None:
         target = getattr(self, attr_name, None)
         if target is None:
             return
         getattr(target, method_name)(*args, **kwargs)
 
-    def _sync_card_viewport_runtime_to_app(self) -> None:
-        runtime = getattr(self, "_card_viewport_runtime", None)
-        if runtime is None:
-            return
-
-        self._grid_cols_current = max(1, int(runtime.grid_cols_current or GRID_COLS))
-        self._resize_after_id = runtime.resize_after_id
-        self._resize_visual_after_id = runtime.resize_visual_after_id
-        self._resize_in_progress = bool(runtime.resize_in_progress)
-        self._last_reflow_width = max(0, int(runtime.last_reflow_width or 0))
-        self._base_root_width = runtime.base_root_width
-        self._games_scrollregion_after_id = runtime.games_scrollregion_after_id
-        self._games_viewport_after_id = runtime.games_viewport_after_id
-        self._overflow_fit_after_id = runtime.overflow_fit_after_id
-
-    def _get_card_viewport_controller(self) -> Optional[CardViewportController]:
-        return getattr(self, "_card_viewport_controller", None)
-
-    def _get_card_ui_controller(self) -> Optional[GameCardUiController]:
-        return getattr(self, "_card_ui_controller", None)
-
     def _get_ui_shell(self) -> Optional[AppUiShell]:
-        shell = getattr(self, "_ui_shell", None)
-        if shell is None and hasattr(self, "txt"):
-            try:
-                self._create_ui_shell()
-            except AttributeError:
-                return None
-            shell = getattr(self, "_ui_shell", None)
-        return shell
-
-    def _get_startup_runtime_coordinator(self) -> Optional[StartupRuntimeCoordinator]:
-        return getattr(self, "_startup_runtime_coordinator", None)
+        return getattr(self, "_ui_shell", None)
 
     def _get_install_flow_controller(self) -> Optional[InstallFlowController]:
         controller = getattr(self, "_install_flow_controller", None)
@@ -817,7 +744,7 @@ class OptiManagerApp:
         controller.shutdown()
 
     def _start_game_db_load_async(self):
-        if self._game_db_controller is None:
+        if getattr(self, "_game_db_controller", None) is None:
             return
 
         sheet_state = self.sheet_state
@@ -833,19 +760,19 @@ class OptiManagerApp:
         )
 
     def _on_game_db_loaded(self, result: GameDbLoadResult) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.on_game_db_loaded(result)
 
     def _start_optiscaler_archive_prepare(self):
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.start_optiscaler_archive_prepare()
 
     def _start_fsr4_archive_prepare(self):
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.start_fsr4_archive_prepare()
@@ -875,7 +802,7 @@ class OptiManagerApp:
         warning_text: str,
         on_close: Optional[Callable[[], None]] = None,
     ) -> None:
-        controller = self._app_notice_controller
+        controller = getattr(self, "_app_notice_controller", None)
         if controller is None:
             return
         controller.show_startup_warning_popup(warning_text, on_close=on_close)
@@ -885,37 +812,37 @@ class OptiManagerApp:
         return bool(controller and controller.is_scan_in_progress)
 
     def _apply_gpu_flow_state(self, state: GpuFlowState) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.apply_gpu_flow_state(state)
 
     def _handle_unsupported_gpu_block(self, scan_status_message: str, info_text: str) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.handle_unsupported_gpu_block(scan_status_message, info_text)
 
     def _apply_optiscaler_archive_state(self, state: ArchivePreparationState) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.apply_optiscaler_archive_state(state)
 
     def _apply_fsr4_archive_state(self, state: ArchivePreparationState) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.apply_fsr4_archive_state(state)
 
     def _on_optiscaler_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.on_optiscaler_archive_state_changed(state)
 
     def _on_fsr4_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = self._get_startup_runtime_coordinator()
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
             return
         return coordinator.on_fsr4_archive_state_changed(state)
@@ -924,7 +851,6 @@ class OptiManagerApp:
         runtime, controller = create_card_viewport_bundle(self, UI_CONTROLLER_FACTORY_CONFIG)
         self._card_viewport_runtime = runtime
         self._card_viewport_controller = controller
-        self._sync_card_viewport_runtime_to_app()
 
     def _create_card_ui_controller(self) -> None:
         if getattr(self, "_card_ui_controller", None) is not None:
@@ -958,7 +884,7 @@ class OptiManagerApp:
         """Kick off a silent auto-scan of known Steam/game directories."""
         if self.gpu_state.multi_gpu_blocked:
             return
-        if self._scan_controller is None:
+        if getattr(self, "_scan_controller", None) is None:
             return
         self._scan_controller.start_auto_scan()
 
@@ -966,7 +892,7 @@ class OptiManagerApp:
         self.game_folder = str(folder_path or "")
 
     def _start_manual_scan_from_folder(self, folder_path: str) -> bool:
-        if self._scan_controller is None:
+        if getattr(self, "_scan_controller", None) is None:
             return False
         return self._scan_controller.start_manual_scan(folder_path)
 
@@ -1037,7 +963,7 @@ class OptiManagerApp:
     def _apply_selected_game_index(self, index: int) -> None:
         self.card_ui_state.selected_game_index = int(index)
         self._update_selected_game_header()
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is not None:
             controller.refresh_all_card_visuals()
 
@@ -1092,7 +1018,7 @@ class OptiManagerApp:
 
     def _restore_rendered_selection(self, index: int, game: dict) -> None:
         self.card_ui_state.selected_game_index = int(index)
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is not None:
             controller.refresh_all_card_visuals()
         self._set_information_text(game.get("information", ""))
@@ -1101,26 +1027,16 @@ class OptiManagerApp:
         return get_ctk_scale(self.root, 1.0)
 
     def _get_forced_card_area_width(self) -> int:
-        controller = self._get_card_viewport_controller()
-        if controller is None:
-            return max(1, int(self.root.winfo_width() or 0))
-        return controller._get_forced_card_area_width()
+        return self._card_viewport_controller._get_forced_card_area_width()
 
     def _get_dynamic_column_count(self) -> int:
-        controller = self._get_card_viewport_controller()
-        if controller is None:
-            return max(1, int(getattr(self, "_grid_cols_current", GRID_COLS) or GRID_COLS))
-        return controller._get_dynamic_column_count()
+        return self._card_viewport_controller._get_dynamic_column_count()
 
     def _max_safe_columns_for_width(self, usable_w: int) -> int:
-        controller = self._get_card_viewport_controller()
-        if controller is None:
-            slot_width = max(1, CARD_W + CARD_H_SPACING)
-            return max(1, max(1, int(usable_w) - 6) // slot_width)
-        return controller._max_safe_columns_for_width(usable_w)
+        return self._card_viewport_controller._max_safe_columns_for_width(usable_w)
 
     def _configure_card_columns(self, cols: int):
-        controller = self._get_card_viewport_controller()
+        controller = getattr(self, "_card_viewport_controller", None)
         if controller is None:
             normalized_cols = max(1, int(cols))
             max_cols = max(int(getattr(self, "_grid_cols_current", GRID_COLS)), normalized_cols)
@@ -1133,37 +1049,34 @@ class OptiManagerApp:
         return controller._configure_card_columns(cols)
 
     def _refresh_games_scrollregion(self):
-        controller = self._get_card_viewport_controller()
-        if controller is None:
-            return
-        return controller._refresh_games_scrollregion()
+        return self._card_viewport_controller._refresh_games_scrollregion()
 
     def _render_cards(self, keep_selection=False):
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is None:
             return
         return controller.render_cards(keep_selection=bool(keep_selection))
 
     def _make_card(self, index: int, game: dict) -> ctk.CTkFrame:
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is None:
             raise RuntimeError("Game card UI controller is not available")
         return controller.make_card(index, game)
 
     def _visible_game_indices(self) -> set:
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is None:
             return set()
         return controller.visible_game_indices()
 
     def _apply_loaded_poster(self, index: int, label: ctk.CTkLabel, pil_img: Image.Image):
-        controller = self._get_card_ui_controller()
+        controller = getattr(self, "_card_ui_controller", None)
         if controller is None:
             return
         return controller.apply_loaded_poster(index, label, pil_img)
 
     def _set_selected_game(self, index: int):
-        controller = self._install_selection_controller
+        controller = getattr(self, "_install_selection_controller", None)
         if controller is None:
             return
         controller.select_game(index, tuple(self.found_exe_list))
@@ -1198,10 +1111,10 @@ class OptiManagerApp:
 
     def _add_game_card_incremental(self, game: dict):
         """Append one game to the list and immediately render + queue its cover download."""
-        controller = self._card_render_controller
+        controller = getattr(self, "_card_render_controller", None)
         if controller is None:
             return
-        cols = max(1, self._grid_cols_current)
+        cols = max(1, self._get_dynamic_column_count())
         controller.add_game_card(
             game,
             cols=cols,

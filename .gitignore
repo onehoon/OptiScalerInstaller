@@ -19,3 +19,4 @@ tests/
 tests_runtime/
 .pytest_cache/
 pytest-cache-files-*/
+pytest.ini
