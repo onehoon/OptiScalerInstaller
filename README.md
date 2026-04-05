@@ -35,7 +35,7 @@
 | Vendor | Supported GPUs | Upscaling | Frame Generation |
 |:---:|:---:|:---:|:---:|
 | **Intel** | Arc Series | XeSS | **XeMFG** (3x by default, up to 4x) |
-| **AMD** | 780/890M, 8060S, RX 6000/7000 Series | FSR4 INT8 | XeFG (2x only) |
+| **AMD** | 780/890M, 8060S, RX 6000/7000 Series | FSR | XeFG (2x only) |
 | **NVIDIA** | RTX 2000/3000 Series | DLSS | XeFG (2x only) |
 
 **Notes**
