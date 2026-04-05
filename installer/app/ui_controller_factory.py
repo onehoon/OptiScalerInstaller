@@ -62,7 +62,7 @@ def create_card_ui_controller(app: Any, config: UiControllerFactoryConfig) -> Ga
             get_dynamic_column_count=app._get_dynamic_column_count,
             get_card_render_controller=lambda: getattr(app, "_card_render_controller", None),
             select_game=app._set_selected_game,
-            activate_game=lambda index: (app._set_selected_game(index), app.apply_optiscaler()),
+            activate_game=app._set_selected_game,
         ),
         card_width=config.card_width,
         card_height=config.card_height,
