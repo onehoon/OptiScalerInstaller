@@ -633,4 +633,7 @@ def process_engine_ini_edits(spreadsheet_id: str, gid: int = 0, workspace_root: 
             else:
                 logging.info("Engine.ini type content is empty; nothing to write")
         finally:
+            # engine.ini is set to read-only after modification to prevent the game from
+            # resetting it on launch. Games often overwrite engine.ini on startup, so
+            # keeping it read-only ensures our settings persist across game restarts.
             _set_file_readonly(ini_path)

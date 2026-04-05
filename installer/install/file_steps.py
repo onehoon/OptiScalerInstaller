@@ -44,6 +44,9 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
         ini_utils.apply_ini_settings(ingame_ini_path, ingame_settings, force_frame_generation=False, logger=logger)
         logger.info("Applied in-game settings to %s", ingame_ini_path)
     finally:
+        # game.ini (in-game settings) is restored to its original read/write state after
+        # modification. Users frequently change graphics settings in-game, so we must
+        # not lock this file — leaving it writable lets the game continue to update it normally.
         if orig_readonly:
             ini_utils._set_file_readonly(ini_file)
 
@@ -67,6 +70,9 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
                 ini_utils._upsert_ini_entries(ini_path, section_map, logger=logger)
                 logger.info("Upserted engine.ini entries to %s", ini_path)
         finally:
+            # engine.ini is set to read-only after modification to prevent the game from
+            # resetting it on launch. Games often overwrite engine.ini on startup, so
+            # keeping it read-only ensures our settings persist across game restarts.
             ini_utils._set_file_readonly(ini_path)
     except Exception:
         logger.exception("Failed while handling engine.ini for %s", target_path)
