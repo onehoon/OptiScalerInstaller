@@ -282,7 +282,7 @@ def matches_gpu_rule(rule_text: str, gpu_text: str) -> bool:
     if not patterns:
         return False
 
-    if any(pattern == "all" for pattern in patterns):
+    if any(pattern in {"all", "true", "yes", "1"} for pattern in patterns):
         return True
 
     normalized_gpu = str(gpu_text or "").strip().lower()

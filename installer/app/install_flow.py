@@ -242,6 +242,11 @@ class InstallFlowController:
                 0,
                 lambda game=dict(installed_game): self._callbacks.finish_install(True, "Install Completed", game),
             )
+        except RuntimeError as exc:
+            self._root.after(
+                0,
+                lambda err=exc, game=dict(game_data): self._callbacks.finish_install(False, str(err), game),
+            )
         except Exception as exc:
             logger.exception("Install failed: %s", exc)
             self._root.after(
