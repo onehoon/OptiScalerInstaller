@@ -76,8 +76,22 @@ class InstallFlowController:
             logger.info("Running install precheck with handler: %s", getattr(handler, "handler_key", "default"))
             precheck = handler.run_install_precheck(game_data, self._is_korean(), logger)
             notice_message = handler.format_precheck_notice(precheck, self._is_korean())
-            if notice_message:
-                logger.info("Install precheck notice: %s", notice_message)
+            conflict_findings = tuple(getattr(precheck, "conflict_findings", ()) or ())
+            if not conflict_findings:
+                logger.info("[MOD] No MOD detected")
+
+            for finding in conflict_findings:
+                mod_name = {
+                    "reshade": "ReShade",
+                    "special_k": "Special K",
+                    "ultimate_asi_loader": "Ultimate ASI Loader",
+                    "renodx": "RenoDX",
+                }.get(str(getattr(finding, "kind", "") or "").strip().lower(), "MOD")
+                evidence = ", ".join(str(item).strip() for item in tuple(getattr(finding, "evidence", ()) or ()) if str(item).strip())
+                if evidence:
+                    logger.info("[MOD] %s (%s) detected", mod_name, evidence)
+                else:
+                    logger.info("[MOD] %s detected", mod_name)
             if precheck.ok:
                 resolved_dll_name = str(precheck.resolved_dll_name or "")
                 logger.info("Install precheck resolved DLL name: %s", resolved_dll_name)
