@@ -1029,7 +1029,7 @@ class OptiManagerApp:
         return self._card_viewport_controller._max_safe_columns_for_width(usable_w)
 
     def _configure_card_columns(self, cols: int):
-        return self._card_viewport_controller._configure_card_columns(cols)
+        return self._card_viewport_controller.configure_card_columns(cols)
 
     def _refresh_games_scrollregion(self):
         return self._card_viewport_controller._refresh_games_scrollregion()

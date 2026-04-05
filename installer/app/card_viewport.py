@@ -106,7 +106,7 @@ class CardViewportController:
         card_frames = tuple(self._callbacks.get_card_frames() or ())
         if not card_frames:
             if preferred_cols is not None:
-                self._configure_card_columns(max(1, int(preferred_cols)))
+                self.configure_card_columns(max(1, int(preferred_cols)))
             return
 
         requested_cols = max(
@@ -116,7 +116,7 @@ class CardViewportController:
         max_cols = self._max_safe_columns_for_width(self._get_forced_card_area_width())
         cols = clamp_grid_columns(requested_cols, max_cols)
         self._layout_existing_cards(cols)
-        self._schedule_games_scrollregion_refresh()
+        self.schedule_games_scrollregion_refresh()
         self._schedule_overflow_fit_check()
 
     def _get_forced_card_area_width(self) -> int:
@@ -188,7 +188,7 @@ class CardViewportController:
         except Exception:
             return fallback
 
-    def _configure_card_columns(self, cols: int) -> None:
+    def configure_card_columns(self, cols: int) -> None:
         normalized_cols = max(1, int(cols))
         max_cols = max(int(self._runtime.grid_cols_current), normalized_cols)
         for col in range(max_cols):
@@ -201,7 +201,7 @@ class CardViewportController:
     def _layout_existing_cards(self, cols: int) -> None:
         normalized_cols = max(1, int(cols))
         card_frames = tuple(self._callbacks.get_card_frames() or ())
-        self._configure_card_columns(normalized_cols)
+        self.configure_card_columns(normalized_cols)
         for placement, card in zip(build_card_grid_placements(len(card_frames), normalized_cols), card_frames):
             card.grid(
                 row=placement.row,
@@ -231,7 +231,7 @@ class CardViewportController:
                 continue
         return max_right > viewport_w
 
-    def _schedule_games_scrollregion_refresh(self) -> None:
+    def schedule_games_scrollregion_refresh(self) -> None:
         if self._runtime.games_scrollregion_after_id is not None:
             return
         self._runtime.games_scrollregion_after_id = self._root.after_idle(self._refresh_games_scrollregion)
@@ -282,7 +282,7 @@ class CardViewportController:
 
             if decision.relayout_cols is not None:
                 self._layout_existing_cards(decision.relayout_cols)
-                self._schedule_games_scrollregion_refresh()
+                self.schedule_games_scrollregion_refresh()
                 if decision.should_reschedule_check:
                     self._schedule_overflow_fit_check()
         except tk.TclError:

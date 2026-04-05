@@ -58,7 +58,7 @@ def create_card_ui_controller(app: Any, config: UiControllerFactoryConfig) -> Ga
         image_refs=image_refs,
         callbacks=GameCardUiCallbacks(
             get_found_games=lambda: tuple(app.found_exe_list),
-            get_grid_column_count=lambda: config.grid_cols,
+            get_grid_column_count=app._get_dynamic_column_count,
             get_dynamic_column_count=app._get_dynamic_column_count,
             get_card_render_controller=lambda: getattr(app, "_card_render_controller", None),
             select_game=app._set_selected_game,
