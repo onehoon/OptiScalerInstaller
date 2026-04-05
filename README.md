@@ -37,8 +37,11 @@
   **Examples:** *Kingdom Come: Deliverance II*, *Death Stranding Director’s Cut*
 - **XeMFG is Intel XeFG Multi Frame Generation Feature** only available for Intel Arc for now.
 
-&nbsp;
+**Frame Generation Notes**
+- NVIDIA RTX 20/30 Series GPUs do not support native DLSS Frame Generation. This installer enables frame generation by using Intel XeFG instead.
+- AMD GPUs use Intel XeFG for frame generation instead of FSR3 Frame Generation after installation.
 
+&nbsp;
 ## ✨ Key Features
 ---
 <p>✅ <b>Live Game DB Update:</b> Supported game list and pre-configured INI & options are loaded live from online DB.</p>
