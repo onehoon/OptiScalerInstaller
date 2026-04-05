@@ -11,76 +11,62 @@ from pathlib import Path
 import re
 from typing import Callable, Optional
 from installer import app_update
-from installer.app import (
-    AppActionsController,
+from installer.app.app_actions_controller import AppActionsController
+from installer.app.app_shutdown_controller import AppShutdownController
+from installer.app.archive_controller import ArchivePreparationController, ArchivePreparationState
+from installer.app.card_render_controller import CardRenderController
+from installer.app.card_ui import GameCardUiController
+from installer.app.card_viewport import CardViewportController, CardViewportRuntime
+from installer.app.controller_factory import (
     AppControllerFactoryConfig,
     AppControllers,
-    AppNoticeController,
-    ArchiveRuntimeState,
-    AppShutdownController,
-    ArchivePreparationController,
-    ArchivePreparationState,
-    build_app_theme,
-    BottomPanelPresenter,
-    build_runtime_state_bundle,
-    CardUiRuntimeState,
-    CardRenderController,
-    GameCardUiCallbacks,
-    GameCardUiController,
-    GameDbLoadController,
-    GameDbLoadResult,
-    get_runtime_state_attr,
-    GpuFlowController,
-    GpuFlowState,
-    GpuRuntimeState,
-    HeaderStatusPresenter,
-    InstallButtonStateInputs,
-    InstallEntryDecision,
-    InstallEntryState,
-    InstallFlowController,
-    InstallRuntimeState,
+    bind_app_controllers,
+    build_app_controllers,
+)
+from installer.app.game_db_controller import GameDbLoadController, GameDbLoadResult
+from installer.app.gpu_flow_controller import GpuFlowController, GpuFlowState
+from installer.app.install_entry import InstallEntryDecision, InstallEntryState
+from installer.app.install_flow import InstallFlowController, create_install_flow_controller
+from installer.app.install_selection_controller import (
     InstallSelectionController,
     InstallSelectionPrecheckOutcome,
     InstallSelectionUiState,
-    build_card_grid_placements,
-    build_install_button_state_inputs,
-    build_selected_game_snapshot,
-    clamp_grid_columns,
-    compute_card_overflow_fit_decision,
-    compute_card_resize_reflow_decision,
-    compute_install_button_state,
-    compute_visible_game_indices,
-    create_game_card,
-    create_install_flow_controller,
-    bind_app_controllers,
-    build_app_controllers,
-    ensure_game_card_image_cache,
-    gpu_notice,
-    message_popup,
-    render_game_card_visual,
-    rtss_notice,
-    ScanFeedbackController,
-    ScanEntryController,
-    ScanEntryState,
-    set_runtime_state_attr,
-    SheetRuntimeState,
-    update_game_card_base_image,
-    StartupFlowController,
-    StartupFlowCallbacks,
-    CardViewportCallbacks,
-    CardViewportController,
-    CardViewportRuntime,
 )
-from installer.app.window_focus import has_startup_foreground_request, request_window_foreground
+from installer.app.install_state import build_install_button_state_inputs, build_selected_game_snapshot
+from installer.app.install_ui_state import InstallButtonStateInputs, compute_install_button_state
+from installer.app.notice_controller import AppNoticeController
 from installer.app.poster_queue import PosterQueueController
+from installer.app.runtime_state import (
+    ArchiveRuntimeState,
+    CardUiRuntimeState,
+    GpuRuntimeState,
+    InstallRuntimeState,
+    SheetRuntimeState,
+    build_runtime_state_bundle,
+    get_runtime_state_attr,
+    set_runtime_state_attr,
+)
 from installer.app.scan_controller import ScanController
+from installer.app.scan_entry_controller import ScanEntryController, ScanEntryState
+from installer.app.scan_feedback import ScanFeedbackController
+from installer.app.startup_flow import StartupFlowCallbacks, StartupFlowController
+from installer.app.window_focus import has_startup_foreground_request, request_window_foreground
 from installer.app.startup_window import (
     apply_startup_window_layout,
     apply_startup_window_workaround,
     build_startup_window_layout,
     get_ctk_scale,
 )
+from installer.app.theme import build_app_theme
 from installer.app.ui_builder import build_main_ui
+from installer.app.ui_controller_factory import (
+    UiControllerFactoryConfig,
+    bind_ui_controllers,
+    build_ui_controllers,
+    create_card_ui_controller,
+    create_card_viewport_bundle,
+)
+from installer.app.ui_presenters import BottomPanelPresenter, HeaderStatusPresenter
 from installer.common.poster_loader import PosterImageLoader, PosterLoaderConfig
 from installer.config import ini_utils
 from installer.i18n import (
@@ -348,44 +334,32 @@ APP_THEME = build_app_theme(
     grid_width=GRID_W,
     grid_height=GRID_H,
 )
-FONT_HEADING = APP_THEME.font_heading
-FONT_UI = APP_THEME.font_ui
-_INSTALL_BUTTON = APP_THEME.install_button_color
-_INSTALL_BUTTON_HOVER = APP_THEME.install_button_hover_color
-_INSTALL_BUTTON_BORDER = APP_THEME.install_button_border_color
-_INSTALL_BUTTON_DISABLED = APP_THEME.install_button_disabled_color
-_INSTALL_BUTTON_BORDER_DISABLED = APP_THEME.install_button_border_disabled_color
-_INSTALL_BUTTON_TEXT = APP_THEME.install_button_text_color
-_STATUS_TEXT = APP_THEME.status_text_color
-_SCAN_STATUS_TEXT = APP_THEME.scan_status_text_color
-_STATUS_INDICATOR_LOADING = APP_THEME.status_indicator_loading_color
-_STATUS_INDICATOR_LOADING_DIM = APP_THEME.status_indicator_loading_dim_color
-_STATUS_INDICATOR_ONLINE = APP_THEME.status_indicator_online_color
-_STATUS_INDICATOR_WARNING = APP_THEME.status_indicator_warning_color
-_STATUS_INDICATOR_OFFLINE = APP_THEME.status_indicator_offline_color
-_STATUS_INDICATOR_PULSE_MS = APP_THEME.status_indicator_pulse_ms
-_LINK_ACTIVE = APP_THEME.link_active_color
-_LINK_HOVER = APP_THEME.link_hover_color
-_CARD_BG = APP_THEME.card_background
-_CARD_TITLE_OVERLAY_BG = APP_THEME.card_title_overlay_background
-_CARD_TITLE_OVERLAY_TEXT = APP_THEME.card_title_overlay_text
-RTSS_NOTICE_THEME = APP_THEME.rtss_notice_theme
-GPU_NOTICE_THEME = APP_THEME.gpu_notice_theme
-MESSAGE_POPUP_THEME = APP_THEME.message_popup_theme
-MAIN_UI_THEME = APP_THEME.main_ui_theme
+UI_CONTROLLER_FACTORY_CONFIG = UiControllerFactoryConfig(
+    card_width=CARD_W,
+    card_height=CARD_H,
+    grid_cols=GRID_COLS,
+    grid_rows_visible=GRID_ROWS_VISIBLE,
+    card_h_spacing=CARD_H_SPACING,
+    card_v_spacing=CARD_V_SPACING,
+    card_background=APP_THEME.card_background,
+    title_overlay_background=APP_THEME.card_title_overlay_background,
+    title_overlay_text_color=APP_THEME.card_title_overlay_text,
+    title_font_family=APP_THEME.font_ui,
+    title_height=34,
+)
 APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     assets_dir=ASSETS_DIR,
     create_prefixed_logger=get_prefixed_logger,
     default_sheet_gid=SHEET_GID,
     download_links_gid=DOWNLOAD_LINKS_SHEET_GID,
-    gpu_notice_theme=GPU_NOTICE_THEME,
+    gpu_notice_theme=APP_THEME.gpu_notice_theme,
     gpu_vendor_db_gids=GPU_VENDOR_DB_GIDS,
     max_supported_gpu_count=MAX_SUPPORTED_GPU_COUNT,
-    message_popup_theme=MESSAGE_POPUP_THEME,
+    message_popup_theme=APP_THEME.message_popup_theme,
     optipatcher_url=OPTIPATCHER_URL,
     root_width_fallback=WINDOW_W,
     root_height_fallback=WINDOW_H,
-    rtss_theme=RTSS_NOTICE_THEME,
+    rtss_theme=APP_THEME.rtss_notice_theme,
     sheet_id=SHEET_ID,
     supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
     use_korean=USE_KOREAN,
@@ -490,6 +464,10 @@ class OptiManagerApp:
         self._scan_controller = None
 
     def _initialize_infra(self) -> None:
+        self._initialize_poster_infra()
+        self._initialize_startup_update_infra()
+
+    def _initialize_poster_infra(self) -> None:
         self._poster_loader = PosterImageLoader(
             PosterLoaderConfig(
                 cache_dir=COVER_CACHE_DIR,
@@ -517,6 +495,8 @@ class OptiManagerApp:
             is_scan_in_progress=self._is_scan_in_progress,
             on_image_ready=self._apply_loaded_poster,
         )
+
+    def _initialize_startup_update_infra(self) -> None:
         self._startup_flow = StartupFlowController(
             root=self.root,
             callbacks=StartupFlowCallbacks(
@@ -543,26 +523,27 @@ class OptiManagerApp:
     def _initialize_presenters(self) -> None:
         self._header_status_presenter = HeaderStatusPresenter(
             root=self.root,
-            status_text_color=_STATUS_TEXT,
-            scan_status_text_color=_SCAN_STATUS_TEXT,
-            status_indicator_loading_dim_color=_STATUS_INDICATOR_LOADING_DIM,
-            status_indicator_pulse_ms=_STATUS_INDICATOR_PULSE_MS,
+            status_text_color=APP_THEME.status_text_color,
+            scan_status_text_color=APP_THEME.scan_status_text_color,
+            status_indicator_loading_dim_color=APP_THEME.status_indicator_loading_dim_color,
+            status_indicator_pulse_ms=APP_THEME.status_indicator_pulse_ms,
             supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
-            link_active_color=_LINK_ACTIVE,
-            link_hover_color=_LINK_HOVER,
+            link_active_color=APP_THEME.link_active_color,
+            link_hover_color=APP_THEME.link_hover_color,
             logger=logging.getLogger(),
         )
         self._bottom_panel_presenter = BottomPanelPresenter(
             info_text_offset_px=INFO_TEXT_OFFSET_PX,
             version_name_formatter=_format_optiscaler_version_display_name,
-            info_emphasis_color=_STATUS_INDICATOR_WARNING,
+            info_emphasis_color=APP_THEME.status_indicator_warning_color,
             logger=logging.getLogger(),
         )
 
     def _initialize_ui_and_controllers(self) -> None:
         self.setup_ui()
-        self._create_card_ui_controller()
-        self._create_card_viewport_controller()
+        ui_controllers = build_ui_controllers(self, UI_CONTROLLER_FACTORY_CONFIG)
+        bind_ui_controllers(self, ui_controllers)
+        self._sync_card_viewport_runtime_to_app()
         self._app_controllers = build_app_controllers(self, APP_CONTROLLER_FACTORY_CONFIG)
         bind_app_controllers(self, self._app_controllers)
 
@@ -646,14 +627,15 @@ class OptiManagerApp:
             return
         controller.open_supported_games_wiki()
 
-    def _set_scan_status_message(self, text: str = "", text_color: str = _SCAN_STATUS_TEXT):
+    def _set_scan_status_message(self, text: str = "", text_color: Optional[str] = None):
         presenter = self._header_status_presenter
         if presenter is None:
             return
+        resolved_text_color = text_color or APP_THEME.scan_status_text_color
         presenter.set_scan_status_message(
             getattr(self, "lbl_scan_status", None),
             text,
-            text_color,
+            resolved_text_color,
         )
 
     def _set_status_badge_state(self, label_text: str, indicator_color: str, pulse: bool = False):
@@ -730,17 +712,6 @@ class OptiManagerApp:
     def _get_card_ui_controller(self) -> Optional[GameCardUiController]:
         return getattr(self, "_card_ui_controller", None)
 
-    def _ensure_card_ui_controller(self) -> Optional[GameCardUiController]:
-        controller = self._get_card_ui_controller()
-        if controller is not None:
-            return controller
-
-        try:
-            self._create_card_ui_controller()
-        except AttributeError:
-            return None
-        return self._get_card_ui_controller()
-
     def _get_install_flow_controller(self) -> Optional[InstallFlowController]:
         controller = getattr(self, "_install_flow_controller", None)
         if controller is None and hasattr(self, "root"):
@@ -758,9 +729,9 @@ class OptiManagerApp:
         self.apply_btn.configure(
             state="disabled",
             text=self.txt.main.installing_button,
-            fg_color=_INSTALL_BUTTON_DISABLED,
-            hover_color=_INSTALL_BUTTON_DISABLED,
-            border_color=_INSTALL_BUTTON_BORDER_DISABLED,
+            fg_color=APP_THEME.install_button_disabled_color,
+            hover_color=APP_THEME.install_button_disabled_color,
+            border_color=APP_THEME.install_button_border_disabled_color,
         )
 
     def _update_install_button_state(self):
@@ -774,9 +745,9 @@ class OptiManagerApp:
         self.apply_btn.configure(
             state="normal" if can_install else "disabled",
             text=button_text,
-            fg_color=_INSTALL_BUTTON if can_install else _INSTALL_BUTTON_DISABLED,
-            hover_color=_INSTALL_BUTTON_HOVER if can_install else _INSTALL_BUTTON_DISABLED,
-            border_color=_INSTALL_BUTTON_BORDER if can_install else _INSTALL_BUTTON_BORDER_DISABLED,
+            fg_color=APP_THEME.install_button_color if can_install else APP_THEME.install_button_disabled_color,
+            hover_color=APP_THEME.install_button_hover_color if can_install else APP_THEME.install_button_disabled_color,
+            border_color=APP_THEME.install_button_border_color if can_install else APP_THEME.install_button_border_disabled_color,
         )
 
     def _build_install_button_state_inputs(self) -> InstallButtonStateInputs:
@@ -1017,81 +988,15 @@ class OptiManagerApp:
         self._update_install_button_state()
 
     def _create_card_viewport_controller(self) -> None:
-        self._card_viewport_runtime = CardViewportRuntime(
-            grid_cols_current=max(1, int(getattr(self, "_grid_cols_current", GRID_COLS) or GRID_COLS)),
-            resize_after_id=getattr(self, "_resize_after_id", None),
-            resize_visual_after_id=getattr(self, "_resize_visual_after_id", None),
-            resize_in_progress=bool(getattr(self, "_resize_in_progress", False)),
-            last_reflow_width=max(0, int(getattr(self, "_last_reflow_width", 0) or 0)),
-            base_root_width=getattr(self, "_base_root_width", None),
-            games_scrollregion_after_id=getattr(self, "_games_scrollregion_after_id", None),
-            games_viewport_after_id=getattr(self, "_games_viewport_after_id", None),
-            overflow_fit_after_id=getattr(self, "_overflow_fit_after_id", None),
-        )
-        self._card_viewport_controller = CardViewportController(
-            root=self.root,
-            games_scroll=self.games_scroll,
-            poster_queue=self._poster_queue,
-            runtime=self._card_viewport_runtime,
-            callbacks=CardViewportCallbacks(
-                get_card_frames=lambda: tuple(self.card_frames),
-                has_found_games=lambda: bool(self.found_exe_list),
-                render_cards=lambda keep_selection: self._render_cards(keep_selection=keep_selection),
-                get_effective_widget_scale=self._get_effective_widget_scale,
-                publish_runtime_state=self._sync_card_viewport_runtime_to_app,
-            ),
-            card_width=CARD_W,
-            card_h_spacing=CARD_H_SPACING,
-            card_v_spacing=CARD_V_SPACING,
-            logger=logging.getLogger(),
-        )
+        runtime, controller = create_card_viewport_bundle(self, UI_CONTROLLER_FACTORY_CONFIG)
+        self._card_viewport_runtime = runtime
+        self._card_viewport_controller = controller
         self._sync_card_viewport_runtime_to_app()
 
     def _create_card_ui_controller(self) -> None:
         if getattr(self, "_card_ui_controller", None) is not None:
             return
-
-        card_items = getattr(self, "card_items", None)
-        if card_items is None:
-            self.card_items = []
-            card_items = self.card_items
-
-        image_refs = getattr(self, "_ctk_images", None)
-        if image_refs is None:
-            self._ctk_images = []
-            image_refs = self._ctk_images
-
-        self._card_ui_controller = GameCardUiController(
-            root=getattr(self, "root", None),
-            games_scroll=self.games_scroll,
-            poster_loader=self._poster_loader,
-            poster_queue=self._poster_queue,
-            card_ui_state=self.card_ui_state,
-            card_items=card_items,
-            image_refs=image_refs,
-            callbacks=GameCardUiCallbacks(
-                get_found_games=lambda: tuple(self.found_exe_list),
-                get_grid_column_count=lambda: max(1, int(getattr(self, "_grid_cols_current", GRID_COLS) or GRID_COLS)),
-                get_dynamic_column_count=self._get_dynamic_column_count,
-                get_card_render_controller=lambda: getattr(self, "_card_render_controller", None),
-                select_game=self._set_selected_game,
-                activate_game=lambda index: (self._set_selected_game(index), self.apply_optiscaler()),
-            ),
-            card_width=CARD_W,
-            card_height=CARD_H,
-            card_background=_CARD_BG,
-            title_overlay_background=_CARD_TITLE_OVERLAY_BG,
-            title_overlay_text_color=_CARD_TITLE_OVERLAY_TEXT,
-            title_font_family=FONT_UI,
-            title_height=34,
-            grid_rows_visible=GRID_ROWS_VISIBLE,
-            create_game_card_fn=create_game_card,
-            ensure_card_image_cache_fn=ensure_game_card_image_cache,
-            render_card_visual_fn=render_game_card_visual,
-            update_card_base_image_fn=update_game_card_base_image,
-            compute_visible_indices_fn=compute_visible_game_indices,
-            logger=logging.getLogger(),
-        )
+        self._card_ui_controller = create_card_ui_controller(self, UI_CONTROLLER_FACTORY_CONFIG)
 
     def _pump_poster_queue(self) -> None:
         self._poster_queue.pump()
@@ -1117,7 +1022,7 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
 
     def setup_ui(self):
-        build_main_ui(self, MAIN_UI_THEME)
+        build_main_ui(self, APP_THEME.main_ui_theme)
 
     def _refresh_optiscaler_archive_info_ui(self):
         presenter = self._bottom_panel_presenter
@@ -1156,10 +1061,10 @@ class OptiManagerApp:
             status_gpu_config_text=self.txt.main.status_gpu_config,
             status_gpu_select_text=self.txt.main.status_gpu_select,
             status_game_db_text=self.txt.main.status_game_db,
-            indicator_offline=_STATUS_INDICATOR_OFFLINE,
-            indicator_warning=_STATUS_INDICATOR_WARNING,
-            indicator_loading=_STATUS_INDICATOR_LOADING,
-            indicator_online=_STATUS_INDICATOR_ONLINE,
+            indicator_offline=APP_THEME.status_indicator_offline_color,
+            indicator_warning=APP_THEME.status_indicator_warning_color,
+            indicator_loading=APP_THEME.status_indicator_loading_color,
+            indicator_online=APP_THEME.status_indicator_online_color,
         )
 
     # ------------------------------------------------------------------
@@ -1413,25 +1318,25 @@ class OptiManagerApp:
         return controller._rerender_cards_for_resize()
 
     def _render_cards(self, keep_selection=False):
-        controller = self._ensure_card_ui_controller()
+        controller = self._get_card_ui_controller()
         if controller is None:
             return
         return controller.render_cards(keep_selection=bool(keep_selection))
 
     def _make_card(self, index: int, game: dict) -> ctk.CTkFrame:
-        controller = self._ensure_card_ui_controller()
+        controller = self._get_card_ui_controller()
         if controller is None:
             raise RuntimeError("Game card UI controller is not available")
         return controller.make_card(index, game)
 
     def _visible_game_indices(self) -> set:
-        controller = self._ensure_card_ui_controller()
+        controller = self._get_card_ui_controller()
         if controller is None:
             return set()
         return controller.visible_game_indices()
 
     def _apply_loaded_poster(self, index: int, label: ctk.CTkLabel, pil_img: Image.Image):
-        controller = self._ensure_card_ui_controller()
+        controller = self._get_card_ui_controller()
         if controller is None:
             return
         return controller.apply_loaded_poster(index, label, pil_img)
