@@ -204,6 +204,8 @@ class GpuFlowController:
                 self._apply_selected_state(pending_state)
                 selected_adapter = self._select_dual_gpu_adapter(tuple(gpu_context.adapters[:2]))
                 if selected_adapter is None:
+                    # Defensive fallback: normal UI flow should not allow closing the modal without a choice.
+                    # If this branch is hit, keep pending state and avoid starting DB loading.
                     self._logger.warning("[GPU] Dual-GPU selection popup closed without a selection")
                     return
 

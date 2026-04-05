@@ -169,6 +169,8 @@ def build_startup_window_layout(
 
 def apply_startup_window_layout(root: Any, layout: StartupWindowLayout, *, logger=None) -> None:
     root.geometry(str(layout.geometry))
+    # Intentional: keep the minimum window size equal to the computed startup size.
+    # The UI is not intended to be resized smaller than the initial layout.
     root.minsize(int(layout.window_width), int(layout.window_height))
     root.update_idletasks()
     root.state("normal")
