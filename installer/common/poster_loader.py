@@ -105,6 +105,17 @@ def _prepare_cover_image(img: Image.Image, target_w: int, target_h: int) -> Imag
     return img.convert("RGBA")
 
 
+def _encode_lossless_webp_bytes(image_bytes: bytes) -> Optional[bytes]:
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as source_img:
+            converted = source_img.convert("RGBA")
+        output = io.BytesIO()
+        converted.save(output, format="WEBP", lossless=True)
+        return output.getvalue()
+    except Exception:
+        return None
+
+
 class PosterImageLoader:
     def __init__(self, config: PosterLoaderConfig):
         self._config = config
@@ -137,7 +148,7 @@ class PosterImageLoader:
         try:
             self._image_session.close()
         except Exception:
-            logging.debug("Failed to close poster image session", exc_info=True)
+            pass
 
     def make_placeholder_image(self) -> Image.Image:
         return self._default_poster_base.copy().convert("RGBA")
@@ -145,6 +156,7 @@ class PosterImageLoader:
     def load(self, title: str, cover_filename: str, url: str) -> PosterLoadResult:
         normalized_cover_filename = normalize_cover_filename(cover_filename)
         repo_failed = False
+        cover_cache_key = ""
 
         if normalized_cover_filename:
             cover_cache_key = self._poster_cache_key("cover_file", normalized_cover_filename, title=title)
@@ -193,6 +205,15 @@ class PosterImageLoader:
             pil_img = self._load_prepared_image_from_bytes(image_bytes, cache_key)
             if pil_img is None:
                 raise RuntimeError("Downloaded cover image could not be decoded")
+            if normalized_cover_filename:
+                webp_lossless_bytes = _encode_lossless_webp_bytes(image_bytes)
+                if webp_lossless_bytes:
+                    try:
+                        self._store_cover_cache_bytes(normalized_cover_filename, webp_lossless_bytes)
+                        if self._config.enable_memory_cache and cover_cache_key:
+                            self._image_cache_put(cover_cache_key, pil_img)
+                    except Exception:
+                        pass
             return PosterLoadResult(pil_img, False, False)
         except Exception:
             return PosterLoadResult(self.make_placeholder_image(), True, True)
@@ -318,7 +339,6 @@ class PosterImageLoader:
                 self._image_cache[key] = pil_img
                 return pil_img
         except Exception:
-            logging.exception("Failed to read image cache for key=%s", key)
             return None
 
     def _image_cache_put(self, key: str, pil_img: Image.Image) -> None:
@@ -336,7 +356,7 @@ class PosterImageLoader:
                         except Exception:
                             pass
         except Exception:
-            logging.exception("Failed to put image into cache for key=%s", key)
+            pass
 
 
 __all__ = [
