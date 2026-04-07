@@ -6,6 +6,7 @@ from typing import Any, Callable, Mapping
 
 from ..config import ini_utils
 from ..games.handlers import get_game_handler
+from ..app import rtss_notice
 from . import services as installer_services
 from .components import (
     OPTISCALER_ASI_NAME,
@@ -145,6 +146,9 @@ def run_install_workflow(
         logger.info("Skipped FSR4 install for current GPU/game selection")
 
     install_ctx.handler.finalize_install(app, install_ctx.game_data, install_ctx.target_path, logger)
+
+    rtss_notice.apply_rtss_global_settings_if_needed(logger=logger)
+
     logger.info("Install completed")
     installed_game = dict(install_ctx.game_data)
     installed_game["__installed_proxy_name__"] = str(install_ctx.final_dll_name or "")
