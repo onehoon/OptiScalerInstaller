@@ -13,3 +13,9 @@ dist/
 temp_version.txt
 *.log
 *.exe
+
+# Test artifacts
+.coverage
+pytest.ini
+tests/
+tests_runtime/
