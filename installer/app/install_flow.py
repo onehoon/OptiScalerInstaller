@@ -27,7 +27,6 @@ class InstallFlowCallbacks:
     get_found_games: Callable[[], Sequence[Mapping[str, Any]]]
     get_lang: Callable[[], str]
     should_apply_fsr4_for_game: Callable[[Mapping[str, Any]], bool]
-    set_install_button_busy: Callable[[], None]
     update_install_button_state: Callable[[], None]
     install_worker_entry: Callable[[Mapping[str, Any], str, str, str, bool], None]
     finish_install: Callable[[bool, str, Mapping[str, Any] | None], None]
@@ -199,7 +198,7 @@ class InstallFlowController:
         fsr4_source_archive = decision.fsr4_source_archive
 
         self._install_state.in_progress = True
-        self._callbacks.set_install_button_busy()
+        self._callbacks.update_install_button_state()
         self._task_executor.submit(
             self._callbacks.install_worker_entry,
             game_data,
@@ -292,7 +291,6 @@ def create_install_flow_controller(
             get_found_games=lambda: tuple(app.found_exe_list),
             get_lang=lambda: app.lang,
             should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
-            set_install_button_busy=app._set_install_button_busy,
             update_install_button_state=app._update_install_button_state,
             install_worker_entry=app._apply_optiscaler_worker,
             finish_install=app._on_install_finished,
