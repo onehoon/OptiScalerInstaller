@@ -6,6 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from tkinter import messagebox
 import logging
+import logging.handlers
 import sys
 from pathlib import Path
 import re
@@ -26,7 +27,7 @@ from installer.app.controller_factory import (
 from installer.app.game_db_controller import GameDbLoadController, GameDbLoadResult
 from installer.app.gpu_flow_controller import GpuFlowController, GpuFlowState
 from installer.app.install_entry import InstallEntryDecision, InstallEntryState
-from installer.app.install_flow import InstallFlowController, create_install_flow_controller
+from installer.app.install_flow import InstallFlowController
 from installer.app.install_selection_controller import (
     InstallSelectionController,
     InstallSelectionPrecheckOutcome,
@@ -131,14 +132,14 @@ def _iter_env_file_candidates() -> tuple[Path, ...]:
     return tuple(unique_candidates)
 
 
- # Application Version
+# Application Version
 APP_VERSION = "0.3.4"
 # Install flow supports up to two detected GPUs. Dual-GPU requires explicit user selection.
 MAX_SUPPORTED_GPU_COUNT = 2
 
- # Configure logging deterministically below (avoid calling basicConfig early)
+# Configure logging deterministically below (avoid calling basicConfig early)
 
- # Load .env file(s) deterministically and let the most local file win.
+# Load .env file(s) deterministically and let the most local file win.
 for _env_path in _iter_env_file_candidates():
     if _env_path.exists():
         # Override inherited env vars so VS Code terminals or parent processes
@@ -175,8 +176,6 @@ OPTIPATCHER_URL = os.environ.get(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
-
-import logging.handlers
 
 
 class PrefixedLoggerAdapter(logging.LoggerAdapter):
@@ -239,6 +238,8 @@ def _init_file_logger() -> Optional[Path]:
                 pass
 
     return None
+
+
 def _configure_logging():
     root = logging.getLogger()
     root.setLevel(logging.INFO)
@@ -278,7 +279,7 @@ WINDOW_W = GRID_W
 WINDOW_H = 710
 WINDOW_MIN_W = 360
 WINDOW_MIN_H = 420
-LOCAL_APPDATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path(tempfile.gettempdir()))
+LOCAL_APPDATA_DIR = Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir())
 APP_CACHE_DIR = LOCAL_APPDATA_DIR / "OptiScalerInstaller"
 OPTISCALER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optiscaler"
 FSR4_CACHE_DIR = APP_CACHE_DIR / "cache" / "fsr4"
@@ -656,26 +657,7 @@ class OptiManagerApp:
         return getattr(self, "_ui_shell", None)
 
     def _get_install_flow_controller(self) -> Optional[InstallFlowController]:
-        controller = getattr(self, "_install_flow_controller", None)
-        if controller is None and hasattr(self, "root"):
-            controller = create_install_flow_controller(
-                self,
-                optipatcher_url=OPTIPATCHER_URL,
-                create_prefixed_logger=get_prefixed_logger,
-            )
-            self._install_flow_controller = controller
-        return controller
-
-    def _set_install_button_busy(self) -> None:
-        if not hasattr(self, "apply_btn"):
-            return
-        self.apply_btn.configure(
-            state="disabled",
-            text=self.txt.main.installing_button,
-            fg_color=APP_THEME.install_button_disabled_color,
-            hover_color=APP_THEME.install_button_disabled_color,
-            border_color=APP_THEME.install_button_border_disabled_color,
-        )
+        return getattr(self, "_install_flow_controller", None)
 
     def _update_install_button_state(self):
         if not hasattr(self, "apply_btn"):
