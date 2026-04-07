@@ -114,12 +114,13 @@ class StartupFlowController:
         self._startup_popup_queue.clear()
         self._startup_popup_active = False
 
-        self.enqueue_popup(
-            "rtss_notice",
-            priority=100,
-            blocking=True,
-            show_callback=self._callbacks.show_rtss_notice,
-        )
+        # RTSS popup disabled: settings are now applied automatically after install
+        # self.enqueue_popup(
+        #     "rtss_notice",
+        #     priority=100,
+        #     blocking=True,
+        #     show_callback=self._callbacks.show_rtss_notice,
+        # )
 
         if not ok:
             self.run_next_popup()
