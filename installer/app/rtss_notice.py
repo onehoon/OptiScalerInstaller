@@ -233,7 +233,7 @@ def _show_rtss_popup(
         font_family=theme.font_ui,
         base_font_size=_resolve_popup_font_size(popup, 13),
         emphasis_color=theme.warning_text_color,
-        emphasis_font_size=_resolve_popup_font_size(popup, 14),
+        emphasis_font_size=_resolve_popup_font_size(popup, 13),
     )
     message_widget = message_block.widget
     zero_char_width = max(

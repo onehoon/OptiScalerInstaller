@@ -271,7 +271,7 @@ class BottomPanelPresenter:
             raw_text,
             emphasis_tag="info_red_emphasis",
             emphasis_color=self._info_emphasis_color,
-            emphasis_size_offset=1,
+            emphasis_size_offset=0,
             emphasis_weight="bold",
             trim_emphasis=True,
         )

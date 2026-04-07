@@ -95,7 +95,7 @@ class ScanFeedbackController:
             debug_name="scan result popup",
             preferred_text_chars=42,
             max_text_chars=72,
-            emphasis_font_size=14,
+            emphasis_font_size=13,
             root_width_fallback=self._root_width_fallback,
             root_height_fallback=self._root_height_fallback,
         )

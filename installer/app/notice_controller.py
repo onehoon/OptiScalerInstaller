@@ -115,7 +115,7 @@ class AppNoticeController:
             scrollable=False,
             debug_name="startup warning popup",
             max_text_chars=110,
-            emphasis_font_size=14,
+            emphasis_font_size=13,
             root_width_fallback=self._root_width_fallback,
             root_height_fallback=self._root_height_fallback,
         )

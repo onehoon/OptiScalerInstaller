@@ -166,7 +166,7 @@ def render_markup_to_text_widget(
     base_font_weight: Optional[str] = None,
     emphasis_font_size: Optional[int] = None,
     emphasis_weight: str = "bold",
-    emphasis_size_offset: int = 1,
+    emphasis_size_offset: int = 0,
     clear: bool = True,
     trim_emphasis: bool = False,
 ) -> MarkupRenderResult:
@@ -238,7 +238,7 @@ def create_popup_markup_text(
     emphasis_color: str = "#FFCB62",
     emphasis_font_size: Optional[int] = None,
     emphasis_weight: str = "bold",
-    emphasis_size_offset: int = 1,
+    emphasis_size_offset: int = 0,
     wrap: str = "word",
     padx: int = 0,
     pady: int = 0,
