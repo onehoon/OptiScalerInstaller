@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from ..config import ini_utils
+from ..config import ini_utils, xml_utils
 from . import services as installer_services
 from .workflow import InstallWorkflowCallbacks
 
@@ -41,8 +41,12 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
         if orig_readonly:
             ini_utils._ensure_file_writable(ini_file)
         logger.info("#ingame_ini exists: %s", ingame_ini_path)
-        ini_utils.apply_ini_settings(ingame_ini_path, ingame_settings, force_frame_generation=False, logger=logger)
-        logger.info("Applied in-game settings to %s", ingame_ini_path)
+        if ini_file.suffix.lower() == ".xml":
+            xml_utils.apply_xml_settings(ingame_ini_path, ingame_settings, logger=logger)
+            logger.info("Applied in-game XML settings to %s", ingame_ini_path)
+        else:
+            ini_utils.apply_ini_settings(ingame_ini_path, ingame_settings, force_frame_generation=False, logger=logger)
+            logger.info("Applied in-game settings to %s", ingame_ini_path)
     finally:
         # game.ini (in-game settings) is restored to its original read/write state after
         # modification. Users frequently change graphics settings in-game, so we must
