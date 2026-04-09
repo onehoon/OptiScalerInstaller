@@ -47,6 +47,8 @@
 - NVIDIA RTX 20/30 Series GPUs do not support native DLSS Frame Generation. This installer enables frame generation through OptiScaler using Intel XeFG instead.
 - On AMD GPUs, this installer uses Intel XeFG through OptiScaler instead of FSR3 Frame Generation.
 
+**Supported Game List** (https://github.com/onehoon/OptiScalerInstaller/wiki/Supported-Game-List)
+
 &nbsp;
 ## ✨ Key Features
 ---
