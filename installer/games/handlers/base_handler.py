@@ -6,7 +6,16 @@ from typing import Any, Iterable, Mapping
 from ...i18n import lang_from_bool, pick_sheet_text, translate_default_precheck_error
 from ...install import services as installer_services
 
-from .install_precheck import ModConflictFinding, build_mod_conflict_notice, scan_target_mod_conflicts
+from .install_precheck import (
+    ModConflictFinding,
+    RESHADE_INSTALL_MODE_DISABLED,
+    RESHADE_INSTALL_MODE_INVALID_MULTIPLE,
+    build_mod_conflict_findings,
+    build_mod_conflict_notice,
+    build_reshade_install_error,
+    resolve_reshade_install_state,
+    scan_mod_precheck_state,
+)
 
 
 def _normalize_handler_token(value: Any) -> str:
@@ -37,6 +46,8 @@ class InstallPrecheckResult:
     conflict_findings: tuple[ModConflictFinding, ...] = ()
     error_code: str = ""
     error_context: Mapping[str, Any] = field(default_factory=dict)
+    reshade_install_mode: str = RESHADE_INSTALL_MODE_DISABLED
+    reshade_source_dll_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -80,6 +91,11 @@ class BaseGameHandler:
         return build_mod_conflict_notice(precheck.conflict_findings, use_korean)
 
     def format_precheck_error(self, precheck: InstallPrecheckResult, use_korean: bool) -> str:
+        if precheck.error_code == "reshade_invalid_multiple":
+            return build_reshade_install_error(
+                precheck.error_context.get("detected_dll_names", ()),
+                use_korean,
+            )
         return _translate_default_precheck_error(precheck.raw_error_message, use_korean)
 
     def get_precheck_popup_message(self, precheck: InstallPrecheckResult, use_korean: bool) -> str:
@@ -93,19 +109,46 @@ class BaseGameHandler:
     ) -> InstallPrecheckResult:
         target_path = str(game_data.get("path", "")).strip()
         preferred_dll = str(game_data.get("dll_name", "")).strip()
-        conflict_findings = scan_target_mod_conflicts(target_path, logger=logger)
+        mod_state = scan_mod_precheck_state(target_path, logger=logger)
+        conflict_findings = build_mod_conflict_findings(mod_state)
+        reshade_state = resolve_reshade_install_state(mod_state)
+        if reshade_state.mode == RESHADE_INSTALL_MODE_INVALID_MULTIPLE:
+            return InstallPrecheckResult(
+                ok=False,
+                raw_error_message=build_reshade_install_error(
+                    reshade_state.detected_dll_names,
+                    False,
+                ),
+                conflict_findings=conflict_findings,
+                error_code="reshade_invalid_multiple",
+                error_context={"detected_dll_names": reshade_state.detected_dll_names},
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
+            )
         try:
-            resolved_name = installer_services.resolve_proxy_dll_name(target_path, preferred_dll, logger=logger)
+            reusable_filenames = ()
+            if reshade_state.source_dll_name:
+                reusable_filenames = (reshade_state.source_dll_name,)
+            resolved_name = installer_services.resolve_proxy_dll_name(
+                target_path,
+                preferred_dll,
+                logger=logger,
+                reusable_filenames=reusable_filenames,
+            )
             return InstallPrecheckResult(
                 ok=True,
                 resolved_dll_name=resolved_name,
                 conflict_findings=conflict_findings,
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
             )
         except Exception as exc:
             return InstallPrecheckResult(
                 ok=False,
                 raw_error_message=str(exc),
                 conflict_findings=conflict_findings,
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
             )
 
     def prepare_install_plan(

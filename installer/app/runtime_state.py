@@ -64,6 +64,8 @@ class InstallRuntimeState:
     precheck_error: str = ""
     precheck_dll_name: str = ""
     precheck_ual_detected_names: tuple[str, ...] = ()
+    precheck_reshade_install_mode: str = "disabled"
+    precheck_reshade_source_dll_name: str = ""
 
 
 @dataclass

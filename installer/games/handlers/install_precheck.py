@@ -31,6 +31,11 @@ _OWNER_KEYWORDS = {
     "special_k": ("special k", "specialk"),
     "ultimate_asi_loader": ("ultimate asi loader",),
 }
+RESHADE_COMPAT_DLL_NAME = "ReShade64.dll"
+RESHADE_INSTALL_MODE_DISABLED = "disabled"
+RESHADE_INSTALL_MODE_MIGRATE = "migrate"
+RESHADE_INSTALL_MODE_ALREADY_MIGRATED = "already_migrated"
+RESHADE_INSTALL_MODE_INVALID_MULTIPLE = "invalid_multiple"
 
 
 @dataclass(frozen=True)
@@ -68,6 +73,13 @@ class ModPrecheckState:
 class ModConflictFinding:
     kind: str
     evidence: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReShadeInstallState:
+    mode: str = RESHADE_INSTALL_MODE_DISABLED
+    source_dll_name: str = ""
+    detected_dll_names: tuple[str, ...] = ()
 
 
 def _empty_mod_binary_state() -> ModBinaryState:
@@ -209,8 +221,7 @@ def _build_finding(kind: str, evidence: Iterable[str]) -> ModConflictFinding | N
     return ModConflictFinding(kind=kind, evidence=normalized)
 
 
-def scan_target_mod_conflicts(target_path: str, logger=None) -> tuple[ModConflictFinding, ...]:
-    state = scan_mod_precheck_state(target_path, logger=logger)
+def build_mod_conflict_findings(state: ModPrecheckState) -> tuple[ModConflictFinding, ...]:
     findings: list[ModConflictFinding] = []
 
     reshade_finding = _build_finding("reshade", state.reshade.dll_names)
@@ -230,6 +241,50 @@ def scan_target_mod_conflicts(target_path: str, logger=None) -> tuple[ModConflic
         findings.append(renodx_finding)
 
     return tuple(findings)
+
+
+def scan_target_mod_conflicts(target_path: str, logger=None) -> tuple[ModConflictFinding, ...]:
+    state = scan_mod_precheck_state(target_path, logger=logger)
+    return build_mod_conflict_findings(state)
+
+
+def resolve_reshade_install_state(state: ModPrecheckState) -> ReShadeInstallState:
+    detected_names = tuple(str(name).strip() for name in state.reshade.dll_names if str(name).strip())
+    if not detected_names:
+        return ReShadeInstallState()
+
+    normalized_names = {name.lower() for name in detected_names}
+    compat_name = RESHADE_COMPAT_DLL_NAME.lower()
+    if len(normalized_names) == 1 and compat_name in normalized_names:
+        return ReShadeInstallState(
+            mode=RESHADE_INSTALL_MODE_ALREADY_MIGRATED,
+            detected_dll_names=detected_names,
+        )
+
+    if len(normalized_names) > 1 or compat_name in normalized_names:
+        return ReShadeInstallState(
+            mode=RESHADE_INSTALL_MODE_INVALID_MULTIPLE,
+            detected_dll_names=detected_names,
+        )
+
+    return ReShadeInstallState(
+        mode=RESHADE_INSTALL_MODE_MIGRATE,
+        source_dll_name=detected_names[0],
+        detected_dll_names=detected_names,
+    )
+
+
+def build_reshade_install_error(detected_dll_names: Iterable[str], use_korean: bool) -> str:
+    detected = ", ".join(_normalize_unique_strings(detected_dll_names))
+    if lang_from_bool(use_korean) == "ko":
+        return (
+            "ReShade DLL이 여러 개 감지되어 설치를 진행할 수 없습니다. "
+            f"하나의 ReShade만 남기고 다시 시도해 주세요: {detected}"
+        )
+    return (
+        "Installation cannot continue because multiple ReShade DLLs were detected. "
+        f"Leave only one ReShade hook DLL and try again: {detected}"
+    )
 
 
 def _format_finding(finding: ModConflictFinding, use_korean: bool) -> str:
@@ -255,9 +310,18 @@ __all__ = [
     "ModBinaryState",
     "ModConflictFinding",
     "ModPrecheckState",
+    "RESHADE_COMPAT_DLL_NAME",
+    "RESHADE_INSTALL_MODE_ALREADY_MIGRATED",
+    "RESHADE_INSTALL_MODE_DISABLED",
+    "RESHADE_INSTALL_MODE_INVALID_MULTIPLE",
+    "RESHADE_INSTALL_MODE_MIGRATE",
+    "ReShadeInstallState",
     "RenoDxState",
+    "build_mod_conflict_findings",
     "build_mod_conflict_notice",
+    "build_reshade_install_error",
     "empty_mod_precheck_state",
+    "resolve_reshade_install_state",
     "scan_mod_precheck_state",
     "scan_target_mod_conflicts",
 ]

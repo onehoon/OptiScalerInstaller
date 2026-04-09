@@ -18,9 +18,13 @@ temp_version.txt
 logs/
 
 # Tests and local test artifacts
-tests/
+tests/*
+!tests/test_reshade_install.py
+!tests/test_ual_install.py
 tests_runtime/
 .pytest_cache/
+.pytest_tmp/
+codex_test_tmp/
 pytest-cache-files-*/
 pytest.ini
 .coverage

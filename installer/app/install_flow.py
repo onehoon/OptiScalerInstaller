@@ -8,6 +8,7 @@ from tkinter import messagebox
 from typing import Any
 
 from installer.games.handlers import get_game_handler
+from installer.games.handlers.install_precheck import RESHADE_INSTALL_MODE_DISABLED
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
@@ -71,6 +72,9 @@ class InstallFlowController:
     def run_install_precheck(self, game_data: Mapping[str, Any]) -> InstallSelectionPrecheckOutcome:
         logger = self._create_prefixed_logger(str(game_data.get("game_name", "unknown")).strip() or "unknown")
         handler = get_game_handler(game_data)
+        self._install_state.precheck_ual_detected_names = ()
+        self._install_state.precheck_reshade_install_mode = RESHADE_INSTALL_MODE_DISABLED
+        self._install_state.precheck_reshade_source_dll_name = ""
         try:
             logger.info("Running install precheck with handler: %s", getattr(handler, "handler_key", "default"))
             precheck = handler.run_install_precheck(game_data, self._is_korean(), logger)
@@ -91,6 +95,12 @@ class InstallFlowController:
                     logger.info("[MOD] %s (%s) detected", mod_name, evidence)
                 else:
                     logger.info("[MOD] %s detected", mod_name)
+            self._install_state.precheck_reshade_install_mode = str(
+                getattr(precheck, "reshade_install_mode", RESHADE_INSTALL_MODE_DISABLED) or RESHADE_INSTALL_MODE_DISABLED
+            )
+            self._install_state.precheck_reshade_source_dll_name = str(
+                getattr(precheck, "reshade_source_dll_name", "") or ""
+            )
             if precheck.ok:
                 resolved_dll_name = str(precheck.resolved_dll_name or "")
                 logger.info("Install precheck resolved DLL name: %s", resolved_dll_name)
@@ -107,6 +117,12 @@ class InstallFlowController:
                 self._install_state.precheck_ual_detected_names = ual_detected_names
                 if ual_detected_names:
                     logger.info("[UAL] Detected UAL DLL(s): %s", ", ".join(ual_detected_names))
+                if self._install_state.precheck_reshade_install_mode != RESHADE_INSTALL_MODE_DISABLED:
+                    logger.info(
+                        "[ReShade] Install mode: %s (%s)",
+                        self._install_state.precheck_reshade_install_mode,
+                        self._install_state.precheck_reshade_source_dll_name or "ReShade64.dll",
+                    )
 
                 return InstallSelectionPrecheckOutcome(
                     ok=True,
@@ -257,6 +273,10 @@ class InstallFlowController:
         logger = self._create_prefixed_logger(game_name)
         try:
             ual_detected_names = tuple(self._install_state.precheck_ual_detected_names or ())
+            reshade_install_mode = str(
+                self._install_state.precheck_reshade_install_mode or RESHADE_INSTALL_MODE_DISABLED
+            )
+            reshade_source_dll_name = str(self._install_state.precheck_reshade_source_dll_name or "")
             install_ctx = build_install_context(
                 self._app_ref,
                 game_data,
@@ -266,6 +286,8 @@ class InstallFlowController:
                 fsr4_required,
                 ual_detected_names,
                 logger,
+                reshade_install_mode=reshade_install_mode,
+                reshade_source_dll_name=reshade_source_dll_name,
             )
             installed_game = run_install_workflow(
                 self._app_ref,

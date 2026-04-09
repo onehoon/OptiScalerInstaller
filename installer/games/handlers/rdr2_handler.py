@@ -9,7 +9,13 @@ from ...i18n import get_app_strings, lang_from_bool
 from ...install import OPTISCALER_ASI_NAME
 
 from .base_handler import BaseGameHandler, InstallPlan, InstallPrecheckResult
-from .install_precheck import scan_target_mod_conflicts
+from .install_precheck import (
+    RESHADE_INSTALL_MODE_INVALID_MULTIPLE,
+    build_mod_conflict_findings,
+    build_reshade_install_error,
+    resolve_reshade_install_state,
+    scan_mod_precheck_state,
+)
 from .rdr2_xml import apply_rdr2_system_xml_settings, resolve_rdr2_system_xml_path
 
 
@@ -123,8 +129,24 @@ class Rdr2Handler(BaseGameHandler):
         logger,
     ) -> InstallPrecheckResult:
         target_path = str(game_data.get("path", "")).strip()
-        conflict_findings = scan_target_mod_conflicts(target_path, logger=logger)
+        mod_state = scan_mod_precheck_state(target_path, logger=logger)
+        conflict_findings = build_mod_conflict_findings(mod_state)
+        reshade_state = resolve_reshade_install_state(mod_state)
         xml_path = resolve_rdr2_system_xml_path()
+
+        if reshade_state.mode == RESHADE_INSTALL_MODE_INVALID_MULTIPLE:
+            return InstallPrecheckResult(
+                ok=False,
+                raw_error_message=build_reshade_install_error(
+                    reshade_state.detected_dll_names,
+                    False,
+                ),
+                conflict_findings=conflict_findings,
+                error_code="reshade_invalid_multiple",
+                error_context={"detected_dll_names": reshade_state.detected_dll_names},
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
+            )
 
         if not xml_path.is_file():
             return InstallPrecheckResult(
@@ -133,6 +155,8 @@ class Rdr2Handler(BaseGameHandler):
                 conflict_findings=conflict_findings,
                 error_code="missing_system_xml",
                 error_context={"xml_path": str(xml_path)},
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
             )
 
         blocked_mods = _scan_rdr2_blocked_mods(target_path, logger=logger)
@@ -143,15 +167,24 @@ class Rdr2Handler(BaseGameHandler):
                 conflict_findings=conflict_findings,
                 error_code="blocked_mods",
                 error_context={"detected_mods": blocked_mods},
+                reshade_install_mode=reshade_state.mode,
+                reshade_source_dll_name=reshade_state.source_dll_name,
             )
 
         return InstallPrecheckResult(
             ok=True,
             resolved_dll_name=OPTISCALER_ASI_NAME,
             conflict_findings=conflict_findings,
+            reshade_install_mode=reshade_state.mode,
+            reshade_source_dll_name=reshade_state.source_dll_name,
         )
 
     def format_precheck_error(self, precheck: InstallPrecheckResult, use_korean: bool) -> str:
+        if precheck.error_code == "reshade_invalid_multiple":
+            return build_reshade_install_error(
+                precheck.error_context.get("detected_dll_names", ()),
+                use_korean,
+            )
         if precheck.error_code == "missing_system_xml":
             xml_path = Path(str(precheck.error_context.get("xml_path", "")).strip())
             return _build_rdr2_missing_xml_error(xml_path, use_korean)

@@ -201,10 +201,16 @@ def target_has_filename(target_path, file_name: str) -> bool:
         return False
 
 
-def resolve_proxy_dll_name(target_path, preferred_name="", logger=None) -> str:
+def resolve_proxy_dll_name(target_path, preferred_name="", logger=None, reusable_filenames=None) -> str:
     target_dir = Path(target_path)
     if not target_dir.is_dir():
         raise ValueError(f"Invalid target folder: {target_path}")
+
+    reusable_name_set = {
+        Path(str(name).strip()).name.lower()
+        for name in (reusable_filenames or ())
+        if str(name).strip()
+    }
 
     candidates = []
     for name in [preferred_name, *OPTISCALER_PROXY_FALLBACK_NAMES]:
@@ -223,6 +229,13 @@ def resolve_proxy_dll_name(target_path, preferred_name="", logger=None) -> str:
             if logger:
                 logger.info("OptiScaler DLL name: %s", candidate)
             return candidate
+        if candidate_path.name.lower() in reusable_name_set:
+            if logger:
+                logger.info(
+                    "OptiScaler DLL name reserved for planned ReShade migration: %s",
+                    candidate,
+                )
+            return candidate
         if _is_optiscaler_managed_proxy_dll(candidate_path):
             if logger:
                 logger.info(
@@ -237,6 +250,53 @@ def resolve_proxy_dll_name(target_path, preferred_name="", logger=None) -> str:
         "No available OptiScaler DLL names for installation. "
         f"Checked: {', '.join(candidates)}"
     )
+
+
+def prepare_reshade_for_optiscaler(target_path, install_mode="", source_dll_name="", logger=None) -> bool:
+    target_dir = Path(target_path)
+    if not target_dir.is_dir():
+        raise ValueError(f"Invalid target folder: {target_path}")
+
+    normalized_mode = str(install_mode or "").strip().lower()
+    compat_path = target_dir / "ReShade64.dll"
+
+    if normalized_mode in {"", "disabled"}:
+        return False
+
+    if normalized_mode == "already_migrated":
+        if not compat_path.is_file():
+            raise RuntimeError(f"Expected migrated ReShade DLL was not found: {compat_path.name}")
+        if logger:
+            logger.info("ReShade compatibility DLL already present: %s", compat_path.name)
+        return True
+
+    if normalized_mode == "invalid_multiple":
+        raise RuntimeError("Multiple ReShade DLLs were detected; installation cannot continue.")
+
+    if normalized_mode != "migrate":
+        raise RuntimeError(f"Unsupported ReShade install mode: {install_mode}")
+
+    normalized_source_name = Path(str(source_dll_name or "").strip()).name
+    if not normalized_source_name:
+        raise RuntimeError("ReShade migration requires a source DLL name.")
+
+    source_path = target_dir / normalized_source_name
+    if not source_path.is_file():
+        raise RuntimeError(f"Expected ReShade DLL was not found: {normalized_source_name}")
+
+    if source_path.name.lower() == compat_path.name.lower():
+        if logger:
+            logger.info("ReShade compatibility DLL already prepared: %s", compat_path.name)
+        return True
+
+    if compat_path.exists():
+        raise RuntimeError(f"Cannot migrate ReShade because {compat_path.name} already exists.")
+
+    _ensure_writable(source_path)
+    source_path.replace(compat_path)
+    if logger:
+        logger.info("Migrated ReShade DLL: %s -> %s", normalized_source_name, compat_path.name)
+    return True
 
 
 def backup_existing_optiscaler_dlls(target_path, logger=None):
