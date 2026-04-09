@@ -181,7 +181,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             preparing_archive_title="아카이브 준비 중",
             preparing_archive_body="OptiScaler 아카이브 다운로드가 아직 진행 중입니다. 잠시만 기다려 주세요.",
             precheck_incomplete_body="OptiScaler DLL 호환성 확인이 아직 완료되지 않았습니다.",
-            precheck_retry_mods_body="ReShade, Special K 등 다른 MOD 사용 중이면 확인 후 다시 설치해 주세요.",
+            precheck_retry_mods_body="안내된 원인을 확인한 뒤 충돌할 수 있는 파일이나 설정을 정리하고 다시 설치해 주세요.",
             optiscaler_archive_not_ready="OptiScaler 아카이브가 아직 준비되지 않았습니다.",
             invalid_game_body="유효한 게임 항목을 선택해 주세요.",
             preparing_download_title="다운로드 준비 중",
@@ -221,17 +221,17 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             no_available_dll="설치에 사용할 수 있는 OptiScaler DLL 이름이 없습니다.",
             checked_names_template="확인한 이름: {names}",
             mod_notice_header=(
-                "[RED]MOD가 설치된 상태에서 OptiScaler를 본 인스톨러를 통해 설치할 경우,\n"
-                "게임이 정상적으로 실행되지 않거나 오동작할 수 있습니다.\n"
-                "가능하면 OptiScaler를 수동으로 설치하는 것을 권장합니다.[END]"
+                "[RED]다른 MOD가 감지되었습니다.\n"
+                "감지된 항목에 따라 일부는 자동으로 호환 처리될 수 있지만,\n"
+                "조합에 따라 게임이 실행되지 않거나 오동작할 수 있습니다.[END]"
             ),
-            mod_notice_footer="그래도 설치를 진행하려면 메인 창의 설치 버튼을 눌러 진행해 주세요.",
+            mod_notice_footer="감지된 항목을 확인한 뒤 설치를 계속하려면 메인 창의 설치 버튼을 눌러 진행해 주세요.",
             reshade_detected_template="ReShade: {detected}",
             special_k_detected_template="Special K: {detected}",
             ultimate_asi_loader_detected_template="Ultimate ASI Loader: {detected}",
             renodx_detected_template="RenoDX: {detected}",
             mod_detected_template="MOD: {detected}",
-            rdr2_blocked_mod_popup_template="[RED][DOT]현재 RDR2 설치는 MOD가 설치되지 않은 상태일 경우만 지원됩니다.[BR][DOT]MOD 지원 설치는 추가 확인 후 지원 예정입니다.[BR][DOT]감지된 MOD는 다음과 같습니다.[END][BR]{mods}",
+            rdr2_blocked_mod_popup_template="[RED][DOT]RDR2는 일부 비호환 MOD가 감지되면 설치를 진행할 수 없습니다.[BR][DOT]아래 항목을 정리한 뒤 다시 시도해 주세요.[BR][DOT]감지된 비호환 MOD는 다음과 같습니다.[END][BR]{mods}",
         ),
     ),
     "en": AppStrings(
@@ -288,7 +288,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             preparing_archive_title="Preparing Archive",
             preparing_archive_body="OptiScaler archive download is still in progress. Please wait.",
             precheck_incomplete_body="OptiScaler DLL compatibility check has not completed.",
-            precheck_retry_mods_body="If you are using other mods such as ReShade or Special K, please verify them and try the installation again.",
+            precheck_retry_mods_body="Review the message above, then remove or adjust any conflicting files or settings before trying again.",
             optiscaler_archive_not_ready="OptiScaler archive is not ready yet.",
             invalid_game_body="Please select a valid game item.",
             preparing_download_title="Preparing Download",
@@ -327,17 +327,17 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             no_available_dll="No available OptiScaler DLL names for installation.",
             checked_names_template="Checked: {names}",
             mod_notice_header=(
-                "[RED]If OptiScaler is installed through this installer while other mods are already installed,\n"
-                "the game may fail to launch or behave unexpectedly.\n"
-                "Manual installation is recommended.[END]"
+                "[RED]Other mods were detected.\n"
+                "Some detected items may be handled automatically,\n"
+                "but certain combinations can still prevent the game from launching or cause unexpected behavior.[END]"
             ),
-            mod_notice_footer="To continue anyway, press the Install button in the main window.",
+            mod_notice_footer="After reviewing the detected items, press the Install button in the main window to continue.",
             reshade_detected_template="ReShade: {detected}",
             special_k_detected_template="Special K: {detected}",
             ultimate_asi_loader_detected_template="Ultimate ASI Loader: {detected}",
             renodx_detected_template="RenoDX: {detected}",
             mod_detected_template="MOD: {detected}",
-            rdr2_blocked_mod_popup_template="[RED][DOT]RDR2 installation is currently supported only when no MODs are installed.[BR][DOT]Support for installing with MODs enabled is planned after additional verification.[BR][DOT]The following MODs were detected:[END][BR]{mods}",
+            rdr2_blocked_mod_popup_template="[RED][DOT]RDR2 installation cannot continue when certain incompatible mods are detected.[BR][DOT]Remove the items below and try again.[BR][DOT]The following incompatible mods were detected:[END][BR]{mods}",
         ),
     ),
 }
