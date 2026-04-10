@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterable
 from concurrent.futures import Executor
 from dataclasses import dataclass
 import logging
+import threading
 from typing import Any
 
 from ..games import scanner as game_scanner
@@ -11,7 +12,29 @@ from ..i18n import Lang
 from ..common import schedule_safely
 
 
-GameDbProvider = Callable[[], dict[str, dict[str, Any]]]
+_SCAN_MAX_WORKERS = 4
+
+
+def _group_paths_by_drive(paths: list[str], max_groups: int) -> list[list[str]]:
+    """Group scan paths by drive letter, then distribute groups across at most max_groups buckets."""
+    drive_map: dict[str, list[str]] = {}
+    for path in paths:
+        # Use first two chars (e.g. "D:") as drive key; fall back to "" for UNC/relative paths
+        drive_key = path[:2].upper() if len(path) >= 2 and path[1] == ":" else ""
+        drive_map.setdefault(drive_key, []).append(path)
+
+    drive_groups = list(drive_map.values())
+    if len(drive_groups) <= max_groups:
+        return drive_groups
+
+    # More drive groups than max_groups: merge smallest groups round-robin until within limit
+    buckets: list[list[str]] = [[] for _ in range(max_groups)]
+    for i, group in enumerate(drive_groups):
+        buckets[i % max_groups].extend(group)
+    return [b for b in buckets if b]
+
+
+
 LangProvider = Callable[[], Lang]
 GameSupportPredicate = Callable[[dict[str, Any]], bool]
 SchedulerCallback = Callable[[Callable[[], None]], Any]
@@ -53,6 +76,8 @@ class ScanController:
         self._auto_scan_active = False
         self._scan_generation = 0
         self._found_count = 0
+        self._pending_workers = 0
+        self._pending_lock = threading.Lock()
 
     @property
     def is_scan_in_progress(self) -> bool:
@@ -89,14 +114,22 @@ class ScanController:
         self._callbacks.reset_scan_results()
         self._callbacks.prepare_scan_ui()
 
+        path_groups = _group_paths_by_drive(normalized_paths, _SCAN_MAX_WORKERS)
+        game_db = dict(self._get_game_db() or {})
+        lang = self._get_lang()
+
+        with self._pending_lock:
+            self._pending_workers = len(path_groups)
+
         try:
-            self._executor.submit(
-                self._run_scan_worker,
-                generation,
-                tuple(normalized_paths),
-                dict(self._get_game_db() or {}),
-                self._get_lang(),
-            )
+            for group in path_groups:
+                self._executor.submit(
+                    self._run_scan_worker,
+                    generation,
+                    tuple(group),
+                    game_db,
+                    lang,
+                )
         except Exception:
             self._logger.exception("Failed to submit scan worker")
             self._scan_in_progress = False
@@ -132,10 +165,15 @@ class ScanController:
         except Exception:
             self._logger.exception("Scan worker error")
         finally:
-            self._schedule_callback(
-                lambda scheduled_generation=generation: self._on_scan_complete(scheduled_generation),
-                description="scan completion callback",
-            )
+            with self._pending_lock:
+                self._pending_workers -= 1
+                is_last = self._pending_workers == 0
+
+            if is_last:
+                self._schedule_callback(
+                    lambda scheduled_generation=generation: self._on_scan_complete(scheduled_generation),
+                    description="scan completion callback",
+                )
 
     def _schedule_callback(self, callback: Callable[[], None], *, description: str) -> None:
         schedule_safely(self._schedule, callback, self._logger, description=description)

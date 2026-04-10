@@ -169,6 +169,15 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                     ),
                 ),
                 AppShutdownStep(
+                    "shutdown scan executor",
+                    lambda: app._call_optional_method(
+                        "_scan_executor",
+                        "shutdown",
+                        wait=False,
+                        cancel_futures=True,
+                    ),
+                ),
+                AppShutdownStep(
                     "shutdown download executor",
                     lambda: app._call_optional_method(
                         "_download_executor",
@@ -292,7 +301,7 @@ def _build_scan_feedback_controller(app: Any, config: AppControllerFactoryConfig
 
 def _build_scan_controller(app: Any, scan_feedback: ScanFeedbackController) -> ScanController:
     return ScanController(
-        executor=app._task_executor,
+        executor=app._scan_executor,
         schedule=lambda callback: app.root.after(0, callback),
         callbacks=ScanControllerCallbacks(
             prepare_scan_ui=scan_feedback.prepare_scan_ui,

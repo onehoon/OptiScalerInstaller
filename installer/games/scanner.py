@@ -55,13 +55,38 @@ def _append_existing_unique_child_dirs(paths: list[str], seen: set[str], parent:
         _append_existing_unique_path(paths, seen, child_dir)
 
 
+_CUSTOM_SCAN_FOLDER_NAMES: tuple[str, ...] = ("game", "games")
+
+
+def _get_non_system_drive_letters() -> list[str]:
+    """Return uppercase drive letters of fixed drives excluding C:."""
+    if os.name != "nt":
+        return []
+
+    try:
+        import ctypes
+        bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+        drives: list[str] = []
+        for i, letter in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+            if not (bitmask >> i & 1):
+                continue
+            if letter == "C":
+                continue
+            root = f"{letter}:\\\\"
+            # DRIVE_FIXED == 3
+            if ctypes.windll.kernel32.GetDriveTypeW(root) == 3:
+                drives.append(letter)
+        return drives
+    except Exception:
+        return ["D", "E"]
+
+
 def _get_custom_auto_scan_candidates() -> tuple[Path, ...]:
-    return (
-        Path("D:/") / "game",
-        Path("D:/") / "games",
-        Path("E:/") / "game",
-        Path("E:/") / "games",
-    )
+    candidates: list[Path] = []
+    for letter in _get_non_system_drive_letters():
+        for folder_name in _CUSTOM_SCAN_FOLDER_NAMES:
+            candidates.append(Path(f"{letter}:/") / folder_name)
+    return tuple(candidates)
 
 
 def _get_detected_steam_common_paths(logger=None) -> list[Path]:
@@ -96,11 +121,12 @@ def _get_detected_steam_common_paths(logger=None) -> list[Path]:
 
 
 def _get_fallback_steam_common_paths() -> tuple[Path, ...]:
-    return (
+    fallback: list[Path] = [
         Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Steam" / "steamapps" / "common",
-        Path("D:/") / "SteamLibrary" / "steamapps" / "common",
-        Path("E:/") / "SteamLibrary" / "steamapps" / "common",
-    )
+    ]
+    for letter in _get_non_system_drive_letters():
+        fallback.append(Path(f"{letter}:/") / "SteamLibrary" / "steamapps" / "common")
+    return tuple(fallback)
 
 
 def get_auto_scan_paths(logger=None) -> list[str]:
@@ -186,6 +212,7 @@ def iter_scan_game_folders(
     supported_predicate = is_game_supported or (lambda _entry: True)
     seen_paths: set[tuple[str, str]] = set()
     match_index = _build_match_index(game_db)
+    match_tokens: frozenset[str] = frozenset(match_index.keys())
 
     for game_folder in game_folders:
         normalized_folder = str(game_folder or "").strip()
@@ -203,6 +230,10 @@ def iter_scan_game_folders(
 
         for root_dir, dirs, files in folder_iter:
             if not files:
+                continue
+
+            files_lower = {f.lower() for f in files}
+            if files_lower.isdisjoint(match_tokens):
                 continue
 
             file_lookup: dict[str, str] = {}
