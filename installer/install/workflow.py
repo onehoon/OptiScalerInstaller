@@ -99,9 +99,17 @@ def build_install_context(
             logger.info("Install mode: Ultimate ASI Loader (%s)", final_dll_name)
     else:
         reusable_filenames_list = []
-        if normalized_reshade_mode == "migrate" and normalized_reshade_source:
+        if (
+            installer_services.RESHADE_COMPAT_INSTALL_ENABLED
+            and normalized_reshade_mode == "migrate"
+            and normalized_reshade_source
+        ):
             reusable_filenames_list.append(normalized_reshade_source)
-        if normalized_specialk_mode == "migrate" and normalized_specialk_source:
+        if (
+            installer_services.SPECIALK_AUTO_DETECT_INSTALL_ENABLED
+            and normalized_specialk_mode == "migrate"
+            and normalized_specialk_source
+        ):
             reusable_filenames_list.append(normalized_specialk_source)
         final_dll_name = installer_services.resolve_proxy_dll_name(
             target_path,
@@ -143,7 +151,10 @@ def run_install_workflow(
 ) -> dict[str, Any]:
     logger.info("Install started: target=%s", install_ctx.target_path)
     exclude_patterns = resolve_install_exclude_patterns(module_download_links)
-    specialk_requested = bool(install_ctx.game_data.get("specialk")) or install_ctx.specialk_install_mode != "disabled"
+    specialk_requested = bool(install_ctx.game_data.get("specialk")) or (
+        installer_services.SPECIALK_AUTO_DETECT_INSTALL_ENABLED
+        and install_ctx.specialk_install_mode != "disabled"
+    )
     specialk_skipped_for_asi = (
         specialk_requested
         and install_ctx.final_dll_name.lower() == OPTISCALER_ASI_NAME.lower()
@@ -160,7 +171,10 @@ def run_install_workflow(
             "Special K install skipped: OptiScaler.asi install mode does not support plugins/%s loading",
             install_ctx.final_dll_name,
         )
-    elif install_ctx.specialk_install_mode != "disabled":
+    elif (
+        installer_services.SPECIALK_AUTO_DETECT_INSTALL_ENABLED
+        and install_ctx.specialk_install_mode != "disabled"
+    ):
         specialk_existing_prepared = installer_services.prepare_specialk_for_optiscaler(
             install_ctx.target_path,
             install_ctx.final_dll_name,
@@ -216,6 +230,13 @@ def run_install_workflow(
         merged_ini_settings["LoadReshade"] = "true"
 
     ini_utils.apply_ini_settings(ini_path, merged_ini_settings, force_frame_generation=True, logger=logger)
+    if specialk_requested and not specialk_skipped_for_asi:
+        ini_utils.apply_ini_settings(
+            ini_path,
+            {"Plugins:LoadAsiPlugins": "true"},
+            force_frame_generation=True,
+            logger=logger,
+        )
     if reshade_ready:
         ini_utils._upsert_ini_entries(Path(ini_path), {"": {"LoadReshade": "true"}}, logger=logger)
     logger.info("Applied ini settings to %s", ini_path)

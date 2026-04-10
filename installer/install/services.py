@@ -42,6 +42,8 @@ OPTISCALER_LEGACY_REMOVE_NAMES = {
     "nvngx.dll",
 }
 OPTISCALER_PROXY_FALLBACK_NAMES = ("winmm.dll", "version.dll")
+RESHADE_COMPAT_INSTALL_ENABLED = False
+SPECIALK_AUTO_DETECT_INSTALL_ENABLED = False
 OPTIPATCHER_PLUGIN_NAME = "OptiPatcher.asi"
 OPTIPATCHER_ARCHIVE_EXTENSIONS = {".zip", ".7z"}
 SPECIALK64_DLL_NAME = "SpecialK64.dll"
@@ -265,6 +267,10 @@ def prepare_reshade_for_optiscaler(target_path, install_mode="", source_dll_name
 
     if normalized_mode in {"", "disabled"}:
         return False
+    if not RESHADE_COMPAT_INSTALL_ENABLED:
+        if logger:
+            logger.info("ReShade compatibility install is disabled; leaving existing ReShade files untouched.")
+        return False
 
     if normalized_mode == "already_migrated":
         if not compat_path.is_file():
@@ -315,6 +321,10 @@ def prepare_specialk_for_optiscaler(
 
     normalized_mode = str(install_mode or "").strip().lower()
     if normalized_mode in {"", "disabled"}:
+        return False
+    if not SPECIALK_AUTO_DETECT_INSTALL_ENABLED:
+        if logger:
+            logger.info("Special K auto-detected migration is disabled; leaving existing Special K files untouched.")
         return False
 
     if normalized_mode != "migrate":

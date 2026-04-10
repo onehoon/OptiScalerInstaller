@@ -270,6 +270,9 @@ def scan_target_mod_conflicts(target_path: str, logger=None) -> tuple[ModConflic
 
 
 def resolve_reshade_install_state(state: ModPrecheckState) -> ReShadeInstallState:
+    if not installer_services.RESHADE_COMPAT_INSTALL_ENABLED:
+        return ReShadeInstallState()
+
     detected_names = tuple(str(name).strip() for name in state.reshade.dll_names if str(name).strip())
     if not detected_names:
         return ReShadeInstallState()
@@ -296,6 +299,9 @@ def resolve_reshade_install_state(state: ModPrecheckState) -> ReShadeInstallStat
 
 
 def resolve_specialk_install_state(state: ModPrecheckState) -> SpecialKInstallState:
+    if not installer_services.SPECIALK_AUTO_DETECT_INSTALL_ENABLED:
+        return SpecialKInstallState()
+
     detected_names = tuple(str(name).strip() for name in state.special_k.dll_names if str(name).strip())
     if not detected_names:
         return SpecialKInstallState()
