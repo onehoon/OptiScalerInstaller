@@ -8,7 +8,7 @@ from tkinter import messagebox
 from typing import Any
 
 from installer.games.handlers import get_game_handler
-from installer.games.handlers.install_precheck import RESHADE_INSTALL_MODE_DISABLED
+from installer.games.handlers.install_precheck import RESHADE_INSTALL_MODE_DISABLED, SPECIALK_INSTALL_MODE_DISABLED
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
@@ -75,6 +75,8 @@ class InstallFlowController:
         self._install_state.precheck_ual_detected_names = ()
         self._install_state.precheck_reshade_install_mode = RESHADE_INSTALL_MODE_DISABLED
         self._install_state.precheck_reshade_source_dll_name = ""
+        self._install_state.precheck_specialk_install_mode = SPECIALK_INSTALL_MODE_DISABLED
+        self._install_state.precheck_specialk_source_dll_name = ""
         try:
             logger.info("Running install precheck with handler: %s", getattr(handler, "handler_key", "default"))
             precheck = handler.run_install_precheck(game_data, self._is_korean(), logger)
@@ -101,6 +103,13 @@ class InstallFlowController:
             self._install_state.precheck_reshade_source_dll_name = str(
                 getattr(precheck, "reshade_source_dll_name", "") or ""
             )
+            self._install_state.precheck_specialk_install_mode = str(
+                getattr(precheck, "specialk_install_mode", SPECIALK_INSTALL_MODE_DISABLED)
+                or SPECIALK_INSTALL_MODE_DISABLED
+            )
+            self._install_state.precheck_specialk_source_dll_name = str(
+                getattr(precheck, "specialk_source_dll_name", "") or ""
+            )
             if precheck.ok:
                 resolved_dll_name = str(precheck.resolved_dll_name or "")
                 logger.info("Install precheck resolved DLL name: %s", resolved_dll_name)
@@ -122,6 +131,12 @@ class InstallFlowController:
                         "[ReShade] Install mode: %s (%s)",
                         self._install_state.precheck_reshade_install_mode,
                         self._install_state.precheck_reshade_source_dll_name or "ReShade64.dll",
+                    )
+                if self._install_state.precheck_specialk_install_mode != SPECIALK_INSTALL_MODE_DISABLED:
+                    logger.info(
+                        "[SpecialK] Install mode: %s (%s)",
+                        self._install_state.precheck_specialk_install_mode,
+                        self._install_state.precheck_specialk_source_dll_name or "SpecialK64.dll",
                     )
 
                 return InstallSelectionPrecheckOutcome(
@@ -154,6 +169,7 @@ class InstallFlowController:
         archive = self._archive_state
         predownload_in_progress = bool(
             archive.optipatcher_downloading
+            or archive.specialk_downloading
             or archive.ual_downloading
             or archive.unreal5_downloading
         )
@@ -177,6 +193,7 @@ class InstallFlowController:
             predownload_in_progress=predownload_in_progress,
             ual_cached_archive=str(archive.ual_source_archive or "") if archive.ual_ready else "",
             optipatcher_cached_archive=str(archive.optipatcher_source_archive or "") if archive.optipatcher_ready else "",
+            specialk_cached_archive=str(archive.specialk_source_archive or "") if archive.specialk_ready else "",
             unreal5_cached_archive=str(archive.unreal5_source_archive or "") if archive.unreal5_ready else "",
         )
 
@@ -242,6 +259,7 @@ class InstallFlowController:
         fsr4_source_archive = decision.fsr4_source_archive
         ual_cached_archive = decision.ual_cached_archive
         optipatcher_cached_archive = decision.optipatcher_cached_archive
+        specialk_cached_archive = decision.specialk_cached_archive
         unreal5_cached_archive = decision.unreal5_cached_archive
 
         self._install_state.in_progress = True
@@ -255,6 +273,7 @@ class InstallFlowController:
             decision.fsr4_required,
             ual_cached_archive,
             optipatcher_cached_archive,
+            specialk_cached_archive,
             unreal5_cached_archive,
         )
 
@@ -267,6 +286,7 @@ class InstallFlowController:
         fsr4_required: bool,
         ual_cached_archive: str = "",
         optipatcher_cached_archive: str = "",
+        specialk_cached_archive: str = "",
         unreal5_cached_archive: str = "",
     ) -> None:
         game_name = str(game_data.get("game_name", "unknown")).strip() or "unknown"
@@ -277,6 +297,10 @@ class InstallFlowController:
                 self._install_state.precheck_reshade_install_mode or RESHADE_INSTALL_MODE_DISABLED
             )
             reshade_source_dll_name = str(self._install_state.precheck_reshade_source_dll_name or "")
+            specialk_install_mode = str(
+                self._install_state.precheck_specialk_install_mode or SPECIALK_INSTALL_MODE_DISABLED
+            )
+            specialk_source_dll_name = str(self._install_state.precheck_specialk_source_dll_name or "")
             install_ctx = build_install_context(
                 self._app_ref,
                 game_data,
@@ -288,6 +312,8 @@ class InstallFlowController:
                 logger,
                 reshade_install_mode=reshade_install_mode,
                 reshade_source_dll_name=reshade_source_dll_name,
+                specialk_install_mode=specialk_install_mode,
+                specialk_source_dll_name=specialk_source_dll_name,
             )
             installed_game = run_install_workflow(
                 self._app_ref,
@@ -299,6 +325,7 @@ class InstallFlowController:
                 logger,
                 ual_cached_archive=ual_cached_archive,
                 optipatcher_cached_archive=optipatcher_cached_archive,
+                specialk_cached_archive=specialk_cached_archive,
                 unreal5_cached_archive=unreal5_cached_archive,
             )
             self._root.after(

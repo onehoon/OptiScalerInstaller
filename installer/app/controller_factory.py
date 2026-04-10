@@ -209,6 +209,7 @@ def _build_archive_controller(app: Any) -> ArchivePreparationController:
             on_optiscaler_state_changed=app._on_optiscaler_archive_state_changed,
             on_fsr4_state_changed=app._on_fsr4_archive_state_changed,
             on_optipatcher_state_changed=app._on_optipatcher_archive_state_changed,
+            on_specialk_state_changed=app._on_specialk_archive_state_changed,
             on_ual_state_changed=app._on_ual_archive_state_changed,
             on_unreal5_state_changed=app._on_unreal5_archive_state_changed,
         ),

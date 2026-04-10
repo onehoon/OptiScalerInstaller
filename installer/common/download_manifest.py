@@ -5,9 +5,9 @@ Each entry maps a module key to its cached version string and the
 timestamp when it was last downloaded.
 
 For optiscaler and fsr4int8, the ``version`` field holds the archive
-filename (which encodes the version).  For optipatcher, ultimateasiloader,
-and unreal5 the field holds the ``version`` column value from the Google
-Sheet.
+filename (which encodes the version).  For optipatcher, specialk,
+ultimateasiloader, and unreal5 the field holds the ``version`` column
+value from the Google Sheet.
 """
 from __future__ import annotations
 

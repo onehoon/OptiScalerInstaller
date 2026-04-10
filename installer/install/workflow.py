@@ -12,6 +12,7 @@ from .components import (
     OPTISCALER_ASI_NAME,
     install_optipatcher,
     install_reframework_dinput8,
+    install_specialk,
     install_ultimate_asi_loader,
     install_unreal5_patch,
 )
@@ -30,6 +31,8 @@ class InstallContext:
     ual_detected_names: tuple[str, ...] = ()
     reshade_install_mode: str = "disabled"
     reshade_source_dll_name: str = ""
+    specialk_install_mode: str = "disabled"
+    specialk_source_dll_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,8 @@ def build_install_context(
     *,
     reshade_install_mode: str = "disabled",
     reshade_source_dll_name: str = "",
+    specialk_install_mode: str = "disabled",
+    specialk_source_dll_name: str = "",
 ) -> InstallContext:
     if logger is None:
         import logging
@@ -75,6 +80,8 @@ def build_install_context(
     ual_auto_detected = bool(ual_names)
     normalized_reshade_mode = str(reshade_install_mode or "").strip().lower() or "disabled"
     normalized_reshade_source = str(reshade_source_dll_name or "").strip()
+    normalized_specialk_mode = str(specialk_install_mode or "").strip().lower() or "disabled"
+    normalized_specialk_source = str(specialk_source_dll_name or "").strip()
     use_ultimate_asi_loader = bool(planned_game_data.get("ultimate_asi_loader")) or ual_auto_detected
 
     if use_ultimate_asi_loader and planned_game_data.get("reframework_url"):
@@ -91,14 +98,16 @@ def build_install_context(
             final_dll_name = planned_resolved_dll_name or OPTISCALER_ASI_NAME
             logger.info("Install mode: Ultimate ASI Loader (%s)", final_dll_name)
     else:
-        reusable_filenames = ()
+        reusable_filenames_list = []
         if normalized_reshade_mode == "migrate" and normalized_reshade_source:
-            reusable_filenames = (normalized_reshade_source,)
+            reusable_filenames_list.append(normalized_reshade_source)
+        if normalized_specialk_mode == "migrate" and normalized_specialk_source:
+            reusable_filenames_list.append(normalized_specialk_source)
         final_dll_name = installer_services.resolve_proxy_dll_name(
             target_path,
             planned_resolved_dll_name or str(planned_game_data.get("dll_name", "")).strip(),
             logger=logger,
-            reusable_filenames=reusable_filenames,
+            reusable_filenames=tuple(reusable_filenames_list),
         )
 
     return InstallContext(
@@ -113,6 +122,8 @@ def build_install_context(
         ual_detected_names=ual_names,
         reshade_install_mode=normalized_reshade_mode,
         reshade_source_dll_name=normalized_reshade_source,
+        specialk_install_mode=normalized_specialk_mode,
+        specialk_source_dll_name=normalized_specialk_source,
     )
 
 
@@ -127,16 +138,36 @@ def run_install_workflow(
     *,
     ual_cached_archive: str = "",
     optipatcher_cached_archive: str = "",
+    specialk_cached_archive: str = "",
     unreal5_cached_archive: str = "",
 ) -> dict[str, Any]:
     logger.info("Install started: target=%s", install_ctx.target_path)
     exclude_patterns = resolve_install_exclude_patterns(module_download_links)
+    specialk_requested = bool(install_ctx.game_data.get("specialk")) or install_ctx.specialk_install_mode != "disabled"
+    specialk_skipped_for_asi = (
+        specialk_requested
+        and install_ctx.final_dll_name.lower() == OPTISCALER_ASI_NAME.lower()
+    )
+    specialk_existing_prepared = False
     reshade_ready = installer_services.prepare_reshade_for_optiscaler(
         install_ctx.target_path,
         install_ctx.reshade_install_mode,
         install_ctx.reshade_source_dll_name,
         logger=logger,
     )
+    if specialk_skipped_for_asi:
+        logger.info(
+            "Special K install skipped: OptiScaler.asi install mode does not support plugins/%s loading",
+            install_ctx.final_dll_name,
+        )
+    elif install_ctx.specialk_install_mode != "disabled":
+        specialk_existing_prepared = installer_services.prepare_specialk_for_optiscaler(
+            install_ctx.target_path,
+            install_ctx.final_dll_name,
+            install_ctx.specialk_install_mode,
+            install_ctx.specialk_source_dll_name,
+            logger=logger,
+        )
     callbacks.install_base_payload(
         install_ctx.source_archive,
         install_ctx.target_path,
@@ -157,6 +188,16 @@ def run_install_workflow(
             ual_detected_names=ual_names,
             logger=logger,
             cached_archive_path=ual_cached_archive,
+        )
+
+    if specialk_requested and not specialk_skipped_for_asi:
+        install_specialk(
+            install_ctx.target_path,
+            install_ctx.final_dll_name,
+            module_download_links,
+            logger=logger,
+            cached_archive_path=specialk_cached_archive,
+            existing_prepared=specialk_existing_prepared,
         )
 
     merged_ini_settings = dict(install_ctx.game_data.get("ini_settings", {}))

@@ -36,6 +36,20 @@ RESHADE_INSTALL_MODE_DISABLED = "disabled"
 RESHADE_INSTALL_MODE_MIGRATE = "migrate"
 RESHADE_INSTALL_MODE_ALREADY_MIGRATED = "already_migrated"
 RESHADE_INSTALL_MODE_INVALID_MULTIPLE = "invalid_multiple"
+SPECIALK_INSTALL_MODE_DISABLED = "disabled"
+SPECIALK_INSTALL_MODE_MIGRATE = "migrate"
+_SPECIALK_SOURCE_PRIORITY = (
+    "dxgi.dll",
+    "d3d12.dll",
+    "d3d11.dll",
+    "d3d10.dll",
+    "d3d9.dll",
+    "version.dll",
+    "winmm.dll",
+    "dinput8.dll",
+    "specialk64.dll",
+    "specialk32.dll",
+)
 
 
 @dataclass(frozen=True)
@@ -78,6 +92,13 @@ class ModConflictFinding:
 @dataclass(frozen=True)
 class ReShadeInstallState:
     mode: str = RESHADE_INSTALL_MODE_DISABLED
+    source_dll_name: str = ""
+    detected_dll_names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SpecialKInstallState:
+    mode: str = SPECIALK_INSTALL_MODE_DISABLED
     source_dll_name: str = ""
     detected_dll_names: tuple[str, ...] = ()
 
@@ -274,6 +295,27 @@ def resolve_reshade_install_state(state: ModPrecheckState) -> ReShadeInstallStat
     )
 
 
+def resolve_specialk_install_state(state: ModPrecheckState) -> SpecialKInstallState:
+    detected_names = tuple(str(name).strip() for name in state.special_k.dll_names if str(name).strip())
+    if not detected_names:
+        return SpecialKInstallState()
+
+    normalized_by_name = {name.lower(): name for name in detected_names}
+    for preferred_name in _SPECIALK_SOURCE_PRIORITY:
+        if preferred_name in normalized_by_name:
+            return SpecialKInstallState(
+                mode=SPECIALK_INSTALL_MODE_MIGRATE,
+                source_dll_name=normalized_by_name[preferred_name],
+                detected_dll_names=detected_names,
+            )
+
+    return SpecialKInstallState(
+        mode=SPECIALK_INSTALL_MODE_MIGRATE,
+        source_dll_name=sorted(detected_names, key=str.lower)[0],
+        detected_dll_names=detected_names,
+    )
+
+
 def build_reshade_install_error(detected_dll_names: Iterable[str], use_korean: bool) -> str:
     detected = ", ".join(_normalize_unique_strings(detected_dll_names))
     if lang_from_bool(use_korean) == "ko":
@@ -315,13 +357,17 @@ __all__ = [
     "RESHADE_INSTALL_MODE_DISABLED",
     "RESHADE_INSTALL_MODE_INVALID_MULTIPLE",
     "RESHADE_INSTALL_MODE_MIGRATE",
+    "SPECIALK_INSTALL_MODE_DISABLED",
+    "SPECIALK_INSTALL_MODE_MIGRATE",
     "ReShadeInstallState",
     "RenoDxState",
+    "SpecialKInstallState",
     "build_mod_conflict_findings",
     "build_mod_conflict_notice",
     "build_reshade_install_error",
     "empty_mod_precheck_state",
     "resolve_reshade_install_state",
+    "resolve_specialk_install_state",
     "scan_mod_precheck_state",
     "scan_target_mod_conflicts",
 ]

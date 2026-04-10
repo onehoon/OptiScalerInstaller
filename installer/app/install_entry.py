@@ -26,6 +26,7 @@ class InstallEntryState:
     predownload_in_progress: bool = False
     ual_cached_archive: str = ""
     optipatcher_cached_archive: str = ""
+    specialk_cached_archive: str = ""
     unreal5_cached_archive: str = ""
 
 
@@ -41,6 +42,7 @@ class InstallEntryDecision:
     fsr4_source_archive: str = ""
     ual_cached_archive: str = ""
     optipatcher_cached_archive: str = ""
+    specialk_cached_archive: str = ""
     unreal5_cached_archive: str = ""
 
 
@@ -108,6 +110,7 @@ def validate_install_entry(
         fsr4_source_archive=str(state.fsr4_source_archive or "") if fsr4_required else "",
         ual_cached_archive=str(state.ual_cached_archive or ""),
         optipatcher_cached_archive=str(state.optipatcher_cached_archive or ""),
+        specialk_cached_archive=str(state.specialk_cached_archive or ""),
         unreal5_cached_archive=str(state.unreal5_cached_archive or ""),
     )
 

@@ -21,6 +21,11 @@ class ArchiveRuntimeState:
     optipatcher_error: str = ""
     optipatcher_filename: str = ""
     optipatcher_source_archive: str = ""
+    specialk_ready: bool = False
+    specialk_downloading: bool = False
+    specialk_error: str = ""
+    specialk_filename: str = ""
+    specialk_source_archive: str = ""
     ual_ready: bool = False
     ual_downloading: bool = False
     ual_error: str = ""
@@ -66,6 +71,8 @@ class InstallRuntimeState:
     precheck_ual_detected_names: tuple[str, ...] = ()
     precheck_reshade_install_mode: str = "disabled"
     precheck_reshade_source_dll_name: str = ""
+    precheck_specialk_install_mode: str = "disabled"
+    precheck_specialk_source_dll_name: str = ""
 
 
 @dataclass
@@ -106,6 +113,11 @@ _RUNTIME_STATE_FIELD_MAP = {
     "optipatcher_archive_downloading": ("_archive_state", "optipatcher_downloading", ArchiveRuntimeState),
     "optipatcher_archive_error": ("_archive_state", "optipatcher_error", ArchiveRuntimeState),
     "optipatcher_archive_filename": ("_archive_state", "optipatcher_filename", ArchiveRuntimeState),
+    "specialk_source_archive": ("_archive_state", "specialk_source_archive", ArchiveRuntimeState),
+    "specialk_archive_ready": ("_archive_state", "specialk_ready", ArchiveRuntimeState),
+    "specialk_archive_downloading": ("_archive_state", "specialk_downloading", ArchiveRuntimeState),
+    "specialk_archive_error": ("_archive_state", "specialk_error", ArchiveRuntimeState),
+    "specialk_archive_filename": ("_archive_state", "specialk_filename", ArchiveRuntimeState),
     "ual_source_archive": ("_archive_state", "ual_source_archive", ArchiveRuntimeState),
     "ual_archive_ready": ("_archive_state", "ual_ready", ArchiveRuntimeState),
     "ual_archive_downloading": ("_archive_state", "ual_downloading", ArchiveRuntimeState),

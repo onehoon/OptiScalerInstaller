@@ -5,6 +5,7 @@ from .components import (
     OPTISCALER_ASI_NAME,
     install_optipatcher,
     install_reframework_dinput8,
+    install_specialk,
     install_ultimate_asi_loader,
     install_unreal5_patch,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "install_optipatcher",
     "install_fsr4_dll",
     "install_reframework_dinput8",
+    "install_specialk",
     "install_ultimate_asi_loader",
     "install_unreal5_patch",
     "resolve_ingame_ini_path",

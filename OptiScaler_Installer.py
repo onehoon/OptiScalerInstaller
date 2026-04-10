@@ -284,6 +284,7 @@ APP_CACHE_DIR = LOCAL_APPDATA_DIR / "OptiScalerInstaller"
 OPTISCALER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optiscaler"
 FSR4_CACHE_DIR = APP_CACHE_DIR / "cache" / "fsr4"
 OPTIPATCHER_CACHE_DIR = APP_CACHE_DIR / "cache" / "optipatcher"
+SPECIALK_CACHE_DIR = APP_CACHE_DIR / "cache" / "specialk"
 UAL_CACHE_DIR = APP_CACHE_DIR / "cache" / "ultimateasiloader"
 UNREAL5_CACHE_DIR = APP_CACHE_DIR / "cache" / "unreal5"
 COVER_CACHE_DIR = APP_CACHE_DIR / "cache" / "covers"
@@ -435,6 +436,8 @@ class OptiManagerApp:
         self.fsr4_cache_dir.mkdir(parents=True, exist_ok=True)
         self.optipatcher_cache_dir = OPTIPATCHER_CACHE_DIR
         self.optipatcher_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.specialk_cache_dir = SPECIALK_CACHE_DIR
+        self.specialk_cache_dir.mkdir(parents=True, exist_ok=True)
         self.ual_cache_dir = UAL_CACHE_DIR
         self.ual_cache_dir.mkdir(parents=True, exist_ok=True)
         self.unreal5_cache_dir = UNREAL5_CACHE_DIR
@@ -846,6 +849,12 @@ class OptiManagerApp:
             return
         return coordinator.on_optipatcher_archive_state_changed(state)
 
+    def _on_specialk_archive_state_changed(self, state: ArchivePreparationState) -> None:
+        coordinator = getattr(self, "_startup_runtime_coordinator", None)
+        if coordinator is None:
+            return
+        return coordinator.on_specialk_archive_state_changed(state)
+
     def _on_ual_archive_state_changed(self, state: ArchivePreparationState) -> None:
         coordinator = getattr(self, "_startup_runtime_coordinator", None)
         if coordinator is None:
@@ -1149,7 +1158,18 @@ class OptiManagerApp:
             return
         return controller.apply_selected_install()
 
-    def _apply_optiscaler_worker(self, game_data, source_archive, resolved_dll_name, fsr4_source_archive, fsr4_required, ual_cached_archive="", optipatcher_cached_archive="", unreal5_cached_archive=""):
+    def _apply_optiscaler_worker(
+        self,
+        game_data,
+        source_archive,
+        resolved_dll_name,
+        fsr4_source_archive,
+        fsr4_required,
+        ual_cached_archive="",
+        optipatcher_cached_archive="",
+        specialk_cached_archive="",
+        unreal5_cached_archive="",
+    ):
         controller = self._get_install_flow_controller()
         if controller is None:
             return
@@ -1161,6 +1181,7 @@ class OptiManagerApp:
             fsr4_required,
             ual_cached_archive=ual_cached_archive,
             optipatcher_cached_archive=optipatcher_cached_archive,
+            specialk_cached_archive=specialk_cached_archive,
             unreal5_cached_archive=unreal5_cached_archive,
         )
 

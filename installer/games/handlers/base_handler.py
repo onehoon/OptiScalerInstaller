@@ -10,10 +10,12 @@ from .install_precheck import (
     ModConflictFinding,
     RESHADE_INSTALL_MODE_DISABLED,
     RESHADE_INSTALL_MODE_INVALID_MULTIPLE,
+    SPECIALK_INSTALL_MODE_DISABLED,
     build_mod_conflict_findings,
     build_mod_conflict_notice,
     build_reshade_install_error,
     resolve_reshade_install_state,
+    resolve_specialk_install_state,
     scan_mod_precheck_state,
 )
 
@@ -48,6 +50,8 @@ class InstallPrecheckResult:
     error_context: Mapping[str, Any] = field(default_factory=dict)
     reshade_install_mode: str = RESHADE_INSTALL_MODE_DISABLED
     reshade_source_dll_name: str = ""
+    specialk_install_mode: str = SPECIALK_INSTALL_MODE_DISABLED
+    specialk_source_dll_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -112,6 +116,7 @@ class BaseGameHandler:
         mod_state = scan_mod_precheck_state(target_path, logger=logger)
         conflict_findings = build_mod_conflict_findings(mod_state)
         reshade_state = resolve_reshade_install_state(mod_state)
+        specialk_state = resolve_specialk_install_state(mod_state)
         if reshade_state.mode == RESHADE_INSTALL_MODE_INVALID_MULTIPLE:
             return InstallPrecheckResult(
                 ok=False,
@@ -124,16 +129,20 @@ class BaseGameHandler:
                 error_context={"detected_dll_names": reshade_state.detected_dll_names},
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
         try:
-            reusable_filenames = ()
+            reusable_filenames = []
             if reshade_state.source_dll_name:
-                reusable_filenames = (reshade_state.source_dll_name,)
+                reusable_filenames.append(reshade_state.source_dll_name)
+            if specialk_state.source_dll_name:
+                reusable_filenames.append(specialk_state.source_dll_name)
             resolved_name = installer_services.resolve_proxy_dll_name(
                 target_path,
                 preferred_dll,
                 logger=logger,
-                reusable_filenames=reusable_filenames,
+                reusable_filenames=tuple(reusable_filenames),
             )
             return InstallPrecheckResult(
                 ok=True,
@@ -141,6 +150,8 @@ class BaseGameHandler:
                 conflict_findings=conflict_findings,
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
         except Exception as exc:
             return InstallPrecheckResult(
@@ -149,6 +160,8 @@ class BaseGameHandler:
                 conflict_findings=conflict_findings,
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
 
     def prepare_install_plan(

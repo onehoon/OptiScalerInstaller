@@ -52,6 +52,7 @@ class StartupRuntimeCoordinator:
         optiscaler_cache_dir: Path,
         fsr4_cache_dir: Path,
         optipatcher_cache_dir: Path,
+        specialk_cache_dir: Path,
         ual_cache_dir: Path,
         unreal5_cache_dir: Path,
         manifest_root: Path,
@@ -68,6 +69,7 @@ class StartupRuntimeCoordinator:
         self._optiscaler_cache_dir = Path(optiscaler_cache_dir)
         self._fsr4_cache_dir = Path(fsr4_cache_dir)
         self._optipatcher_cache_dir = Path(optipatcher_cache_dir)
+        self._specialk_cache_dir = Path(specialk_cache_dir)
         self._ual_cache_dir = Path(ual_cache_dir)
         self._unreal5_cache_dir = Path(unreal5_cache_dir)
         self._manifest_root = Path(manifest_root)
@@ -172,6 +174,7 @@ class StartupRuntimeCoordinator:
         self.apply_optiscaler_archive_state(state)
         self.start_fsr4_archive_prepare()
         self.start_optipatcher_archive_prepare()
+        self.start_specialk_archive_prepare()
         self.start_ual_archive_prepare()
         self.start_unreal5_archive_prepare()
         self._callbacks.update_install_button_state()
@@ -202,6 +205,16 @@ class StartupRuntimeCoordinator:
         entry = self._sheet_state.module_download_links.get("optipatcher", {})
         state = controller.prepare_optipatcher(entry, self._optipatcher_cache_dir, self._manifest_root)
         self.apply_optipatcher_archive_state(state)
+        self._callbacks.update_install_button_state()
+
+    def start_specialk_archive_prepare(self) -> None:
+        controller = self._callbacks.get_archive_controller()
+        if controller is None:
+            return
+
+        entry = self._sheet_state.module_download_links.get("specialk", {})
+        state = controller.prepare_specialk(entry, self._specialk_cache_dir, self._manifest_root)
+        self.apply_specialk_archive_state(state)
         self._callbacks.update_install_button_state()
 
     def start_ual_archive_prepare(self) -> None:
@@ -243,6 +256,9 @@ class StartupRuntimeCoordinator:
     def apply_optipatcher_archive_state(self, state: ArchivePreparationState) -> None:
         self._apply_archive_state(state, "optipatcher", "optipatcher_source_archive")
 
+    def apply_specialk_archive_state(self, state: ArchivePreparationState) -> None:
+        self._apply_archive_state(state, "specialk", "specialk_source_archive")
+
     def apply_ual_archive_state(self, state: ArchivePreparationState) -> None:
         self._apply_archive_state(state, "ual", "ual_source_archive")
 
@@ -259,6 +275,10 @@ class StartupRuntimeCoordinator:
 
     def on_optipatcher_archive_state_changed(self, state: ArchivePreparationState) -> None:
         self.apply_optipatcher_archive_state(state)
+        self._callbacks.update_install_button_state()
+
+    def on_specialk_archive_state_changed(self, state: ArchivePreparationState) -> None:
+        self.apply_specialk_archive_state(state)
         self._callbacks.update_install_button_state()
 
     def on_ual_archive_state_changed(self, state: ArchivePreparationState) -> None:
@@ -296,6 +316,7 @@ def create_startup_runtime_coordinator(app: Any, *, default_sheet_gid: int) -> S
         optiscaler_cache_dir=app.optiscaler_cache_dir,
         fsr4_cache_dir=app.fsr4_cache_dir,
         optipatcher_cache_dir=app.optipatcher_cache_dir,
+        specialk_cache_dir=app.specialk_cache_dir,
         ual_cache_dir=app.ual_cache_dir,
         unreal5_cache_dir=app.unreal5_cache_dir,
         manifest_root=app.manifest_root,

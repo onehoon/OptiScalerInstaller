@@ -33,6 +33,7 @@ class ArchivePreparationCallbacks:
     on_optiscaler_state_changed: ArchiveStateCallback
     on_fsr4_state_changed: ArchiveStateCallback
     on_optipatcher_state_changed: ArchiveStateCallback
+    on_specialk_state_changed: ArchiveStateCallback
     on_ual_state_changed: ArchiveStateCallback
     on_unreal5_state_changed: ArchiveStateCallback
 
@@ -194,6 +195,20 @@ class ArchivePreparationController:
             manifest_root=manifest_root or self._manifest_root,
             asset_key="optipatcher",
             asset_label="OptiPatcher archive",
+        )
+
+    def prepare_specialk(
+        self,
+        entry: Mapping[str, object] | None,
+        cache_dir: Path,
+        manifest_root: Path | None = None,
+    ) -> ArchivePreparationState:
+        return self._prepare_versioned_asset(
+            entry=entry,
+            cache_dir=cache_dir,
+            manifest_root=manifest_root or self._manifest_root,
+            asset_key="specialk",
+            asset_label="Special K archive",
         )
 
     def prepare_ual(
@@ -429,6 +444,9 @@ class ArchivePreparationController:
             return
         if asset_key == "optipatcher":
             self._callbacks.on_optipatcher_state_changed(state)
+            return
+        if asset_key == "specialk":
+            self._callbacks.on_specialk_state_changed(state)
             return
         if asset_key in ("ual", "ultimateasiloader"):
             self._callbacks.on_ual_state_changed(state)

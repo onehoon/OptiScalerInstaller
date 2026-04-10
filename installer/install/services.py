@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import uuid
 import zipfile
 import ctypes
 from ctypes import wintypes
@@ -43,6 +44,8 @@ OPTISCALER_LEGACY_REMOVE_NAMES = {
 OPTISCALER_PROXY_FALLBACK_NAMES = ("winmm.dll", "version.dll")
 OPTIPATCHER_PLUGIN_NAME = "OptiPatcher.asi"
 OPTIPATCHER_ARCHIVE_EXTENSIONS = {".zip", ".7z"}
+SPECIALK64_DLL_NAME = "SpecialK64.dll"
+SPECIALK_ARCHIVE_EXTENSIONS = {".zip", ".7z"}
 
 _file_session = get_shared_retry_session()
 
@@ -296,6 +299,51 @@ def prepare_reshade_for_optiscaler(target_path, install_mode="", source_dll_name
     source_path.replace(compat_path)
     if logger:
         logger.info("Migrated ReShade DLL: %s -> %s", normalized_source_name, compat_path.name)
+    return True
+
+
+def prepare_specialk_for_optiscaler(
+    target_path,
+    final_dll_name="",
+    install_mode="",
+    source_dll_name="",
+    logger=None,
+) -> bool:
+    target_dir = Path(target_path)
+    if not target_dir.is_dir():
+        raise ValueError(f"Invalid target folder: {target_path}")
+
+    normalized_mode = str(install_mode or "").strip().lower()
+    if normalized_mode in {"", "disabled"}:
+        return False
+
+    if normalized_mode != "migrate":
+        raise RuntimeError(f"Unsupported Special K install mode: {install_mode}")
+
+    normalized_source_name = Path(str(source_dll_name or "").strip()).name
+    normalized_final_name = Path(str(final_dll_name or "").strip()).name
+    if not normalized_source_name:
+        raise RuntimeError("Special K migration requires a source DLL name.")
+    if not normalized_final_name:
+        raise RuntimeError("Special K migration requires the final OptiScaler DLL name.")
+
+    source_path = target_dir / normalized_source_name
+    if not source_path.is_file():
+        raise RuntimeError(f"Expected Special K DLL was not found: {normalized_source_name}")
+
+    plugins_dir = target_dir / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    destination_path = plugins_dir / normalized_final_name
+
+    _ensure_writable(source_path)
+    if destination_path.exists():
+        if not destination_path.is_file():
+            raise RuntimeError(f"Existing Special K plugin destination is not a file: {destination_path}")
+        _ensure_writable(destination_path)
+
+    source_path.replace(destination_path)
+    if logger:
+        logger.info("Moved existing Special K DLL: %s -> %s", normalized_source_name, destination_path)
     return True
 
 
@@ -586,6 +634,15 @@ def _resolve_optipatcher_download_name(url: str) -> str:
     return file_name or OPTIPATCHER_PLUGIN_NAME
 
 
+def _resolve_specialk_download_name(url: str) -> str:
+    parsed = urlparse(str(url or "").strip())
+    file_name = os.path.basename(parsed.path).strip()
+    suffix = Path(file_name).suffix.lower()
+    if file_name and (suffix in SPECIALK_ARCHIVE_EXTENSIONS or file_name.lower() == SPECIALK64_DLL_NAME.lower()):
+        return file_name
+    return "SpecialK.7z"
+
+
 def _resolve_optipatcher_payload(download_path: Path, extract_dir: Path, logger=None) -> Path:
     if download_path.suffix.lower() not in OPTIPATCHER_ARCHIVE_EXTENSIONS:
         return download_path
@@ -610,6 +667,28 @@ def _resolve_optipatcher_payload(download_path: Path, extract_dir: Path, logger=
         return payload_path
 
     raise FileNotFoundError("OptiPatcher .asi payload was not found inside the downloaded archive")
+
+
+def _resolve_specialk_payload(download_path: Path, extract_dir: Path, logger=None) -> Path:
+    if download_path.suffix.lower() not in SPECIALK_ARCHIVE_EXTENSIONS:
+        if download_path.name.lower() != SPECIALK64_DLL_NAME.lower():
+            raise FileNotFoundError(f"Special K payload must be {SPECIALK64_DLL_NAME}: {download_path.name}")
+        return download_path
+
+    extract_archive(str(download_path), str(extract_dir), logger=logger)
+    candidates = [
+        candidate
+        for candidate in extract_dir.rglob("*")
+        if candidate.is_file() and candidate.name.lower() == SPECIALK64_DLL_NAME.lower()
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"{SPECIALK64_DLL_NAME} was not found inside the Special K archive")
+    if len(candidates) > 1:
+        normalized_candidates = ", ".join(
+            sorted(str(candidate.relative_to(extract_dir)).replace("\\", "/") for candidate in candidates)
+        )
+        raise RuntimeError(f"Multiple {SPECIALK64_DLL_NAME} payload candidates were found: {normalized_candidates}")
+    return candidates[0]
 
 
 def _remove_existing_optipatcher_plugins(plugins_dir: Path, logger=None) -> None:
@@ -674,6 +753,59 @@ def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
 
     if logger:
         logger.info("OptiPatcher installed to %s", destination_path)
+
+
+def install_specialk(target_path, final_dll_name, url="", logger=None, cached_archive_path="", existing_prepared=False):
+    target_dir = Path(str(target_path or "").strip())
+    if not target_dir.is_dir():
+        raise ValueError(f"Invalid target folder: {target_path}")
+
+    normalized_final_name = Path(str(final_dll_name or "").strip()).name
+    if not normalized_final_name:
+        raise RuntimeError("Special K install requires the final OptiScaler DLL name.")
+
+    plugins_dir = target_dir / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    destination_path = plugins_dir / normalized_final_name
+
+    cached = Path(str(cached_archive_path or "").strip()) if cached_archive_path else None
+    use_cache = cached is not None and cached.is_file()
+    normalized_url = str(url or "").strip()
+
+    if not use_cache and not normalized_url:
+        if existing_prepared and destination_path.is_file():
+            if logger:
+                logger.info(
+                    "Special K cached install skipped: no download link or cache; keeping migrated file at %s",
+                    destination_path,
+                )
+            return False
+        raise FileNotFoundError("Special K download link is not configured")
+
+    tmpdir_path = target_dir / f".optiscaler_specialk_tmp_{uuid.uuid4().hex}"
+    tmpdir_path.mkdir(parents=False, exist_ok=False)
+    try:
+        if use_cache:
+            download_path = cached
+        else:
+            download_name = _resolve_specialk_download_name(normalized_url)
+            download_path = tmpdir_path / download_name
+            download_to_file(normalized_url, str(download_path), timeout=60, logger=logger)
+
+        extract_dir = tmpdir_path / "payload"
+        payload_path = _resolve_specialk_payload(download_path, extract_dir, logger=logger)
+
+        if destination_path.exists():
+            if not destination_path.is_file():
+                raise RuntimeError(f"Existing Special K plugin destination is not a file: {destination_path}")
+            _ensure_writable(destination_path)
+        shutil.copy2(payload_path, destination_path)
+    finally:
+        shutil.rmtree(tmpdir_path, ignore_errors=True)
+
+    if logger:
+        logger.info("Special K installed to %s", destination_path)
+    return True
 
 
 def install_unreal5_from_url(url, target_path, logger=None, cached_archive_path=""):

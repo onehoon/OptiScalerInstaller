@@ -23,6 +23,7 @@ tests_runtime/
 .pytest_cache/
 .pytest_tmp/
 codex_test_tmp/
+codex_*/
 temp_clean/
 pytest_clean/
 temp_suite_*/

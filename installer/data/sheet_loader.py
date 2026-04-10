@@ -113,6 +113,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         "use_ultimate_asi_loader",
     ]
     optipatcher_keys = ["optipatcher", "opti_patcher", "use_optipatcher", "opti patcher"]
+    specialk_keys = ["specialk", "special_k", "special k", "use_specialk", "use_special_k"]
     unreal5_keys = ["unreal5", "unreal_5", "unreal5_url", "unreal5 patch", "unreal5_patch"]
     reframework_keys = ["reframework", "reframework_url", "re_framework", "re_framework_url"]
     information_keys = ["#information", "information", "info", "game_information"]
@@ -131,6 +132,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     dll_col = next((c for c in columns if c in dll_keys), None)
     ultimate_asi_loader_col = next((c for c in columns if c in ultimate_asi_loader_keys), None)
     optipatcher_col = next((c for c in columns if c in optipatcher_keys), None)
+    specialk_col = next((c for c in columns if c in specialk_keys), None)
     unreal5_col = next((c for c in columns if c in unreal5_keys), None)
     reframework_col = next((c for c in columns if c in reframework_keys), None)
     information_col = next((c for c in columns if c in information_keys), None)
@@ -154,6 +156,8 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         ultimate_asi_loader_col = next((c for c in columns if "ultimate" in c and "asi" in c), None)
     if optipatcher_col is None:
         optipatcher_col = next((c for c in columns if "opti" in c and "patcher" in c), None)
+    if specialk_col is None:
+        specialk_col = next((c for c in columns if "special" in c and "k" in c), None)
     if unreal5_col is None:
         unreal5_col = next((c for c in columns if "unreal5" in c or ("unreal" in c and "5" in c)), None)
     if reframework_col is None:
@@ -183,6 +187,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     dll_index = columns.index(dll_col) if dll_col else None
     ultimate_asi_loader_index = columns.index(ultimate_asi_loader_col) if ultimate_asi_loader_col else None
     optipatcher_index = columns.index(optipatcher_col) if optipatcher_col else None
+    specialk_index = columns.index(specialk_col) if specialk_col else None
     unreal5_index = columns.index(unreal5_col) if unreal5_col else None
     reframework_index = columns.index(reframework_col) if reframework_col else None
     information_index = columns.index(information_col) if information_col else None
@@ -222,6 +227,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
         dll_name = ""
         ultimate_asi_loader_enabled = False
         optipatcher_enabled = False
+        specialk_enabled = False
         unreal5_url = ""
         unreal5_rule = ""
         reframework_url = ""
@@ -240,6 +246,8 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
             ultimate_asi_loader_enabled = _is_true_value(row[ultimate_asi_loader_index])
         if optipatcher_index is not None and len(row) > optipatcher_index:
             optipatcher_enabled = _is_true_value(row[optipatcher_index])
+        if specialk_index is not None and len(row) > specialk_index:
+            specialk_enabled = _is_true_value(row[specialk_index])
         if unreal5_index is not None and len(row) > unreal5_index:
             raw_unreal5 = str(row[unreal5_index]).strip()
             val = raw_unreal5.lower()
@@ -317,6 +325,7 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
                 "ultimate_asi_loader": ultimate_asi_loader_enabled,
                 "ini_settings": ini_settings,
                 "optipatcher": optipatcher_enabled,
+                "specialk": specialk_enabled,
                 "unreal5_url": unreal5_url,
                 "unreal5_rule": unreal5_rule,
                 "reframework_url": reframework_url,

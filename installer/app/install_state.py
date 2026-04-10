@@ -128,6 +128,7 @@ def build_install_entry_state(
     predownload_in_progress: bool = False,
     ual_cached_archive: str = "",
     optipatcher_cached_archive: str = "",
+    specialk_cached_archive: str = "",
     unreal5_cached_archive: str = "",
 ) -> InstallEntryState:
     return InstallEntryState(
@@ -151,6 +152,7 @@ def build_install_entry_state(
         predownload_in_progress=bool(predownload_in_progress),
         ual_cached_archive=str(ual_cached_archive or ""),
         optipatcher_cached_archive=str(optipatcher_cached_archive or ""),
+        specialk_cached_archive=str(specialk_cached_archive or ""),
         unreal5_cached_archive=str(unreal5_cached_archive or ""),
     )
 

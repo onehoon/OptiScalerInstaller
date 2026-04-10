@@ -14,6 +14,7 @@ from .install_precheck import (
     build_mod_conflict_findings,
     build_reshade_install_error,
     resolve_reshade_install_state,
+    resolve_specialk_install_state,
     scan_mod_precheck_state,
 )
 from .rdr2_xml import apply_rdr2_system_xml_settings, resolve_rdr2_system_xml_path
@@ -132,6 +133,7 @@ class Rdr2Handler(BaseGameHandler):
         mod_state = scan_mod_precheck_state(target_path, logger=logger)
         conflict_findings = build_mod_conflict_findings(mod_state)
         reshade_state = resolve_reshade_install_state(mod_state)
+        specialk_state = resolve_specialk_install_state(mod_state)
         xml_path = resolve_rdr2_system_xml_path()
 
         if reshade_state.mode == RESHADE_INSTALL_MODE_INVALID_MULTIPLE:
@@ -146,6 +148,8 @@ class Rdr2Handler(BaseGameHandler):
                 error_context={"detected_dll_names": reshade_state.detected_dll_names},
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
 
         if not xml_path.is_file():
@@ -157,6 +161,8 @@ class Rdr2Handler(BaseGameHandler):
                 error_context={"xml_path": str(xml_path)},
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
 
         blocked_mods = _scan_rdr2_blocked_mods(target_path, logger=logger)
@@ -169,6 +175,8 @@ class Rdr2Handler(BaseGameHandler):
                 error_context={"detected_mods": blocked_mods},
                 reshade_install_mode=reshade_state.mode,
                 reshade_source_dll_name=reshade_state.source_dll_name,
+                specialk_install_mode=specialk_state.mode,
+                specialk_source_dll_name=specialk_state.source_dll_name,
             )
 
         return InstallPrecheckResult(
@@ -177,6 +185,8 @@ class Rdr2Handler(BaseGameHandler):
             conflict_findings=conflict_findings,
             reshade_install_mode=reshade_state.mode,
             reshade_source_dll_name=reshade_state.source_dll_name,
+            specialk_install_mode=specialk_state.mode,
+            specialk_source_dll_name=specialk_state.source_dll_name,
         )
 
     def format_precheck_error(self, precheck: InstallPrecheckResult, use_korean: bool) -> str:
