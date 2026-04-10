@@ -37,6 +37,24 @@ def _append_existing_unique_path(paths: list[str], seen: set[str], candidate: Pa
     paths.append(str(candidate))
 
 
+def _append_existing_unique_child_dirs(paths: list[str], seen: set[str], parent: Path, *, logger=None) -> None:
+    if not parent.exists() or not parent.is_dir():
+        return
+
+    try:
+        child_dirs = sorted(
+            (child for child in parent.iterdir() if child.is_dir()),
+            key=lambda child: child.name.lower(),
+        )
+    except OSError as exc:
+        _log_debug(logger, "Cannot list %s: %s", parent, exc)
+        _append_existing_unique_path(paths, seen, parent)
+        return
+
+    for child_dir in child_dirs:
+        _append_existing_unique_path(paths, seen, child_dir)
+
+
 def _get_custom_auto_scan_candidates() -> tuple[Path, ...]:
     return (
         Path("D:/") / "game",
@@ -98,7 +116,7 @@ def get_auto_scan_paths(logger=None) -> list[str]:
         steam_paths.extend(_get_fallback_steam_common_paths())
 
     for candidate in steam_paths:
-        _append_existing_unique_path(paths, seen, candidate)
+        _append_existing_unique_child_dirs(paths, seen, candidate, logger=logger)
 
     return paths
 
@@ -183,7 +201,7 @@ def iter_scan_game_folders(
             _log_debug(logger, "Cannot walk %s: %s", normalized_folder, exc)
             continue
 
-        for root_dir, _, files in folder_iter:
+        for root_dir, dirs, files in folder_iter:
             if not files:
                 continue
 
@@ -202,6 +220,7 @@ def iter_scan_game_folders(
                 continue
 
             normalized_root = os.path.normcase(root_dir)
+            matched_in_root = False
             for entry_key, entry in candidate_entries.items():
                 required_files = entry.get("match_files") or [entry_key]
                 if not all(token in file_lookup for token in required_files):
@@ -216,12 +235,16 @@ def iter_scan_game_folders(
                     continue
 
                 matched_file = _resolve_matched_file(file_lookup, required_files, entry)
+                matched_in_root = True
                 yield _build_game_record(
                     root_dir,
                     matched_file,
                     entry,
                     lang=lang,
                 )
+
+            if matched_in_root:
+                dirs[:] = []
 
 
 def scan_game_folders(
