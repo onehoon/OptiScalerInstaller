@@ -186,19 +186,15 @@ class GameCardUiController:
         if not callable(placeholder_factory):
             return
 
-        pil_img = placeholder_factory()
-        if self._root is None or not hasattr(self._root, "after"):
-            self.set_card_base_image(index, label, pil_img)
+        # The card item is initialized with a placeholder image and rendered
+        # immediately after it is appended. Avoid scheduling a delayed
+        # placeholder update here because it can race with a cached poster load
+        # and overwrite the real cover after it has already been applied.
+        if index < 0 or index >= len(self._card_items):
             return
 
-        self._root.after(
-            0,
-            lambda idx=index, current_label=label, image=pil_img: self.set_card_base_image(
-                idx,
-                current_label,
-                image,
-            ),
-        )
+        pil_img = placeholder_factory()
+        self.set_card_base_image(index, label, pil_img)
 
     def visible_game_indices(self) -> set[int]:
         total = len(tuple(self._callbacks.get_found_games() or ()))
