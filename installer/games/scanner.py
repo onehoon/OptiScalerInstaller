@@ -56,10 +56,12 @@ def _append_existing_unique_child_dirs(paths: list[str], seen: set[str], parent:
 
 
 _CUSTOM_SCAN_FOLDER_NAMES: tuple[str, ...] = ("game", "games")
+_DRIVE_REMOVABLE = 2
+_DRIVE_FIXED = 3
 
 
 def _get_non_system_drive_letters() -> list[str]:
-    """Return uppercase drive letters of fixed drives excluding C:."""
+    """Return uppercase drive letters to auto-scan, excluding C:."""
     if os.name != "nt":
         return []
 
@@ -73,8 +75,9 @@ def _get_non_system_drive_letters() -> list[str]:
             if letter == "C":
                 continue
             root = f"{letter}:\\\\"
-            # DRIVE_FIXED == 3
-            if ctypes.windll.kernel32.GetDriveTypeW(root) == 3:
+            # Include removable media like microSD cards in auto-scan candidates.
+            drive_type = ctypes.windll.kernel32.GetDriveTypeW(root)
+            if drive_type in (_DRIVE_REMOVABLE, _DRIVE_FIXED):
                 drives.append(letter)
         return drives
     except Exception:
