@@ -646,9 +646,6 @@ def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
             _ensure_writable(destination_path)
         shutil.copy2(payload_path, destination_path)
 
-    if logger:
-        logger.info("OptiPatcher installed to %s", destination_path)
-
 
 def install_specialk(target_path, final_dll_name, url="", logger=None, cached_archive_path=""):
     target_dir = Path(str(target_path or "").strip())
@@ -711,8 +708,6 @@ def install_unreal5_from_url(url, target_path, logger=None, cached_archive_path=
             raise ValueError(msg)
 
     if target_has_filename(target_path, "dxgi.dll"):
-        if logger:
-            logger.info("Skipped Unreal5 patch install because dxgi.dll already exists in %s", target_path)
         return False
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -722,8 +717,6 @@ def install_unreal5_from_url(url, target_path, logger=None, cached_archive_path=
             archive_path = str(Path(tmpdir) / (file_name or f"unreal5_patch{ext}"))
             download_to_file(url, archive_path, timeout=60, logger=logger)
         extract_archive(archive_path, target_path, logger=logger)
-        if logger:
-            logger.info("Unreal5 patch installed from %s", cached_archive_path or url)
     return True
 
 
@@ -753,5 +746,3 @@ def install_reframework_dinput8_from_url(url, target_path, logger=None):
             dst = os.path.join(target_path, "dinput8.dll")
             with z.open(dll_member, "r") as src_fp, open(dst, "wb") as dst_fp:
                 shutil.copyfileobj(src_fp, dst_fp)
-        if logger:
-            logger.info("REFramework dinput8.dll installed from URL: %s", url)

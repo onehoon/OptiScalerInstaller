@@ -572,10 +572,6 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
     if modified:
         try:
             _write_ini_text_with_encoding(ini_path, "".join(lines), ini_encoding)
-            if logger:
-                logger.info("Upserted INI entries into %s", ini_path)
-            else:
-                logging.info("Upserted INI entries into %s", ini_path)
         except Exception:
             if logger:
                 logger.exception("Failed to write updated INI: %s", ini_path)

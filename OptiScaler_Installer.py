@@ -229,7 +229,6 @@ def _init_file_logger() -> Optional[Path]:
             fh.setFormatter(formatter)
             root_logger.addHandler(fh)
             get_prefixed_logger("APP").info("OptiScaler Installer version %s", APP_VERSION)
-            get_prefixed_logger("APP").info("File logging initialized")
             return log_path
         except Exception as e:
             try:
@@ -250,6 +249,9 @@ def _configure_logging():
         sh.setLevel(logging.INFO)
         sh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
         root.addHandler(sh)
+
+    # Suppress urllib3 internal retry/connection noise; app-level logs cover what matters
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     # Initialize file logger (will attach FileHandler if possible)
     try:
@@ -406,12 +408,6 @@ class OptiManagerApp:
         self._poster_target_width = startup_layout.poster_target_width
         self._poster_target_height = startup_layout.poster_target_height
         self._poster_target_scale = startup_layout.poster_target_scale
-        logging.info(
-            "[APP] Poster target size resolved from widget scale %.2f -> %sx%s",
-            self._poster_target_scale,
-            self._poster_target_width,
-            self._poster_target_height,
-        )
 
     def _initialize_runtime_state(self) -> None:
         self.game_folder = ""

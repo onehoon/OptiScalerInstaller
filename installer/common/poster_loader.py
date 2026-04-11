@@ -4,7 +4,6 @@ import hashlib
 import io
 import logging
 import threading
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Optional
@@ -40,20 +39,6 @@ class PosterLoadResult:
     image: Image.Image
     is_default: bool
     should_retry: bool
-
-
-@contextmanager
-def _temporary_logger_level(logger_names: tuple[str, ...], level: int):
-    previous_levels: list[tuple[logging.Logger, int]] = []
-    try:
-        for logger_name in logger_names:
-            logger = logging.getLogger(logger_name)
-            previous_levels.append((logger, logger.level))
-            logger.setLevel(level)
-        yield
-    finally:
-        for logger, previous_level in reversed(previous_levels):
-            logger.setLevel(previous_level)
 
 
 def _make_default_poster_base(width: int, height: int) -> Image.Image:
@@ -312,10 +297,9 @@ class PosterImageLoader:
             return None
 
     def _download_image_bytes(self, url: str) -> bytes:
-        with _temporary_logger_level(("urllib3.connectionpool", "urllib3.util.retry"), logging.ERROR):
-            with self._image_session.get(url, timeout=self._config.timeout_seconds, stream=True) as response:
-                response.raise_for_status()
-                return b"".join(response.iter_content(chunk_size=65536))
+        with self._image_session.get(url, timeout=self._config.timeout_seconds, stream=True) as response:
+            response.raise_for_status()
+            return b"".join(response.iter_content(chunk_size=65536))
 
     def _store_cover_cache_bytes(self, cover_filename: str, image_bytes: bytes) -> Optional[Path]:
         cache_path = self._get_cover_cache_path(cover_filename)
@@ -351,10 +335,7 @@ class PosterImageLoader:
                         first_key = next(iter(self._image_cache))
                         del self._image_cache[first_key]
                     except Exception:
-                        try:
-                            self._image_cache.popitem(last=False)
-                        except Exception:
-                            pass
+                        pass
         except Exception:
             pass
 
