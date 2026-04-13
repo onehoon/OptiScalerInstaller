@@ -110,46 +110,47 @@ except ModuleNotFoundError as e:
         f"Install with: \"{sys.executable}\" -m pip install python-dotenv"
     ) from e
 
+try:
+    from installer._generated_build_config import BUILD_CONFIG as _GENERATED_BUILD_CONFIG
+except ModuleNotFoundError:
+    _GENERATED_BUILD_CONFIG = {}
 
-def _iter_env_file_candidates() -> tuple[Path, ...]:
-    candidates: list[Path] = []
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        # Keep the bundled .env as a fallback, but let a sidecar .env next to the
-        # built executable override it so config changes do not require a rebuild.
-        candidates.append(Path(sys._MEIPASS) / ".env")
-        candidates.append(Path(sys.executable).resolve().parent / ".env")
-    else:
-        candidates.append(Path(__file__).resolve().parent / ".env")
 
-    unique_candidates: list[Path] = []
-    seen_candidates = set()
-    for candidate in candidates:
-        normalized = str(candidate.resolve(strict=False)).lower()
-        if normalized in seen_candidates:
-            continue
-        seen_candidates.add(normalized)
-        unique_candidates.append(candidate)
-    return tuple(unique_candidates)
+def _load_dev_env_file() -> None:
+    if getattr(sys, "frozen", False):
+        return
+    env_path = Path(__file__).resolve().parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+
+
+def _get_runtime_config_value(name: str, default: str = "") -> str:
+    if getattr(sys, "frozen", False) and name in _GENERATED_BUILD_CONFIG:
+        value = _GENERATED_BUILD_CONFIG.get(name)
+        if value is None:
+            return default
+        return str(value)
+
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return str(value)
 
 
 # Application Version
-APP_VERSION = "0.3.7"
+APP_VERSION = "0.3.8"
 # Install flow supports up to two detected GPUs. Dual-GPU requires explicit user selection.
 MAX_SUPPORTED_GPU_COUNT = 2
 
 # Configure logging deterministically below (avoid calling basicConfig early)
 
-# Load .env file(s) deterministically and let the most local file win.
-for _env_path in _iter_env_file_candidates():
-    if _env_path.exists():
-        # Override inherited env vars so VS Code terminals or parent processes
-        # cannot keep stale values after .env changes.
-        load_dotenv(_env_path, override=True)
+# Source runs may load .env, but frozen builds rely on build-time generated config.
+_load_dev_env_file()
 
 
 def _get_int_env(name: str, default: int = 0) -> int:
-    raw = os.environ.get(name)
-    if raw is None:
+    raw = _get_runtime_config_value(name, "")
+    if not str(raw).strip():
         return default
     try:
         return int(str(raw).strip())
@@ -158,11 +159,12 @@ def _get_int_env(name: str, default: int = 0) -> int:
         return default
 
 
- # Allow overriding these values via environment variables for easier testing/config
-SHEET_ID = os.environ.get("OPTISCALER_SHEET_ID", "")
+# Allow overriding these values via build-time config for frozen builds
+# and via environment variables/.env during source development.
+SHEET_ID = _get_runtime_config_value("OPTISCALER_SHEET_ID", "")
 SHEET_GID = _get_int_env("OPTISCALER_SHEET_GID", 0)
 DOWNLOAD_LINKS_SHEET_GID = _get_int_env("OPTISCALER_DOWNLOAD_LINKS_SHEET_GID", 0)
-SUPPORTED_GAMES_WIKI_URL = str(os.environ.get("SUPPORTED_GAMES_WIKI_URL", "") or "").strip()
+SUPPORTED_GAMES_WIKI_URL = _get_runtime_config_value("SUPPORTED_GAMES_WIKI_URL", "").strip()
 GPU_VENDOR_DB_GIDS = {
     "intel": _get_int_env("DB_INTEL_GID", SHEET_GID),
     "amd": _get_int_env("DB_AMD_GID", SHEET_GID),
@@ -170,9 +172,9 @@ GPU_VENDOR_DB_GIDS = {
 }
 
 if not SHEET_ID:
-    logging.warning("[APP] OPTISCALER_SHEET_ID not found in environment variables or .env file.")
+    logging.warning("[APP] OPTISCALER_SHEET_ID not found in build config, environment variables, or .env file.")
 
-OPTIPATCHER_URL = os.environ.get(
+OPTIPATCHER_URL = _get_runtime_config_value(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
@@ -291,7 +293,7 @@ UAL_CACHE_DIR = APP_CACHE_DIR / "cache" / "ultimateasiloader"
 UNREAL5_CACHE_DIR = APP_CACHE_DIR / "cache" / "unreal5"
 COVER_CACHE_DIR = APP_CACHE_DIR / "cache" / "covers"
 COVERS_REPO_RAW_BASE_URL = str(
-    os.environ.get(
+    _get_runtime_config_value(
         "OPTISCALER_COVERS_RAW_BASE_URL",
         "https://raw.githubusercontent.com/onehoon/OptiScalerInstaller/covers/assets",
     )
@@ -308,12 +310,12 @@ DEFAULT_POSTER_CANDIDATES = [
 IMAGE_TIMEOUT_SECONDS = 10
 IMAGE_MAX_RETRIES = 3
 IMAGE_MAX_WORKERS = 4
-IMAGE_RETRY_DELAY_MS = int(os.environ.get("OPTISCALER_IMAGE_RETRY_DELAY_MS", "1500"))
+IMAGE_RETRY_DELAY_MS = _get_int_env("OPTISCALER_IMAGE_RETRY_DELAY_MS", 1500)
 DEFAULT_POSTER_SCALE = 1.5
 INFO_TEXT_OFFSET_PX = 10
 POSTER_CACHE_VERSION = 2
-ENABLE_POSTER_CACHE = os.environ.get("OPTISCALER_ENABLE_POSTER_CACHE", "1").strip().lower() in {"1", "true", "yes", "on"}
-IMAGE_CACHE_MAX = int(os.environ.get("OPTISCALER_IMAGE_CACHE_MAX", "100"))
+ENABLE_POSTER_CACHE = _get_runtime_config_value("OPTISCALER_ENABLE_POSTER_CACHE", "1").strip().lower() in {"1", "true", "yes", "on"}
+IMAGE_CACHE_MAX = _get_int_env("OPTISCALER_IMAGE_CACHE_MAX", 100)
 
 
 def _format_optiscaler_version_display_name(raw_name: str) -> str:

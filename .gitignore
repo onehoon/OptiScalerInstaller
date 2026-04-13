@@ -2,6 +2,8 @@
 build.py
 game_wiki.py
 .env
+.env.*
+installer/_generated_build_config.py
 .vscode/
 
 # Python & PyInstaller artifacts
