@@ -1,22 +1,152 @@
 from __future__ import annotations
 
+import fnmatch
+import logging
 import os
+import re
 import shutil
 import stat
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from ..common.windows_paths import iter_documents_dir_candidates, normalize_candidate_path
 from ..config import ini_utils, xml_utils
 from . import services as installer_services
 from .workflow import InstallWorkflowCallbacks
 
 
-def resolve_ingame_ini_path(target_path: str, ingame_ini_name: str) -> str:
-    if any(sep in ingame_ini_name for sep in ("/", "\\", ":")):
-        expanded_path = os.path.expandvars(ingame_ini_name)
+_DOCUMENTS_ENV_TOKEN = "%DOCUMENTS%"
+
+
+def _has_path_wildcard(path_part: str) -> bool:
+    return any(token in path_part for token in ("*", "?", "["))
+
+
+def _dedupe_paths(paths: list[Path]) -> tuple[Path, ...]:
+    unique_paths: list[Path] = []
+    seen_paths: set[str] = set()
+    for path in paths:
+        normalized = normalize_candidate_path(path)
+        if normalized in seen_paths:
+            continue
+        seen_paths.add(normalized)
+        unique_paths.append(path)
+    return tuple(unique_paths)
+
+
+def _split_relative_path_parts(path_text: str) -> tuple[str, ...]:
+    return tuple(part for part in re.split(r"[\\/]+", path_text) if part and part != ".")
+
+
+def _match_documents_relative_path(base_dir: Path, relative_parts: tuple[str, ...]) -> tuple[Path, ...]:
+    if not relative_parts:
+        return ()
+
+    current_paths: tuple[Path, ...] = (base_dir,)
+    for index, raw_part in enumerate(relative_parts):
+        is_last_part = index == len(relative_parts) - 1
+        next_paths: list[Path] = []
+        pattern = raw_part.lower()
+        part_has_wildcard = _has_path_wildcard(raw_part)
+
+        for current_path in current_paths:
+            if not current_path.is_dir():
+                continue
+
+            if part_has_wildcard:
+                try:
+                    children = tuple(current_path.iterdir())
+                except OSError:
+                    continue
+
+                for child in children:
+                    if not fnmatch.fnmatch(child.name.lower(), pattern):
+                        continue
+                    if is_last_part and child.is_file():
+                        next_paths.append(child)
+                    elif not is_last_part and child.is_dir():
+                        next_paths.append(child)
+                continue
+
+            child_path = current_path / raw_part
+            if is_last_part and child_path.is_file():
+                next_paths.append(child_path)
+            elif not is_last_part and child_path.is_dir():
+                next_paths.append(child_path)
+
+        current_paths = _dedupe_paths(next_paths)
+        if not current_paths:
+            break
+
+    return current_paths
+
+
+def _resolve_documents_ingame_ini_path(ingame_ini_name: str, logger=None) -> str | None:
+    relative_text = str(ingame_ini_name or "").strip()[len(_DOCUMENTS_ENV_TOKEN):].lstrip("\\/")
+    relative_parts = _split_relative_path_parts(relative_text)
+    if not relative_parts:
+        if logger:
+            logger.warning("Skipping #ingame_ini because %%DOCUMENTS%% path is empty: %s", ingame_ini_name)
+        else:
+            logging.warning("Skipping #ingame_ini because %%DOCUMENTS%% path is empty: %s", ingame_ini_name)
+        return None
+
+    if any(part == ".." for part in relative_parts):
+        if logger:
+            logger.warning("Skipping #ingame_ini because %%DOCUMENTS%% path escapes Documents: %s", ingame_ini_name)
+        else:
+            logging.warning("Skipping #ingame_ini because %%DOCUMENTS%% path escapes Documents: %s", ingame_ini_name)
+        return None
+
+    matches: list[Path] = []
+    for documents_dir in iter_documents_dir_candidates():
+        matches.extend(_match_documents_relative_path(documents_dir, relative_parts))
+
+    unique_matches = _dedupe_paths(matches)
+    if len(unique_matches) == 1:
+        resolved_path = str(unique_matches[0])
+        if logger:
+            logger.info("Resolved #ingame_ini via %%DOCUMENTS%%: %s -> %s", ingame_ini_name, resolved_path)
+        else:
+            logging.info("Resolved #ingame_ini via %%DOCUMENTS%%: %s -> %s", ingame_ini_name, resolved_path)
+        return resolved_path
+
+    if len(unique_matches) > 1:
+        matched_text = ", ".join(str(path) for path in unique_matches)
+        if logger:
+            logger.warning(
+                "Skipping #ingame_ini because %%DOCUMENTS%% path matched multiple files: %s -> %s",
+                ingame_ini_name,
+                matched_text,
+            )
+        else:
+            logging.warning(
+                "Skipping #ingame_ini because %%DOCUMENTS%% path matched multiple files: %s -> %s",
+                ingame_ini_name,
+                matched_text,
+            )
+        return None
+
+    if logger:
+        logger.info("No file matched #ingame_ini %%DOCUMENTS%% pattern: %s", ingame_ini_name)
+    else:
+        logging.info("No file matched #ingame_ini %%DOCUMENTS%% pattern: %s", ingame_ini_name)
+    return None
+
+
+def resolve_ingame_ini_path(target_path: str, ingame_ini_name: str, logger=None) -> str | None:
+    normalized_path = str(ingame_ini_name or "").strip()
+    if not normalized_path:
+        return None
+
+    if normalized_path[:len(_DOCUMENTS_ENV_TOKEN)].lower() == _DOCUMENTS_ENV_TOKEN.lower():
+        return _resolve_documents_ingame_ini_path(normalized_path, logger=logger)
+
+    if any(sep in normalized_path for sep in ("/", "\\", ":")):
+        expanded_path = os.path.expandvars(normalized_path)
         return os.path.expanduser(expanded_path)
-    return os.path.join(target_path, ingame_ini_name)
+    return os.path.join(target_path, normalized_path)
 
 
 def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
@@ -29,7 +159,10 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
         return
 
     logger.info("#ingame_ini configured: %s", ingame_ini_name)
-    ingame_ini_path = resolve_ingame_ini_path(target_path, ingame_ini_name)
+    ingame_ini_path = resolve_ingame_ini_path(target_path, ingame_ini_name, logger=logger)
+    if not ingame_ini_path:
+        logger.info("#ingame_ini could not be resolved, skipped edits: %s", ingame_ini_name)
+        return
     if not os.path.exists(ingame_ini_path):
         logger.info("#ingame_ini missing, skipped edits: %s", ingame_ini_path)
         return
