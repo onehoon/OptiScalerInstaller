@@ -44,7 +44,7 @@ function getSupportedGameBundle_(vendor, gpu) {
     throw new Error("install_profile sheet not found");
   }
 
-  var installValues = installSheet.getDataRange().getValues();
+  var installValues = readUsedSheetValues_(installSheet);
   var selectedByGameId = selectInstallProfilesFromValues_(installValues, vendor, gpu);
   var gameIds = Object.keys(selectedByGameId).sort();
 
@@ -111,6 +111,10 @@ function selectInstallProfilesFromValues_(values, vendor, gpu) {
     model: headers.indexOf("gpu_model_match"),
     priority: headers.indexOf("priority")
   };
+
+  if (idx.game_id < 0) {
+    return {};
+  }
 
   var selected = {};
 
@@ -207,12 +211,16 @@ function buildProfileRowListFromSheet_(spreadsheet, sheetName, activeProfiles, a
   var sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) return [];
 
-  var values = sheet.getDataRange().getValues();
+  if (!activeProfiles || activeProfiles.size === 0) return [];
+
+  var values = readUsedSheetValues_(sheet);
   if (!values || values.length < 2) return [];
 
   var headers = values[0].map(normalizeHeader_);
   var profileIdIdx = headers.indexOf("profile_id");
   var enabledIdx = headers.indexOf("enabled");
+
+  if (profileIdIdx < 0) return [];
 
   var colMap = [];
   for (var k = 0; k < allowedKeys.length; k++) {
@@ -265,6 +273,15 @@ function resolveSpreadsheet_() {
   }
 
   throw new Error("Spreadsheet not configured.");
+}
+
+function readUsedSheetValues_(sheet) {
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+  if (lastRow < 1 || lastColumn < 1) {
+    return [];
+  }
+  return sheet.getRange(1, 1, lastRow, lastColumn).getValues();
 }
 
 function wildcardMatch_(text, pattern) {
