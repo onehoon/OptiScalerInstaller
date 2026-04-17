@@ -1,0 +1,42 @@
+[
+  {
+    "profile_id": "FFXVI_DEFAULT",
+    "engine_ini_location": "documents",
+    "relative_path": "Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.Streamline.Reflex.HandleMaxTickRate",
+    "value": 0,
+    "enabled": true,
+    "memo": "예시"
+  },
+  {
+    "profile_id": "FFXVI_DEFAULT",
+    "engine_ini_location": "documents",
+    "relative_path": "Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.FidelityFX.FI.Enabled",
+    "value": 1,
+    "enabled": true,
+    "memo": "예시"
+  },
+  {
+    "profile_id": "DWORIGINS_INTEL_DEFAULT",
+    "engine_ini_location": "documents",
+    "relative_path": "Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.DynamicRes.OperationMode",
+    "value": 2,
+    "enabled": true,
+    "memo": "예시"
+  },
+  {
+    "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
+    "engine_ini_location": "documents",
+    "relative_path": "Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.NGX.DLSS.Enable",
+    "value": 1,
+    "enabled": true,
+    "memo": "예시"
+  }
+]
