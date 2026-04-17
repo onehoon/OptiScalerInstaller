@@ -220,6 +220,22 @@ def _build_archive_controller(app: Any) -> ArchivePreparationController:
 
 
 def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> GameDbLoadController:
+    use_local_json_fallback = not str(config.sheet_id or "").strip()
+    game_db_loader = (
+        sheet_loader.load_game_db_from_local_json
+        if use_local_json_fallback
+        else sheet_loader.load_game_db_from_public_sheet
+    )
+    module_links_loader = (
+        sheet_loader.load_module_download_links_from_local_json
+        if use_local_json_fallback
+        else sheet_loader.load_module_download_links_from_public_sheet
+    )
+    if use_local_json_fallback:
+        logging.getLogger().warning(
+            "[APP] OPTISCALER_SHEET_ID is empty. Falling back to local assets/data JSON files."
+        )
+
     return GameDbLoadController(
         executor=app._task_executor,
         schedule=lambda callback: app.root.after(0, callback),
@@ -228,8 +244,8 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
         ),
         spreadsheet_id=config.sheet_id,
         download_links_gid=config.download_links_gid,
-        load_game_db=sheet_loader.load_game_db_from_public_sheet,
-        load_module_download_links=sheet_loader.load_module_download_links_from_public_sheet,
+        load_game_db=game_db_loader,
+        load_module_download_links=module_links_loader,
         logger=logging.getLogger(),
     )
 

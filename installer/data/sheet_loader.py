@@ -1,9 +1,11 @@
 import csv
 import io
+import json
 import logging
 import re
 import time
 import unicodedata
+from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -349,6 +351,71 @@ def load_game_db_from_public_sheet(spreadsheet_id, gid=0):
     return db
 
 
+def load_game_db_from_local_json(_spreadsheet_id="", _gid=0):
+    data_dir = Path(__file__).resolve().parents[2] / "assets" / "data"
+    game_master_path = data_dir / "game_master.json"
+    if not game_master_path.is_file():
+        raise FileNotFoundError(f"game_master.json not found: {game_master_path}")
+
+    with game_master_path.open("r", encoding="utf-8") as fp:
+        rows = json.load(fp)
+
+    if not isinstance(rows, list):
+        raise ValueError("game_master.json must contain a list")
+
+    db = {}
+    for sheet_order, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        if not bool(row.get("enabled", True)):
+            continue
+
+        exe_path = str(row.get("match_exe", "") or "").strip()
+        match_files = _split_match_files(exe_path)
+        if not match_files:
+            continue
+        match_rule_key = "|".join(match_files)
+
+        game_name_en = str(row.get("game_name_en", "") or "").strip()
+        game_name_kr = str(row.get("game_name_kr", "") or "").strip()
+        display_name = game_name_en or game_name_kr or exe_path
+
+        db[match_rule_key] = {
+            "sheet_order": sheet_order,
+            "exe_path": exe_path,
+            "match_files": match_files,
+            "match_anchor": _pick_match_anchor(match_files),
+            "display": display_name,
+            "game_name": game_name_en or display_name,
+            "game_name_kr": game_name_kr,
+            "dll_name": str(row.get("dll_name", "") or "").strip(),
+            "ultimate_asi_loader": bool(row.get("ultimate_asi_loader", False)),
+            "ini_settings": {},
+            "optipatcher": bool(row.get("optipatcher", False)),
+            "specialk": bool(row.get("specialk", False)),
+            "unreal5_url": str(row.get("unreal5_url", "") or "").strip(),
+            "unreal5_rule": str(row.get("unreal5_rule", "") or "").strip(),
+            "reframework_url": str(row.get("reframework_url", "") or "").strip(),
+            "module_dl": str(row.get("module_dl", "") or "").strip().lower(),
+            "engine_ini_location": str(row.get("engine_ini_location", "") or "").strip(),
+            "engine_ini_type": str(row.get("engine_ini_type", "") or "").strip(),
+            "information": str(row.get("information_en", "") or "").strip(),
+            "information_kr": str(row.get("information_kr", "") or "").strip(),
+            "cover_url": str(row.get("cover_url", "") or "").strip(),
+            "filename_cover": normalize_cover_filename(str(row.get("cover_filename", "") or "")),
+            "supported_gpu": str(row.get("supported_gpu", "") or "").strip(),
+            "ingame_ini": str(row.get("ingame_ini", "") or "").strip(),
+            "ingame_settings": {},
+            "popup_kr": str(row.get("popup_kr", "") or "").strip(),
+            "popup_en": str(row.get("popup_en", "") or "").strip(),
+            "after_popup_kr": str(row.get("after_popup_kr", "") or "").strip(),
+            "after_popup_en": str(row.get("after_popup_en", "") or "").strip(),
+            "guidepage_after_installation": str(row.get("guidepage_after_installation", "") or "").strip(),
+        }
+
+    return db
+
+
 def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
     max_attempts = 3
@@ -434,6 +501,50 @@ def load_module_download_links_from_public_sheet(spreadsheet_id, gid=518993268):
             "url": download_url,
             "version": version,
             "filename": version,
+        }
+
+    return mapping
+
+
+def load_module_download_links_from_local_json(_spreadsheet_id="", _gid=0):
+    data_dir = Path(__file__).resolve().parents[2] / "assets" / "data"
+    resource_master_path = data_dir / "resource_master.json"
+    if not resource_master_path.is_file():
+        raise FileNotFoundError(f"resource_master.json not found: {resource_master_path}")
+
+    with resource_master_path.open("r", encoding="utf-8") as fp:
+        rows = json.load(fp)
+
+    if not isinstance(rows, list):
+        raise ValueError("resource_master.json must contain a list")
+
+    mapping = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+
+        resource_key = str(row.get("resource_group") or row.get("resource_id") or "").strip().lower()
+        if not resource_key:
+            continue
+
+        if resource_key == "exclude_list":
+            exclude_text = str(row.get("filename", "") or "").strip()
+            if exclude_text:
+                mapping["__exclude_list__"] = exclude_text
+            continue
+
+        url = _normalize_download_url(str(row.get("url", "") or "").strip())
+        if not url:
+            continue
+
+        version = str(row.get("version", "") or "").strip()
+        display_version = str(row.get("display_version", "") or "").strip()
+        filename = str(row.get("filename", "") or "").strip()
+        mapping[resource_key] = {
+            "url": url,
+            "version": version,
+            "display_version": display_version,
+            "filename": filename,
         }
 
     return mapping
