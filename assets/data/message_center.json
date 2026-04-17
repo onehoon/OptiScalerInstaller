@@ -44,9 +44,9 @@
     "memo": "FFXVI 등"
   },
   {
-    "message_id": "install_pre.latest_version_1004",
+    "message_id": "install_pre.FF7R_Version",
     "msg_group": "install_pre",
-    "variant": "latest_version_1004",
+    "variant": "FF7R_Version",
     "category": "popup",
     "ko": "[red]최신버전(1.004)에서만 동작합니다.[br]1.004버전이 아닐 경우 크래시 발생합니다.[end]",
     "en": "[red]Works only on the latest game version(v1.004)[end]",
