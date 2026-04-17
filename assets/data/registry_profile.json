@@ -6,8 +6,7 @@
     "value_name": "EnableFG",
     "value_type": "REG_DWORD",
     "value": 1,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
@@ -16,8 +15,7 @@
     "value_name": "PreferredBackend",
     "value_type": "REG_SZ",
     "value": "Intel",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
@@ -26,7 +24,6 @@
     "value_name": "PreferredBackend",
     "value_type": "REG_SZ",
     "value": "NVIDIA",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   }
 ]
