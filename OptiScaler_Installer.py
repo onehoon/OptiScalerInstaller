@@ -72,7 +72,6 @@ from installer.app.ui_controller_factory import (
 from installer.app.ui_shell import AppUiShell, create_ui_shell
 from installer.app.ui_presenters import BottomPanelPresenter, HeaderStatusPresenter
 from installer.common.poster_loader import PosterImageLoader, PosterLoaderConfig
-from installer.config import ini_utils
 from installer.i18n import (
     detect_ui_language,
     get_app_strings,
@@ -170,39 +169,19 @@ def _get_int_env(name: str, default: int = 0) -> int:
 
 # Allow overriding these values via build-time config for frozen builds
 # and via environment variables/.env during source development.
-SHEET_ID = _get_runtime_config_value("OPTISCALER_SHEET_ID", "")
-CONFIGURED_SHEET_GID = _get_int_env("OPTISCALER_SHEET_GID", 0)
-DOWNLOAD_LINKS_SHEET_GID = _get_int_env("OPTISCALER_DOWNLOAD_LINKS_SHEET_GID", 0)
 SUPPORTED_GAMES_WIKI_URL = _get_runtime_config_value("SUPPORTED_GAMES_WIKI_URL", "").strip()
 GPU_VENDOR_DB_GIDS = {
-    "intel": _get_int_env("DB_INTEL_GID", CONFIGURED_SHEET_GID),
-    "amd": _get_int_env("DB_AMD_GID", CONFIGURED_SHEET_GID),
-    "nvidia": _get_int_env("DB_NVIDIA_GID", CONFIGURED_SHEET_GID),
+    "intel": 0,
+    "amd": 0,
+    "nvidia": 0,
 }
-
-
-def _resolve_default_sheet_gid(configured_gid: int, vendor_db_gids: dict[str, int]) -> int:
-    if int(configured_gid or 0):
-        return int(configured_gid)
-
-    for vendor in ("intel", "amd", "nvidia"):
-        gid = int(vendor_db_gids.get(vendor, 0) or 0)
-        if gid:
-            return gid
-    return 0
-
-
-SHEET_GID = _resolve_default_sheet_gid(CONFIGURED_SHEET_GID, GPU_VENDOR_DB_GIDS)
-
-if not SHEET_ID:
-    logging.warning("[APP] OPTISCALER_SHEET_ID not found in build config, environment variables, or .env file.")
-if not CONFIGURED_SHEET_GID and SHEET_GID:
-    logging.info("[APP] OPTISCALER_SHEET_GID not set; using vendor DB gid %s as default.", SHEET_GID)
+SHEET_GID = 0
 
 OPTIPATCHER_URL = _get_runtime_config_value(
     "OPTIPATCHER_URL",
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
+OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
 
 
 class PrefixedLoggerAdapter(logging.LoggerAdapter):
@@ -382,7 +361,7 @@ UI_CONTROLLER_FACTORY_CONFIG = UiControllerFactoryConfig(
 APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     create_prefixed_logger=get_prefixed_logger,
     default_sheet_gid=SHEET_GID,
-    download_links_gid=DOWNLOAD_LINKS_SHEET_GID,
+    gpu_bundle_url=OPTISCALER_GPU_BUNDLE_URL,
     gpu_notice_theme=APP_THEME.gpu_notice_theme,
     gpu_vendor_db_gids=GPU_VENDOR_DB_GIDS,
     max_supported_gpu_count=MAX_SUPPORTED_GPU_COUNT,
@@ -390,7 +369,6 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     optipatcher_url=OPTIPATCHER_URL,
     root_width_fallback=WINDOW_W,
     root_height_fallback=WINDOW_H,
-    sheet_id=SHEET_ID,
     supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
 )
 
@@ -622,6 +600,8 @@ class OptiManagerApp:
         return self.gpu_state.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
     def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
+        if bool(game_data.get("__gpu_bundle_loaded__", False)):
+            return bool(game_data.get("__gpu_bundle_supported__", False))
         return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_state.gpu_info)
 
     def _matches_fsr4_skip_rule(self, rule_text: str) -> bool:
@@ -766,7 +746,8 @@ class OptiManagerApp:
         sheet_state = self.sheet_state
         game_db_gid = int(sheet_state.active_gid or SHEET_GID)
         game_db_vendor = str(sheet_state.active_vendor or "default")
-        started = self._game_db_controller.start_load(game_db_gid, game_db_vendor)
+        gpu_model = str(getattr(self.gpu_state, "gpu_info", "") or "").strip()
+        started = self._game_db_controller.start_load(game_db_gid, game_db_vendor, gpu_model)
         if not started:
             return
         logging.info(
@@ -1203,17 +1184,7 @@ class OptiManagerApp:
 
 if __name__ == "__main__":
     if "--edit-engine-ini" in sys.argv:
-        gpu_info = gpu_service.get_graphics_adapter_info()
-        _, selected_sheet_gid = gpu_service.resolve_game_db_target_for_gpu(gpu_info, GPU_VENDOR_DB_GIDS, SHEET_GID)
-        logging.info(
-            "Running engine.ini edits from Google Sheet (gid=%s, gpu=%s)",
-            selected_sheet_gid,
-            gpu_info,
-        )
-        try:
-            ini_utils.process_engine_ini_edits(SHEET_ID, gid=selected_sheet_gid)
-        except Exception:
-            logging.exception("engine.ini edit run failed")
+        logging.warning("--edit-engine-ini no longer supports Google Sheet source and has been disabled.")
         sys.exit(0)
 
     request_foreground = has_startup_foreground_request(sys.argv[1:])

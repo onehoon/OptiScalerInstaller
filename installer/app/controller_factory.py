@@ -6,7 +6,7 @@ import logging
 from tkinter import filedialog, messagebox
 from typing import Any
 
-from installer.data import sheet_loader
+from installer.data import gpu_bundle_loader, sheet_loader
 from installer.i18n import pick_sheet_text
 from installer.install import services as installer_services
 from installer.system import gpu_service
@@ -30,7 +30,7 @@ from .scan_feedback import ScanFeedbackCallbacks, ScanFeedbackController
 class AppControllerFactoryConfig:
     create_prefixed_logger: Callable[[str], Any]
     default_sheet_gid: int
-    download_links_gid: int
+    gpu_bundle_url: str
     gpu_notice_theme: Any
     gpu_vendor_db_gids: Mapping[str, int]
     max_supported_gpu_count: int
@@ -38,7 +38,6 @@ class AppControllerFactoryConfig:
     root_height_fallback: int
     root_width_fallback: int
     optipatcher_url: str
-    sheet_id: str
     supported_games_wiki_url: str
 
 
@@ -220,32 +219,17 @@ def _build_archive_controller(app: Any) -> ArchivePreparationController:
 
 
 def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> GameDbLoadController:
-    use_local_json_fallback = not str(config.sheet_id or "").strip()
-    game_db_loader = (
-        sheet_loader.load_game_db_from_local_json
-        if use_local_json_fallback
-        else sheet_loader.load_game_db_from_public_sheet
-    )
-    module_links_loader = (
-        sheet_loader.load_module_download_links_from_local_json
-        if use_local_json_fallback
-        else sheet_loader.load_module_download_links_from_public_sheet
-    )
-    if use_local_json_fallback:
-        logging.getLogger().warning(
-            "[APP] OPTISCALER_SHEET_ID is empty. Falling back to local assets/data JSON files."
-        )
-
     return GameDbLoadController(
         executor=app._task_executor,
         schedule=lambda callback: app.root.after(0, callback),
         callbacks=GameDbControllerCallbacks(
             on_load_complete=app._on_game_db_loaded,
         ),
-        spreadsheet_id=config.sheet_id,
-        download_links_gid=config.download_links_gid,
-        load_game_db=game_db_loader,
-        load_module_download_links=module_links_loader,
+        load_game_db=sheet_loader.load_game_db_from_local_json,
+        load_module_download_links=sheet_loader.load_module_download_links_from_local_json,
+        gpu_bundle_url=config.gpu_bundle_url,
+        load_gpu_bundle=gpu_bundle_loader.load_supported_game_bundle,
+        merge_gpu_bundle=gpu_bundle_loader.merge_gpu_bundle_into_game_db,
         logger=logging.getLogger(),
     )
 

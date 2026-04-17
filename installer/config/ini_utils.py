@@ -1,6 +1,4 @@
 import codecs
-import csv
-import io
 import logging
 import locale
 import os
@@ -9,11 +7,6 @@ import stat
 import unicodedata
 from pathlib import Path
 from typing import Optional
-
-from ..common.network_utils import get_shared_retry_session
-
-
-_file_session = get_shared_retry_session()
 
 
 _INI_BOM_ENCODINGS = (
@@ -579,47 +572,3 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
                 logging.exception("Failed to write updated INI: %s", ini_path)
 
 
-def process_engine_ini_edits(spreadsheet_id: str, gid: int = 0, workspace_root: Optional[str] = None):
-    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    resp = _file_session.get(url, timeout=15)
-    resp.raise_for_status()
-    text = resp.content.decode("utf-8-sig")
-    reader = csv.reader(io.StringIO(text, newline=""))
-    headers = next(reader, None)
-    if not headers:
-        logging.warning("Sheet has no headers for engine.ini processing")
-        return
-
-    cols = [h.strip().lower() for h in headers]
-    loc_idx = next((i for i, c in enumerate(cols) if c in {"engine.ini_location", "engine_ini_location", "engine location", "engine_location"}), None)
-    type_idx = next((i for i, c in enumerate(cols) if c in {"engine.ini_type", "engine_ini_type", "engine type", "engine_type"}), None)
-
-    if loc_idx is None or type_idx is None:
-        logging.info("No engine.ini_location or engine.ini_type column found; skipping")
-        return
-
-    for row in reader:
-        if not row or len(row) <= max(loc_idx, type_idx):
-            continue
-        loc = str(row[loc_idx]).strip()
-        content = str(row[type_idx]).strip()
-        if not loc:
-            continue
-
-        ini_path = _find_or_create_engine_ini(loc, workspace_root=workspace_root)
-        if ini_path is None:
-            continue
-
-        try:
-            _ensure_file_writable(ini_path)
-            if content:
-                section_map = _parse_version_text_to_ini_entries(content)
-                if section_map:
-                    _upsert_ini_entries(ini_path, section_map)
-            else:
-                logging.info("Engine.ini type content is empty; nothing to write")
-        finally:
-            # engine.ini is set to read-only after modification to prevent the game from
-            # resetting it on launch. Games often overwrite engine.ini on startup, so
-            # keeping it read-only ensures our settings persist across game restarts.
-            _set_file_readonly(ini_path)

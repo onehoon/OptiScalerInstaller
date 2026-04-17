@@ -91,7 +91,7 @@ class ArchivePreparationController:
                         error_message=f"Failed to remove invalid OptiScaler cache: {exc}",
                     )
             else:
-                self._logger.info("[APP] OptiScaler archive already cached: %s", cache_path)
+                self._logger.info("[APP] OptiScaler archive already cached")
                 self._cleanup_stale_archives(cache_dir, filename, label="OptiScaler archive cache")
                 return ArchivePreparationState(
                     filename=filename,
@@ -162,7 +162,7 @@ class ArchivePreparationController:
                         error_message=f"Failed to remove invalid FSR4 cache: {exc}",
                     )
             else:
-                self._logger.info("[APP] FSR4 already cached: %s", cache_path)
+                self._logger.info("[APP] FSR4 already cached")
                 return ArchivePreparationState(
                     filename=filename,
                     archive_path=str(cache_path),
@@ -306,7 +306,7 @@ class ArchivePreparationController:
                             error_message=f"Failed to remove invalid {asset_label} cache: {exc}",
                         )
                 else:
-                    self._logger.info("[APP] %s already cached: %s", asset_label, cache_path)
+                    self._logger.info("[APP] %s already cached", asset_label)
                     return ArchivePreparationState(
                         filename=filename,
                         archive_path=str(cache_path),
