@@ -1,0 +1,123 @@
+[
+  {
+    "message_id": "global.startup_warning",
+    "msg_group": "global",
+    "variant": "startup_warning",
+    "category": "popup",
+    "ko": "[RED]뉴디비테스트[END]",
+    "en": "[RED]NewDB Test[END]",
+    "url": "",
+    "enabled": true,
+    "memo": "앱 시작 공지용"
+  },
+  {
+    "message_id": "install_pre.borderless_fsr3_required",
+    "msg_group": "install_pre",
+    "variant": "borderless_fsr3_required",
+    "category": "popup",
+    "ko": "[red]설치 전 전체 창모드, FSR3/FSRFG로 설정하고 오세요[end]",
+    "en": "[red]Before install, set Borderless, FSR3/FSRFG in-game[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "DWORIGINS 등 공통"
+  },
+  {
+    "message_id": "install_pre.borderless_required",
+    "msg_group": "install_pre",
+    "variant": "borderless_required",
+    "category": "popup",
+    "ko": "[red]설치 전 반드시 전체 창 모드로 변경하세요.[end]",
+    "en": "[red]Please make sure to switch to Borderless mode before installation.[end]",
+    "url": "",
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "message_id": "install_pre.rtss_disable",
+    "msg_group": "install_pre",
+    "variant": "rtss_disable",
+    "category": "popup",
+    "ko": "[red]RTSS 오버레이 사용 시 크래시 발생합니다.[br]RTSS 오버레이는 반드시 끄세요[end]",
+    "en": "[red]Crash may occur with RTSS overlay.[br]Please make sure to disable the RTSS overlay.[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "FFXVI 등"
+  },
+  {
+    "message_id": "install_pre.latest_version_1004",
+    "msg_group": "install_pre",
+    "variant": "latest_version_1004",
+    "category": "popup",
+    "ko": "[red]최신버전(1.004)에서만 동작합니다.[br]1.004버전이 아닐 경우 크래시 발생합니다.[end]",
+    "en": "[red]Works only on the latest game version(v1.004)[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "FF7R"
+  },
+  {
+    "message_id": "install_pre.hdr_conflict",
+    "msg_group": "install_pre",
+    "variant": "hdr_conflict",
+    "category": "popup",
+    "ko": "[red]HDR 사용 시 문제 있으니 HDR 사용하실거면 설치하지 마세요[end]",
+    "en": "[red]Not recommended if HDR is needed (Compatibility Issue)[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "KCD2"
+  },
+  {
+    "message_id": "install_pre.gamepass_overlay_unsupported",
+    "msg_group": "install_pre",
+    "variant": "gamepass_overlay_unsupported",
+    "category": "popup",
+    "ko": "[red]게임패스 버전에서는 OptiScaler 오버레이 미지원[end]",
+    "en": "[red]OptiScaler overlay not supported on GamePass version[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "FH5"
+  },
+  {
+    "message_id": "install_pre.steam_dx12_required",
+    "msg_group": "install_pre",
+    "variant": "steam_dx12_required",
+    "category": "popup",
+    "ko": "[red]스팀 게임 설정에서 DirectX12로 설정하세요[end]",
+    "en": "[red]Set DirectX12 at Steam game setting[end]",
+    "url": "",
+    "enabled": true,
+    "memo": "Palworld"
+  },
+  {
+    "message_id": "install_post.dlss_relaunch",
+    "msg_group": "install_post",
+    "variant": "dlss_relaunch",
+    "category": "popup",
+    "ko": "[RED]인게임 그래픽 설정을 DLSS, DLSS프레임생성으로 맞추고 게임 재실행[END]",
+    "en": "[RED]Change ingame upscaler & FG setting to DLSS and relaunch[END]",
+    "url": "",
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "message_id": "install_post.launch_twice_after_install",
+    "msg_group": "install_post",
+    "variant": "launch_twice_after_install",
+    "category": "popup",
+    "ko": "[RED]설치 후 DLSS, DLSS프레임생성으로 설정하고 게임을 두 번 실행하세요[END]",
+    "en": "[RED]After install, change ingame upscaler & FG setting to DLSS[br]and launch game twice[END]",
+    "url": "",
+    "enabled": true,
+    "memo": "Stellar Blade Intel"
+  },
+  {
+    "message_id": "guide.avowed_wiki",
+    "msg_group": "guide",
+    "variant": "avowed_wiki",
+    "category": "guide_url",
+    "ko": "",
+    "en": "",
+    "url": "https://github.com/optiscaler/OptiScaler/wiki/Avowed",
+    "enabled": true,
+    "memo": "Avowed 가이드"
+  }
+]
