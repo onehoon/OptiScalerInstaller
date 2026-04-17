@@ -216,15 +216,12 @@ class BottomPanelPresenter:
 
         if isinstance(entry, dict):
             archive_name = str(entry.get("filename", "") or entry.get("version", "")).strip()
-            raw_version = str(entry.get("version", "")).replace("\r", " ").replace("\n", " ").strip()
-            version = re.sub(r"\s+", " ", raw_version)
+            raw_display_version = str(entry.get("display_version", "") or entry.get("version", "")).replace("\r", " ").replace("\n", " ").strip()
+            version = re.sub(r"\s+", " ", raw_display_version)
 
-        archive_display_name = self._version_name_formatter(archive_name)
         version_display_name = self._version_name_formatter(version)
 
-        if archive_display_name:
-            version_text = version_line_template.format(value=archive_display_name)
-        elif version_display_name:
+        if version_display_name:
             version_text = version_line_template.format(value=version_display_name)
         else:
             version_text = version_line_template.format(value="-")

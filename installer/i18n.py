@@ -40,6 +40,7 @@ class MainUiStrings:
     install_section_title: str
     install_button: str
     installing_button: str
+    loading_button: str
     select_game_hint: str
     no_information: str
     version_line_template: str
@@ -144,6 +145,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             install_section_title="2. 설치 정보",
             install_button="설치",
             installing_button="설치 중...",
+            loading_button="로딩 중...",
             select_game_hint="게임을 선택하면 설치 정보를 볼 수 있습니다.",
             no_information="표시할 정보가 없습니다.",
             version_line_template="OptiScaler 버전: {value}",
@@ -240,6 +242,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             install_section_title="2. Install Information",
             install_button="Install",
             installing_button="Installing...",
+            loading_button="Loading...",
             select_game_hint="Select a game to view information.",
             no_information="No information available.",
             version_line_template="OptiScaler Version: {value}",

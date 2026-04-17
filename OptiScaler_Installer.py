@@ -678,10 +678,20 @@ class OptiManagerApp:
 
         button_state = compute_install_button_state(self._build_install_button_state_inputs())
         can_install = bool(button_state.enabled)
+        is_sheet_loading = button_state.reason_code == "sheet_loading"
+
+        # Cancel any ongoing loading blink
+        blink_job = getattr(self, "_loading_blink_job", None)
+        if blink_job is not None:
+            self.root.after_cancel(blink_job)
+            self._loading_blink_job = None
+
         if button_state.show_installing:
             button_text = self.txt.main.installing_button
         elif can_install:
             button_text = self.txt.main.install_button
+        elif is_sheet_loading:
+            button_text = self.txt.main.loading_button
         else:
             button_text = ""
 
@@ -692,6 +702,23 @@ class OptiManagerApp:
             hover_color=APP_THEME.install_button_hover_color if can_install else APP_THEME.install_button_disabled_color,
             border_color=APP_THEME.install_button_border_color if can_install else APP_THEME.install_button_border_disabled_color,
         )
+
+        # Start blinking if still loading
+        if is_sheet_loading:
+            self._loading_blink_job = self.root.after(600, self._tick_loading_blink)
+
+    def _tick_loading_blink(self):
+        """Toggle install button text to create a blinking loading effect."""
+        self._loading_blink_job = None
+        if not hasattr(self, "apply_btn"):
+            return
+        button_state = compute_install_button_state(self._build_install_button_state_inputs())
+        if button_state.reason_code != "sheet_loading":
+            return
+        loading_text = self.txt.main.loading_button
+        current_text = self.apply_btn.cget("text")
+        self.apply_btn.configure(text="" if current_text == loading_text else loading_text)
+        self._loading_blink_job = self.root.after(600, self._tick_loading_blink)
 
     def _build_install_button_state_inputs(self) -> InstallButtonStateInputs:
         gpu_state = self.gpu_state
