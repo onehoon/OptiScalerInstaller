@@ -41,6 +41,8 @@ class MainUiStrings:
     install_button: str
     installing_button: str
     loading_button: str
+    install_before_popup_label: str
+    install_after_popup_label: str
     select_game_hint: str
     no_information: str
     version_line_template: str
@@ -131,7 +133,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
         main=MainUiStrings(
             heading_font_family="Malgun Gothic",
             ui_font_family="Malgun Gothic",
-            window_title_template="Non-official OptiScaler Installer 버젼 {version}",
+            window_title_template="Non-official OptiScaler Installer v{version}",
             app_title="OptiScaler Installer",
             gpu_label_template="GPU: {gpu}",
             checking_gpu="GPU 확인 중...",
@@ -146,6 +148,8 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             install_button="설치",
             installing_button="설치 중...",
             loading_button="로딩 중...",
+            install_before_popup_label="설치 전",
+            install_after_popup_label="설치 후",
             select_game_hint="게임을 선택하면 설치 정보를 볼 수 있습니다.",
             no_information="표시할 정보가 없습니다.",
             version_line_template="OptiScaler 버전: {value}",
@@ -228,7 +232,7 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
         main=MainUiStrings(
             heading_font_family="Segoe UI",
             ui_font_family="Segoe UI",
-            window_title_template="Non-official OptiScaler Installer 버젼 {version}",
+            window_title_template="Non-official OptiScaler Installer v{version}",
             app_title="OptiScaler Installer",
             gpu_label_template="GPU: {gpu}",
             checking_gpu="Checking GPU...",
@@ -243,6 +247,8 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             install_button="Install",
             installing_button="Installing...",
             loading_button="Loading...",
+            install_before_popup_label="Before Install",
+            install_after_popup_label="After Install",
             select_game_hint="Select a game to view information.",
             no_information="No information available.",
             version_line_template="OptiScaler Version: {value}",
@@ -376,6 +382,16 @@ def pick_sheet_text(source: Mapping[str, object], base_key: str, lang: Lang) -> 
 def pick_bound_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
     key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
     return str(source.get(key, "") or "").strip()
+
+
+def build_install_information_text(
+    source: Mapping[str, object],
+    *,
+    lang: Lang,
+    stage: str = "install_pre",
+) -> str:
+    stage_key = "install_post" if str(stage or "").strip().lower() == "install_post" else "install_pre"
+    return pick_bound_message(source, stage_key, lang)
 
 
 def pick_module_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:

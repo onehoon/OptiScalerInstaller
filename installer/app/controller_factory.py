@@ -7,8 +7,7 @@ from tkinter import filedialog, messagebox
 from typing import Any
 
 from installer.data import gpu_bundle_loader, message_loader, sheet_loader
-from installer.i18n import pick_sheet_text
-from installer.i18n import pick_bound_message
+from installer.i18n import build_install_information_text, pick_bound_message
 from installer.install import services as installer_services
 from installer.system import gpu_service
 
@@ -360,6 +359,11 @@ def _build_install_selection_controller(app: Any, install_flow: InstallFlowContr
         callbacks=InstallSelectionCallbacks(
             apply_selected_index=app._apply_selected_game_index,
             set_information_text=app._set_information_text,
+            build_information_text=lambda game: build_install_information_text(
+                game,
+                lang=app.lang,
+                stage="install_pre",
+            ),
             apply_ui_state=app._apply_install_selection_state,
             update_install_button_state=app._update_install_button_state,
             run_precheck=install_flow.run_install_precheck,

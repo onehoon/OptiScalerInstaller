@@ -73,6 +73,7 @@ from installer.app.ui_shell import AppUiShell, create_ui_shell
 from installer.app.ui_presenters import BottomPanelPresenter, HeaderStatusPresenter
 from installer.common.poster_loader import PosterImageLoader, PosterLoaderConfig
 from installer.i18n import (
+    build_install_information_text,
     detect_ui_language,
     get_app_strings,
     is_korean,
@@ -1063,7 +1064,13 @@ class OptiManagerApp:
         controller = getattr(self, "_card_ui_controller", None)
         if controller is not None:
             controller.refresh_all_card_visuals()
-        self._set_information_text(game.get("information", ""))
+        self._set_information_text(
+            build_install_information_text(
+                game,
+                lang=self.lang,
+                stage="install_pre",
+            )
+        )
 
     def _get_effective_widget_scale(self) -> float:
         return get_ctk_scale(self.root, 1.0)

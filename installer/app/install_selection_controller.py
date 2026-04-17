@@ -31,6 +31,7 @@ class InstallSelectionPrecheckOutcome:
 class InstallSelectionCallbacks:
     apply_selected_index: Callable[[int], None]
     set_information_text: Callable[[str], None]
+    build_information_text: Callable[[Mapping[str, Any]], str]
     apply_ui_state: Callable[[InstallSelectionUiState], None]
     update_install_button_state: Callable[[], None]
     run_precheck: Callable[[Mapping[str, Any]], InstallSelectionPrecheckOutcome]
@@ -72,7 +73,7 @@ class InstallSelectionController:
             return
 
         game = found_games[index]
-        self._callbacks.set_information_text(str(game.get("information", "") or ""))
+        self._callbacks.set_information_text(self._callbacks.build_information_text(game))
 
         outcome = self._callbacks.run_precheck(game)
         completed_state = InstallSelectionUiState(

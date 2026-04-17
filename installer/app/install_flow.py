@@ -8,6 +8,7 @@ from tkinter import messagebox
 from typing import Any
 
 from installer.games.handlers import get_game_handler
+from installer.i18n import build_install_information_text
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
@@ -31,6 +32,7 @@ class InstallFlowCallbacks:
     install_worker_entry: Callable[..., None]
     finish_install: Callable[[bool, str, Mapping[str, Any] | None], None]
     show_after_install_popup: Callable[[Mapping[str, Any]], None]
+    set_information_text: Callable[[str], None]
     show_info: Callable[[str, str], None]
     show_warning: Callable[[str, str], None]
     show_error: Callable[[str, str], None]
@@ -307,6 +309,13 @@ class InstallFlowController:
 
         if success:
             game = installed_game if isinstance(installed_game, dict) else {}
+            self._callbacks.set_information_text(
+                build_install_information_text(
+                    game,
+                    lang=self._callbacks.get_lang(),
+                    stage="install_post",
+                )
+            )
             self._root.after_idle(lambda g=dict(game): self._callbacks.show_after_install_popup(g))
             return
 
@@ -343,6 +352,7 @@ def create_install_flow_controller(
             install_worker_entry=app._apply_optiscaler_worker,
             finish_install=app._on_install_finished,
             show_after_install_popup=app._show_after_install_popup,
+            set_information_text=app._set_information_text,
             show_info=messagebox.showinfo,
             show_warning=messagebox.showwarning,
             show_error=messagebox.showerror,
