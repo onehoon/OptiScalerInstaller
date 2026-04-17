@@ -8,6 +8,7 @@ from tkinter import messagebox
 import logging
 import logging.handlers
 import sys
+import importlib
 from pathlib import Path
 import re
 from typing import Callable, Optional
@@ -110,10 +111,18 @@ except ModuleNotFoundError as e:
         f"Install with: \"{sys.executable}\" -m pip install python-dotenv"
     ) from e
 
-try:
-    from installer._generated_build_config import BUILD_CONFIG as _GENERATED_BUILD_CONFIG
-except ModuleNotFoundError:
-    _GENERATED_BUILD_CONFIG = {}
+def _load_generated_build_config() -> dict:
+    try:
+        module = importlib.import_module("installer._generated_build_config")
+        config = getattr(module, "BUILD_CONFIG", {})
+        if isinstance(config, dict):
+            return dict(config)
+    except Exception:
+        pass
+    return {}
+
+
+_GENERATED_BUILD_CONFIG = _load_generated_build_config()
 
 
 def _load_dev_env_file() -> None:
