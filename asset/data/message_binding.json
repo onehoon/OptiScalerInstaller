@@ -1,0 +1,122 @@
+[
+  {
+    "binding_id": "bind.global.startup.all",
+    "game_id": "*",
+    "gpu_vendor": "all",
+    "stage": "startup",
+    "message_id": "global.startup_warning",
+    "priority": 100,
+    "enabled": true,
+    "memo": "앱 시작 공지"
+  },
+  {
+    "binding_id": "bind.dworigins.intel.pre.borderless_fsr3",
+    "game_id": "DWORIGINS",
+    "gpu_vendor": "intel",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": "인텔 설치 전 안내"
+  },
+  {
+    "binding_id": "bind.dworigins.amd.pre.borderless_fsr3",
+    "game_id": "DWORIGINS",
+    "gpu_vendor": "amd",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": "AMD 설치 전 안내"
+  },
+  {
+    "binding_id": "bind.dworigins.nvidia.pre.borderless",
+    "game_id": "DWORIGINS",
+    "gpu_vendor": "nvidia",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": "엔비디아 설치 전 안내"
+  },
+  {
+    "binding_id": "bind.dworigins.nvidia.post.dlss_relaunch",
+    "game_id": "DWORIGINS",
+    "gpu_vendor": "nvidia",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "enabled": true,
+    "memo": "엔비디아 설치 후 안내"
+  },
+  {
+    "binding_id": "bind.ffxvi.all.pre.borderless",
+    "game_id": "FFXVI",
+    "gpu_vendor": "all",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": "공통 설치 전 안내"
+  },
+  {
+    "binding_id": "bind.ffxvi.all.pre.rtss_disable",
+    "game_id": "FFXVI",
+    "gpu_vendor": "all",
+    "stage": "install_pre",
+    "message_id": "install_pre.rtss_disable",
+    "priority": 200,
+    "enabled": true,
+    "memo": "RTSS 비활성 안내"
+  },
+  {
+    "binding_id": "bind.ffxvi.all.post.rtss_disable",
+    "game_id": "FFXVI",
+    "gpu_vendor": "all",
+    "stage": "install_post",
+    "message_id": "install_pre.rtss_disable",
+    "priority": 100,
+    "enabled": true,
+    "memo": "설치 후에도 RTSS 안내 재사용"
+  },
+  {
+    "binding_id": "bind.ff7r.all.pre.latest_1004",
+    "game_id": "FF7R",
+    "gpu_vendor": "all",
+    "stage": "install_pre",
+    "message_id": "install_pre.latest_version_1004",
+    "priority": 100,
+    "enabled": true,
+    "memo": "버전 제한 안내"
+  },
+  {
+    "binding_id": "bind.kcd2.all.pre.hdr_conflict",
+    "game_id": "KCD2",
+    "gpu_vendor": "all",
+    "stage": "install_pre",
+    "message_id": "install_pre.hdr_conflict",
+    "priority": 100,
+    "enabled": true,
+    "memo": "HDR 충돌 안내"
+  },
+  {
+    "binding_id": "bind.sb.intel.post.launch_twice",
+    "game_id": "SB",
+    "gpu_vendor": "intel",
+    "stage": "install_post",
+    "message_id": "install_post.launch_twice_after_install",
+    "priority": 100,
+    "enabled": true,
+    "memo": "스텔라블레이드 인텔 후처리 안내"
+  },
+  {
+    "binding_id": "bind.post.dlss_relaunch",
+    "game_id": "CP2077",
+    "gpu_vendor": "all",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "enabled": true,
+    "memo": "DLSS설정 후 재실행"
+  }
+]
