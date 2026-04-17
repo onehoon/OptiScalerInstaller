@@ -6,8 +6,9 @@ import logging
 from tkinter import filedialog, messagebox
 from typing import Any
 
-from installer.data import gpu_bundle_loader, sheet_loader
+from installer.data import gpu_bundle_loader, message_loader, sheet_loader
 from installer.i18n import pick_sheet_text
+from installer.i18n import pick_bound_message
 from installer.install import services as installer_services
 from installer.system import gpu_service
 
@@ -31,6 +32,8 @@ class AppControllerFactoryConfig:
     create_prefixed_logger: Callable[[str], Any]
     default_sheet_gid: int
     gpu_bundle_url: str
+    message_binding_url: str
+    message_center_url: str
     gpu_notice_theme: Any
     gpu_vendor_db_gids: Mapping[str, int]
     max_supported_gpu_count: int
@@ -227,9 +230,16 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
         ),
         load_game_db=sheet_loader.load_game_db_from_local_json,
         load_module_download_links=sheet_loader.load_module_download_links_from_local_json,
+        message_center_url=config.message_center_url,
+        message_binding_url=config.message_binding_url,
+        load_message_center=message_loader.load_message_center,
+        load_message_binding=message_loader.load_message_binding,
+        build_message_repository=message_loader.build_message_repository,
+        materialize_bound_messages=message_loader.materialize_bound_messages_into_game_db,
         gpu_bundle_url=config.gpu_bundle_url,
         load_gpu_bundle=gpu_bundle_loader.load_supported_game_bundle,
         merge_gpu_bundle=gpu_bundle_loader.merge_gpu_bundle_into_game_db,
+        message_lang=app.lang,
         logger=logging.getLogger(),
     )
 
@@ -353,7 +363,7 @@ def _build_install_selection_controller(app: Any, install_flow: InstallFlowContr
             apply_ui_state=app._apply_install_selection_state,
             update_install_button_state=app._update_install_button_state,
             run_precheck=install_flow.run_install_precheck,
-            get_selection_popup_message=lambda game: pick_sheet_text(game, "popup", app.lang),
+            get_selection_popup_message=lambda game: pick_bound_message(game, "install_pre", app.lang),
             show_selection_popup=app._show_game_selection_popup,
             show_precheck_popup=app._show_precheck_popup,
         ),

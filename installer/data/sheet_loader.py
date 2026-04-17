@@ -99,11 +99,6 @@ def load_game_db_from_local_json(_gid=0):
             "supported_gpu": supported_gpu_rule,
             "ingame_ini": str(row.get("ingame_ini", "") or "").strip(),
             "ingame_settings": {},
-            "popup_kr": str(row.get("popup_kr", "") or "").strip(),
-            "popup_en": str(row.get("popup_en", "") or "").strip(),
-            "after_popup_kr": str(row.get("after_popup_kr", "") or "").strip(),
-            "after_popup_en": str(row.get("after_popup_en", "") or "").strip(),
-            "guidepage_after_installation": str(row.get("guidepage_after_installation", "") or "").strip(),
         }
 
     return db

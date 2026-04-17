@@ -182,6 +182,8 @@ OPTIPATCHER_URL = _get_runtime_config_value(
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
 OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
+OPTISCALER_MESSAGE_CENTER_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_CENTER_URL", "").strip()
+OPTISCALER_MESSAGE_BINDING_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_BINDING_URL", "").strip()
 
 
 class PrefixedLoggerAdapter(logging.LoggerAdapter):
@@ -362,6 +364,8 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     create_prefixed_logger=get_prefixed_logger,
     default_sheet_gid=SHEET_GID,
     gpu_bundle_url=OPTISCALER_GPU_BUNDLE_URL,
+    message_binding_url=OPTISCALER_MESSAGE_BINDING_URL,
+    message_center_url=OPTISCALER_MESSAGE_CENTER_URL,
     gpu_notice_theme=APP_THEME.gpu_notice_theme,
     gpu_vendor_db_gids=GPU_VENDOR_DB_GIDS,
     max_supported_gpu_count=MAX_SUPPORTED_GPU_COUNT,

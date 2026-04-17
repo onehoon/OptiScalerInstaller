@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from installer.i18n import pick_sheet_text
+from installer.i18n import pick_bound_message
 
 from .install_state import build_selected_game_snapshot
 from .notice_controller import AppNoticeController
@@ -153,11 +154,11 @@ class AppUiShell:
             if completion_template and installed_file_name
             else ""
         )
-        game_message = pick_sheet_text(normalized_game, "after_popup", self._callbacks.get_lang())
+        game_message = pick_bound_message(normalized_game, "install_post", self._callbacks.get_lang())
         combined_message = "[P]".join(part for part in (completion_message, game_message) if part)
         controller.show_after_install_popup(
             combined_message,
-            guide_url=str(normalized_game.get("guidepage_after_installation") or ""),
+            guide_url=str(normalized_game.get("__guide_url__") or ""),
             guide_context=str(normalized_game.get("display", "<unknown>") or "<unknown>"),
         )
 

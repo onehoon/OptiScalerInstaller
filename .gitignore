@@ -5,6 +5,7 @@ game_wiki.py
 .env.*
 installer/_generated_build_config.py
 .vscode/
+docs/getSupportedGameBundle.gs
 
 # Python & PyInstaller artifacts
 __pycache__/

@@ -373,6 +373,10 @@ def pick_sheet_text(source: Mapping[str, object], base_key: str, lang: Lang) -> 
     key = f"{base_key}_{_sheet_lang_suffix(lang)}"
     return str(source.get(key, "") or "").strip()
 
+def pick_bound_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
+    key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
+    return str(source.get(key, "") or "").strip()
+
 
 def pick_module_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
     key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
