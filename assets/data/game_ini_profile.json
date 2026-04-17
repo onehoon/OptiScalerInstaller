@@ -5,8 +5,7 @@
     "section": "Graphics",
     "key": "Upscaler",
     "value": "DLSS",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "FFXVI_DEFAULT",
@@ -14,8 +13,7 @@
     "section": "Graphics",
     "key": "FrameGeneration",
     "value": true,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
@@ -23,8 +21,7 @@
     "section": "Display",
     "key": "FullscreenMode",
     "value": "Borderless",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
@@ -32,8 +29,7 @@
     "section": "Upscaling",
     "key": "Mode",
     "value": "FSR3",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
@@ -41,7 +37,6 @@
     "section": "Upscaling",
     "key": "Mode",
     "value": "DLSS",
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   }
 ]
