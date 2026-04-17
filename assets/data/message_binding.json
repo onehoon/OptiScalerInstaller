@@ -84,10 +84,10 @@
     "game_id": "FF7R",
     "gpu_vendor": "all",
     "stage": "install_pre",
-    "message_id": "install_pre.latest_version_1004",
+    "message_id": "install_pre.FF7R_Version",
     "priority": 100,
     "enabled": true,
-    "memo": "버전 제한 안내"
+    "memo": "FF7R 버전 1004"
   },
   {
     "binding_id": "bind.kcd2.all.pre.hdr_conflict",
