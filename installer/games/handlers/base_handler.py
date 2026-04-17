@@ -1,10 +1,9 @@
-from installer.i18n import build_mod_conflict_notice, lang_from_bool, pick_bound_message, translate_default_precheck_error
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
-from ...i18n import lang_from_bool, pick_sheet_text, translate_default_precheck_error
+from ...i18n import lang_from_bool, pick_bound_message, translate_default_precheck_error
 from ...install import services as installer_services
 
 from .install_precheck import (
