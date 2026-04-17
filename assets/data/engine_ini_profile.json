@@ -6,8 +6,7 @@
     "section": "SystemSettings",
     "key": "r.Streamline.Reflex.HandleMaxTickRate",
     "value": 0,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "FFXVI_DEFAULT",
@@ -16,8 +15,7 @@
     "section": "SystemSettings",
     "key": "r.FidelityFX.FI.Enabled",
     "value": 1,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
@@ -26,8 +24,7 @@
     "section": "SystemSettings",
     "key": "r.DynamicRes.OperationMode",
     "value": 2,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   },
   {
     "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
@@ -36,7 +33,6 @@
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.Enable",
     "value": 1,
-    "enabled": true,
-    "memo": "예시"
+    "enabled": true
   }
 ]
