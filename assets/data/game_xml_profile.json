@@ -5,8 +5,7 @@
     "xpath": "./rage__fwuiSystemSettingsCollection/advancedGraphics/frameGeneration",
     "value": true,
     "value_type": "bool",
-    "enabled": true,
-    "memo": "RDR2 예시"
+    "enabled": true
   },
   {
     "profile_id": "RDR2_DEFAULT",
@@ -14,8 +13,7 @@
     "xpath": "./rage__fwuiSystemSettingsCollection/graphics/dlssIndex",
     "value": 1,
     "value_type": "int",
-    "enabled": true,
-    "memo": "RDR2 예시"
+    "enabled": true
   },
   {
     "profile_id": "RDR2_DEFAULT",
@@ -23,7 +21,6 @@
     "xpath": "./rage__fwuiSystemSettingsCollection/video/windowed",
     "value": true,
     "value_type": "bool",
-    "enabled": true,
-    "memo": "RDR2 예시"
+    "enabled": true
   }
 ]
