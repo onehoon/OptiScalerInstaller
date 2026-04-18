@@ -16,10 +16,7 @@ from ..config import ini_utils, xml_utils
 from . import services as installer_services
 from .workflow import InstallWorkflowCallbacks
 
-try:
-    import winreg
-except Exception:  # pragma: no cover - non-Windows runtime fallback
-    winreg = None
+import winreg
 
 
 _DOCUMENTS_ENV_TOKEN = "%DOCUMENTS%"
@@ -371,9 +368,6 @@ def _coerce_registry_value(value: object, value_type: str) -> object:
 def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
     rows = [row for row in list(game_data.get("registry_profile") or []) if isinstance(row, Mapping)]
     if not rows:
-        return
-    if winreg is None:
-        logger.info("Skipped registry_profile because winreg is unavailable")
         return
 
     for row in rows:
