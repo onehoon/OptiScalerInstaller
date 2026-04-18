@@ -2,28 +2,25 @@
   {
     "profile_id": "FFXVI_DEFAULT",
     "hive": "HKCU",
-    "reg_path": "Software\\OptiScaler\\FFXVI",
+    "key_path": "Software\\OptiScaler\\FFXVI",
     "value_name": "EnableFG",
     "value_type": "REG_DWORD",
-    "value": 1,
-    "enabled": true
+    "value": 1
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
     "hive": "HKCU",
-    "reg_path": "Software\\OptiScaler\\DWORIGINS",
+    "key_path": "Software\\OptiScaler\\DWORIGINS",
     "value_name": "PreferredBackend",
     "value_type": "REG_SZ",
-    "value": "Intel",
-    "enabled": true
+    "value": "Intel"
   },
   {
     "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
     "hive": "HKCU",
-    "reg_path": "Software\\OptiScaler\\DWORIGINS",
+    "key_path": "Software\\OptiScaler\\DWORIGINS",
     "value_name": "PreferredBackend",
     "value_type": "REG_SZ",
-    "value": "NVIDIA",
-    "enabled": true
+    "value": "NVIDIA"
   }
 ]
