@@ -4,11 +4,11 @@
     "msg_group": "global",
     "variant": "startup_warning",
     "category": "popup",
-    "ko": "[RED]뉴디비테스트1[END]",
-    "en": "[RED]NewDB Test[END]",
+    "ko": "[RED]설치 전 게임을 경계없는 전체창모드(보더리스)로 설정하세요. (크래쉬, 블랙스크린 방지)[p]MOD 사용 시 정상적으로 동작하지 않을 수 있습니다.[END][p]MOD 사용 시 직접 수동 설치를 권장합니다.[P]설치 전 팝업 및 가이드 내용을 꼭 확인하세요[p]MOD 없는 순정 게임 기준으로 제작되었습니다.",
+    "en": "[RED]NewDB Test[END][RED]Before installain, set the game to borderless mode. (Prevents crashes and black screens)[p]May not compatible with some MOD[END][p]Manual installation recommended if you use MOD[P]Please ensure you review information provided[p]This installer is designed for vanilla game",
     "url": "",
     "enabled": true,
-    "memo": "앱 시작 공지용"
+    "memo": ""
   },
   {
     "message_id": "install_pre.borderless_fsr3_required",
@@ -92,8 +92,8 @@
     "msg_group": "install_post",
     "variant": "dlss_relaunch",
     "category": "popup",
-    "ko": "[RED]인게임 그래픽 설정을 DLSS, DLSS프레임생성으로 맞추고 게임 재실행[END]",
-    "en": "[RED]Change ingame upscaler & FG setting to DLSS and relaunch[END]",
+    "ko": "[RED]설치 후 인게임 설정을 보더리스, DLSS, DLSS프레임생성으로 맞추고 게임 재실행[END]",
+    "en": "[RED]Change ingame upscaler & FG setting to DLSS, borderless and relaunch[END]",
     "url": "",
     "enabled": true,
     "memo": ""
@@ -119,5 +119,16 @@
     "url": "https://github.com/optiscaler/OptiScaler/wiki/Avowed",
     "enabled": true,
     "memo": "Avowed 가이드"
+  },
+  {
+    "message_id": "install_post.DLSS_upscaling",
+    "msg_group": "install_post",
+    "variant": "DLSS_upscaling only",
+    "category": "popup",
+    "ko": "[RED]설치 후 인게임 설정을 전체창모드 DLSS로 맞추고 게임 재실행[END]",
+    "en": "[RED]Change ingame upscaler to DLSS, borderless and relaunch[END]",
+    "url": "",
+    "enabled": "",
+    "memo": ""
   }
 ]
