@@ -1,0 +1,61 @@
+name: Prewarm GPU Bundle Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Pass debug=1 to the Apps Script endpoint"
+        required: false
+        type: boolean
+        default: false
+      delay:
+        description: "Delay between requests in seconds"
+        required: false
+        type: string
+        default: "0.2"
+  schedule:
+    - cron: "10 */4 * * *"
+
+permissions: {}
+
+concurrency:
+  group: prewarm-gpu-cache
+  cancel-in-progress: false
+
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Prewarm Apps Script cache
+        env:
+          OPTISCALER_GPU_BUNDLE_URL: ${{ secrets.OPTISCALER_GPU_BUNDLE_URL }}
+          WORKFLOW_DEBUG: ${{ inputs.debug }}
+          WORKFLOW_DELAY: ${{ inputs.delay }}
+        run: |
+          if [ -z "$OPTISCALER_GPU_BUNDLE_URL" ]; then
+            echo "OPTISCALER_GPU_BUNDLE_URL secret is not configured." >&2
+            exit 1
+          fi
+
+          args=()
+          if [ -n "$WORKFLOW_DELAY" ]; then
+            args+=(--delay "$WORKFLOW_DELAY")
+          fi
+          if [ "$WORKFLOW_DEBUG" = "true" ]; then
+            args+=(--debug)
+          fi
+
+          python scripts/prewarm_gpu_bundle_cache.py "${args[@]}"

@@ -1,0 +1,25 @@
+{
+  "amd": [
+    "AMD Radeon(TM) Graphics",
+    "AMD Radeon(TM) 780M Graphics",
+    "AMD Radeon(TM) 880M Graphics",
+    "AMD Radeon(TM) 890M Graphics",
+    "AMD Radeon 8060S Graphics",
+    "AMD Radeon RX 6700 XT",
+    "AMD Radeon RX 7800 XT",
+    "AMD Radeon RX 9070 XT"
+  ],
+  "nvidia": [
+    "NVIDIA GeForce RTX 2060",
+    "NVIDIA GeForce RTX 3070",
+    "NVIDIA GeForce RTX 4070",
+    "NVIDIA GeForce RTX 5070"
+  ],
+  "intel": [
+    "Intel(R) Arc(TM) Graphics",
+    "Intel(R) Arc(TM) Graphics 130V",
+    "Intel(R) Arc(TM) Graphics 140V",
+    "Intel(R) Arc(TM) Graphics 130T",
+    "Intel(R) Arc(TM) Graphics 140T"
+  ]
+}
