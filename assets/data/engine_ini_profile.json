@@ -1,92 +1,72 @@
 [
   {
     "profile_id": "SHF_NVIDIA",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_AMD",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_INTEL",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_AMD_iGPU",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_INTEL_iGPU",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_NVIDIA",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_AMD",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_INTEL",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_AMD_iGPU",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   },
   {
     "profile_id": "SHF_INTEL_iGPU",
-    "engine_ini_location": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\",
-    "relative_path": "Engine.ini",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
-    "value": 0,
-    "enabled": true
+    "value": 0
   }
 ]
