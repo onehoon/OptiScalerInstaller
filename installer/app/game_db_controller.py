@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from ..data import gpu_bundle_loader, message_loader
+from ..data import gpu_bundle_loader, message_loader, profile_loader
 
 
 SchedulerCallback = Callable[[Callable[[], None]], Any]
@@ -18,6 +18,8 @@ MessageRepoBuilder = Callable[[dict[str, message_loader.MessageTemplate], tuple[
 MessageMaterializer = Callable[[dict[str, dict[str, Any]], message_loader.MessageRepository], dict[str, dict[str, Any]]]
 GpuBundleLoader = Callable[[str, str, str], dict[str, dict[str, Any]]]
 GpuBundleMerger = Callable[[dict[str, dict[str, Any]], dict[str, dict[str, Any]]], dict[str, dict[str, Any]]]
+ProfileCatalogLoader = Callable[[str, str, str, str], profile_loader.ProfileCatalogs]
+ProfileCatalogAttacher = Callable[[dict[str, dict[str, Any]], profile_loader.ProfileCatalogs], dict[str, dict[str, Any]]]
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,12 @@ class GameDbLoadController:
         gpu_bundle_url: str = "",
         load_gpu_bundle: GpuBundleLoader = gpu_bundle_loader.load_supported_game_bundle,
         merge_gpu_bundle: GpuBundleMerger = gpu_bundle_loader.merge_gpu_bundle_into_game_db,
+        game_ini_profile_url: str = "",
+        engine_ini_profile_url: str = "",
+        game_xml_profile_url: str = "",
+        registry_profile_url: str = "",
+        load_profile_catalogs: ProfileCatalogLoader = profile_loader.load_profile_catalogs,
+        attach_profile_catalogs: ProfileCatalogAttacher = profile_loader.attach_profile_catalogs_to_game_db,
         message_lang: str = "en",
         logger=None,
     ) -> None:
@@ -70,6 +78,12 @@ class GameDbLoadController:
         self._gpu_bundle_url = str(gpu_bundle_url or "").strip()
         self._load_gpu_bundle = load_gpu_bundle
         self._merge_gpu_bundle = merge_gpu_bundle
+        self._game_ini_profile_url = str(game_ini_profile_url or "").strip()
+        self._engine_ini_profile_url = str(engine_ini_profile_url or "").strip()
+        self._game_xml_profile_url = str(game_xml_profile_url or "").strip()
+        self._registry_profile_url = str(registry_profile_url or "").strip()
+        self._load_profile_catalogs = load_profile_catalogs
+        self._attach_profile_catalogs = attach_profile_catalogs
         self._message_lang = str(message_lang or "en").strip() or "en"
         self._logger = logger or logging.getLogger()
 
@@ -109,20 +123,16 @@ class GameDbLoadController:
             if not game_db:
                 raise ValueError("Game DB has no data.")
 
-            message_repo = None
-            try:
-                message_center = self._load_message_center(self._message_center_url)
-                message_binding = self._load_message_binding(self._message_binding_url)
-                message_repo = self._build_message_repository(message_center, message_binding)
-                game_db = self._materialize_bound_messages(
-                    game_db,
-                    message_repo,
-                    gpu_vendor=game_db_vendor,
-                )
-            except Exception as message_err:
-                self._logger.warning("Failed to load message center/binding: %s", message_err)
+            message_center = self._load_message_center(self._message_center_url)
+            message_binding = self._load_message_binding(self._message_binding_url)
+            message_repo = self._build_message_repository(message_center, message_binding)
+            game_db = self._materialize_bound_messages(
+                game_db,
+                message_repo,
+                gpu_vendor=game_db_vendor,
+            )
 
-            # GPU bundle enrichment is optional and must never fail startup flow.
+            # GPU bundle is vendor-specific runtime data; if configured, a failed fetch must fail closed.
             if self._gpu_bundle_url and game_db_vendor and game_db_vendor != "default":
                 try:
                     bundle = self._load_gpu_bundle(self._gpu_bundle_url, game_db_vendor, gpu_model)
@@ -131,30 +141,40 @@ class GameDbLoadController:
                     self._logger.error("Failed to load GPU bundle: %s", bundle_err)
                     raise RuntimeError("GPU bundle load failed") from bundle_err
 
-            module_links: dict[str, Any] = {}
-            try:
-                module_links = self._load_module_download_links()
-            except Exception as link_err:
-                self._logger.warning(
-                    "Failed to load module download links: %s",
-                    link_err,
-                )
+            if (
+                self._game_ini_profile_url
+                and self._engine_ini_profile_url
+                and self._game_xml_profile_url
+                and self._registry_profile_url
+            ):
+                try:
+                    catalogs = self._load_profile_catalogs(
+                        self._game_ini_profile_url,
+                        self._engine_ini_profile_url,
+                        self._game_xml_profile_url,
+                        self._registry_profile_url,
+                    )
+                    game_db = self._attach_profile_catalogs(game_db, catalogs)
+                except Exception as profile_err:
+                    self._logger.error("Failed to load profile catalogs: %s", profile_err)
+                    raise RuntimeError("Profile catalog load failed") from profile_err
 
-            if message_repo is not None:
-                warning_ko = message_loader.resolve_startup_warning_text(
-                    message_repo,
-                    gpu_vendor=game_db_vendor,
-                    lang="ko",
-                )
-                warning_en = message_loader.resolve_startup_warning_text(
-                    message_repo,
-                    gpu_vendor=game_db_vendor,
-                    lang="en",
-                )
-                if warning_ko:
-                    module_links["__warning_kr__"] = warning_ko
-                if warning_en:
-                    module_links["__warning_en__"] = warning_en
+            module_links = self._load_module_download_links()
+
+            warning_ko = message_loader.resolve_startup_warning_text(
+                message_repo,
+                gpu_vendor=game_db_vendor,
+                lang="ko",
+            )
+            warning_en = message_loader.resolve_startup_warning_text(
+                message_repo,
+                gpu_vendor=game_db_vendor,
+                lang="en",
+            )
+            if warning_ko:
+                module_links["__warning_kr__"] = warning_ko
+            if warning_en:
+                module_links["__warning_en__"] = warning_en
 
             result = GameDbLoadResult(
                 game_db=game_db,

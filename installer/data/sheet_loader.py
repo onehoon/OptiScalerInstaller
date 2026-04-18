@@ -2,7 +2,6 @@ import json
 import logging
 import re
 import unicodedata
-from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -30,18 +29,6 @@ def _pick_match_anchor(match_files: list[str]) -> str:
         if token.endswith(".exe"):
             return token
     return match_files[0] if match_files else ""
-
-
-def load_game_db_from_local_json(_gid=0):
-    data_dir = Path(__file__).resolve().parents[2] / "assets" / "data"
-    game_master_path = data_dir / "game_master.json"
-    if not game_master_path.is_file():
-        raise FileNotFoundError(f"game_master.json not found: {game_master_path}")
-
-    with game_master_path.open("r", encoding="utf-8") as fp:
-        rows = json.load(fp)
-
-    return _build_game_db_from_rows(rows)
 
 
 def load_game_db_from_remote_json(source_url: str, _gid=0, *, timeout_seconds: float = 10.0):
@@ -111,8 +98,6 @@ def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
             "unreal5_rule": str(row.get("unreal5_rule", "") or "").strip(),
             "reframework_url": str(row.get("reframework_url", "") or "").strip(),
             "module_dl": str(row.get("module_dl", "") or "").strip().lower(),
-            "engine_ini_location": str(row.get("engine_ini_location", "") or "").strip(),
-            "engine_ini_type": str(row.get("engine_ini_type", "") or "").strip(),
             "information": str(row.get("information_en", "") or "").strip(),
             "information_kr": str(row.get("information_kr", "") or "").strip(),
             "cover_url": str(row.get("cover_url", "") or "").strip(),
@@ -121,23 +106,13 @@ def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
             "support_amd": row.get("support_amd", ""),
             "support_nvidia": row.get("support_nvidia", ""),
             "supported_gpu": supported_gpu_rule,
-            "ingame_ini": str(row.get("ingame_ini", "") or "").strip(),
-            "ingame_settings": {},
+            "game_ini_profile": [],
+            "engine_ini_profile": [],
+            "game_xml_profile": [],
+            "registry_profile": [],
         }
 
     return db
-
-
-def load_module_download_links_from_local_json():
-    data_dir = Path(__file__).resolve().parents[2] / "assets" / "data"
-    resource_master_path = data_dir / "resource_master.json"
-    if not resource_master_path.is_file():
-        raise FileNotFoundError(f"resource_master.json not found: {resource_master_path}")
-
-    with resource_master_path.open("r", encoding="utf-8") as fp:
-        rows = json.load(fp)
-
-    return _build_module_download_links_from_rows(rows)
 
 
 def load_module_download_links_from_remote_json(source_url: str, *, timeout_seconds: float = 10.0):

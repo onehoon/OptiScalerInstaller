@@ -35,6 +35,7 @@ class InstallWorkflowCallbacks:
     install_base_payload: Callable[[str, str, str, list[str], Any], None]
     apply_optional_ingame_ini_settings: Callable[[str, dict[str, Any], Any], None]
     apply_optional_engine_ini_settings: Callable[[str, dict[str, Any], Any], None]
+    apply_optional_registry_settings: Callable[[dict[str, Any], Any], None]
     install_fsr4_dll: Callable[[str, str, Any], Any]
 
 
@@ -106,17 +107,29 @@ def build_install_context(
 def run_install_workflow(
     app: Any,
     install_ctx: InstallContext,
-    module_download_links: Mapping[str, object],
-    optipatcher_url: str,
-    gpu_info: Any,
-    callbacks: InstallWorkflowCallbacks,
-    logger,
+    module_download_links: Mapping[str, object] | None = None,
+    optipatcher_url: str = "",
+    gpu_info: Any = None,
+    callbacks: InstallWorkflowCallbacks | None = None,
+    logger=None,
     *,
     ual_cached_archive: str = "",
     optipatcher_cached_archive: str = "",
     specialk_cached_archive: str = "",
     unreal5_cached_archive: str = "",
+    **legacy_kwargs: Any,
 ) -> dict[str, Any]:
+    if module_download_links is None:
+        module_download_links = legacy_kwargs.pop("resource_master", {})
+    if callbacks is None:
+        raise TypeError("callbacks is required")
+    if logger is None:
+        import logging
+        logger = logging.getLogger()
+    if legacy_kwargs:
+        unexpected_keys = ", ".join(sorted(str(key) for key in legacy_kwargs))
+        raise TypeError(f"Unexpected keyword arguments: {unexpected_keys}")
+
     logger.info("Install started: target=%s", install_ctx.target_path)
     exclude_patterns = resolve_install_exclude_patterns(module_download_links)
     specialk_requested = bool(install_ctx.game_data.get("specialk"))
@@ -184,6 +197,7 @@ def run_install_workflow(
 
     callbacks.apply_optional_ingame_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
     callbacks.apply_optional_engine_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
+    callbacks.apply_optional_registry_settings(install_ctx.game_data, logger)
 
     install_unreal5_patch(
         install_ctx.target_path,

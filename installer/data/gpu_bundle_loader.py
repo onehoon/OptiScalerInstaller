@@ -247,27 +247,6 @@ def merge_gpu_bundle_into_game_db(
             layered_optiscaler_ini = _resolve_layered_optiscaler_ini_rows(bundle_entry)
             game_entry["ini_settings"] = _materialize_ini_settings(layered_optiscaler_ini)
 
-            game_entry["game_ini_profile"] = [
-                dict(row)
-                for row in list(bundle_entry.get("game_ini") or [])
-                if isinstance(row, Mapping)
-            ]
-            game_entry["engine_ini_profile"] = [
-                dict(row)
-                for row in list(bundle_entry.get("engine_ini") or [])
-                if isinstance(row, Mapping)
-            ]
-            game_entry["game_xml_profile"] = [
-                dict(row)
-                for row in list(bundle_entry.get("game_xml") or [])
-                if isinstance(row, Mapping)
-            ]
-            game_entry["registry_profile"] = [
-                dict(row)
-                for row in list(bundle_entry.get("registry") or [])
-                if isinstance(row, Mapping)
-            ]
-
     return merged
 
 

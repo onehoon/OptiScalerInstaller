@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import csv
-import io
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from installer.common.network_utils import get_shared_retry_session
@@ -76,28 +73,13 @@ def _parse_priority(value: object, default: int = 100) -> int:
         return default
 
 
-def _data_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "assets" / "data"
-
-
-def _read_local_text(filename: str) -> str:
-    path = _data_dir() / filename
-    if not path.is_file():
-        raise FileNotFoundError(f"{filename} not found: {path}")
-    return path.read_text(encoding="utf-8")
-
-
 def _fetch_remote_text(url: str, *, timeout_seconds: float = 10.0) -> str:
-    response = _file_session.get(url, timeout=timeout_seconds)
+    normalized = _normalize_text(url)
+    if not normalized:
+        raise ValueError("Remote JSON URL is empty")
+    response = _file_session.get(normalized, timeout=timeout_seconds)
     response.raise_for_status()
     return response.content.decode("utf-8-sig")
-
-
-def _load_text(source_url: str, *, local_filename: str, timeout_seconds: float = 10.0) -> str:
-    normalized = _normalize_text(source_url)
-    if normalized:
-        return _fetch_remote_text(normalized, timeout_seconds=timeout_seconds)
-    return _read_local_text(local_filename)
 
 
 def _parse_message_center_rows(rows: list[dict[str, Any]]) -> dict[str, MessageTemplate]:
@@ -151,31 +133,20 @@ def _parse_rows_from_text(text: str) -> list[dict[str, Any]]:
     normalized = str(text or "").lstrip("\ufeff").strip()
     if not normalized:
         return []
-    if normalized.startswith("[") or normalized.startswith("{"):
-        payload = json.loads(normalized)
-        if isinstance(payload, list):
-            return [row for row in payload if isinstance(row, dict)]
+    payload = json.loads(normalized)
+    if not isinstance(payload, list):
         raise ValueError("Message payload JSON must be a list")
-    reader = csv.DictReader(io.StringIO(normalized))
-    return [dict(row) for row in reader if isinstance(row, dict)]
+    return [row for row in payload if isinstance(row, dict)]
 
 
 def load_message_center(source_url: str = "", *, timeout_seconds: float = 10.0) -> dict[str, MessageTemplate]:
-    text = _load_text(source_url, local_filename="message_center.json", timeout_seconds=timeout_seconds)
+    text = _fetch_remote_text(source_url, timeout_seconds=timeout_seconds)
     return _parse_message_center_rows(_parse_rows_from_text(text))
 
 
 def load_message_binding(source_url: str = "", *, timeout_seconds: float = 10.0) -> tuple[MessageBinding, ...]:
-    text = _load_text(source_url, local_filename="message_binding.json", timeout_seconds=timeout_seconds)
+    text = _fetch_remote_text(source_url, timeout_seconds=timeout_seconds)
     return _parse_message_binding_rows(_parse_rows_from_text(text))
-
-
-def load_message_center_from_public_csv(source_url: str, *, timeout_seconds: float = 10.0) -> dict[str, MessageTemplate]:
-    return load_message_center(source_url, timeout_seconds=timeout_seconds)
-
-
-def load_message_binding_from_public_csv(source_url: str, *, timeout_seconds: float = 10.0) -> tuple[MessageBinding, ...]:
-    return load_message_binding(source_url, timeout_seconds=timeout_seconds)
 
 
 def build_message_repository(
@@ -304,9 +275,7 @@ __all__ = [
     "MessageTemplate",
     "build_message_repository",
     "load_message_binding",
-    "load_message_binding_from_public_csv",
     "load_message_center",
-    "load_message_center_from_public_csv",
     "materialize_bound_messages_into_game_db",
     "resolve_stage_guide_url",
     "resolve_stage_popup_text",

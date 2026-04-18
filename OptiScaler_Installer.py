@@ -187,6 +187,10 @@ OPTISCALER_GAME_MASTER_URL = _get_runtime_config_value("OPTISCALER_GAME_MASTER_U
 OPTISCALER_RESOURCE_MASTER_URL = _get_runtime_config_value("OPTISCALER_RESOURCE_MASTER_URL", "").strip()
 OPTISCALER_MESSAGE_CENTER_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_CENTER_URL", "").strip()
 OPTISCALER_MESSAGE_BINDING_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_BINDING_URL", "").strip()
+OPTISCALER_GAME_INI_PROFILE_URL = _get_runtime_config_value("OPTISCALER_GAME_INI_PROFILE_URL", "").strip()
+OPTISCALER_ENGINE_INI_PROFILE_URL = _get_runtime_config_value("OPTISCALER_ENGINE_INI_PROFILE_URL", "").strip()
+OPTISCALER_GAME_XML_PROFILE_URL = _get_runtime_config_value("OPTISCALER_GAME_XML_PROFILE_URL", "").strip()
+OPTISCALER_REGISTRY_PROFILE_URL = _get_runtime_config_value("OPTISCALER_REGISTRY_PROFILE_URL", "").strip()
 
 
 class PrefixedLoggerAdapter(logging.LoggerAdapter):
@@ -382,6 +386,10 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     root_width_fallback=WINDOW_W,
     root_height_fallback=WINDOW_H,
     supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,
+    game_ini_profile_url=OPTISCALER_GAME_INI_PROFILE_URL,
+    engine_ini_profile_url=OPTISCALER_ENGINE_INI_PROFILE_URL,
+    game_xml_profile_url=OPTISCALER_GAME_XML_PROFILE_URL,
+    registry_profile_url=OPTISCALER_REGISTRY_PROFILE_URL,
 )
 
 class OptiManagerApp:

@@ -43,6 +43,10 @@ class AppControllerFactoryConfig:
     root_width_fallback: int
     optipatcher_url: str
     supported_games_wiki_url: str
+    game_ini_profile_url: str = ""
+    engine_ini_profile_url: str = ""
+    game_xml_profile_url: str = ""
+    registry_profile_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -222,17 +226,24 @@ def _build_archive_controller(app: Any) -> ArchivePreparationController:
     )
 
 
+def _require_remote_json_url(name: str, value: str) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        raise ValueError(f"{name} must be configured for remote runtime loading.")
+    return normalized
+
+
 def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> GameDbLoadController:
-    load_game_db = (
-        (lambda gid: sheet_loader.load_game_db_from_remote_json(config.game_master_url, gid))
-        if str(config.game_master_url or "").strip()
-        else sheet_loader.load_game_db_from_local_json
-    )
-    load_module_download_links = (
-        (lambda: sheet_loader.load_module_download_links_from_remote_json(config.resource_master_url))
-        if str(config.resource_master_url or "").strip()
-        else sheet_loader.load_module_download_links_from_local_json
-    )
+    game_master_url = _require_remote_json_url("game_master_url", config.game_master_url)
+    resource_master_url = _require_remote_json_url("resource_master_url", config.resource_master_url)
+    message_center_url = _require_remote_json_url("message_center_url", config.message_center_url)
+    message_binding_url = _require_remote_json_url("message_binding_url", config.message_binding_url)
+    game_ini_profile_url = _require_remote_json_url("game_ini_profile_url", config.game_ini_profile_url)
+    engine_ini_profile_url = _require_remote_json_url("engine_ini_profile_url", config.engine_ini_profile_url)
+    game_xml_profile_url = _require_remote_json_url("game_xml_profile_url", config.game_xml_profile_url)
+    registry_profile_url = _require_remote_json_url("registry_profile_url", config.registry_profile_url)
+    load_game_db = lambda gid: sheet_loader.load_game_db_from_remote_json(game_master_url, gid)
+    load_module_download_links = lambda: sheet_loader.load_module_download_links_from_remote_json(resource_master_url)
 
     return GameDbLoadController(
         executor=app._task_executor,
@@ -242,8 +253,8 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
         ),
         load_game_db=load_game_db,
         load_module_download_links=load_module_download_links,
-        message_center_url=config.message_center_url,
-        message_binding_url=config.message_binding_url,
+        message_center_url=message_center_url,
+        message_binding_url=message_binding_url,
         load_message_center=message_loader.load_message_center,
         load_message_binding=message_loader.load_message_binding,
         build_message_repository=message_loader.build_message_repository,
@@ -251,6 +262,10 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
         gpu_bundle_url=config.gpu_bundle_url,
         load_gpu_bundle=gpu_bundle_loader.load_supported_game_bundle,
         merge_gpu_bundle=gpu_bundle_loader.merge_gpu_bundle_into_game_db,
+        game_ini_profile_url=game_ini_profile_url,
+        engine_ini_profile_url=engine_ini_profile_url,
+        game_xml_profile_url=game_xml_profile_url,
+        registry_profile_url=registry_profile_url,
         message_lang=app.lang,
         logger=logging.getLogger(),
     )
