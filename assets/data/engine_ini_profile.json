@@ -1,69 +1,13 @@
 [
   {
-    "profile_id": "SHF_NVIDIA",
+    "profile_id": "SHF_ALL",
     "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.NGX.DLSS.DilateMotionVectors",
     "value": 0
   },
   {
-    "profile_id": "SHF_AMD",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_INTEL",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_AMD_iGPU",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_INTEL_iGPU",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.NGX.DLSS.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_NVIDIA",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.Streamline.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_AMD",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.Streamline.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_INTEL",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.Streamline.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_AMD_iGPU",
-    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
-    "section": "SystemSettings",
-    "key": "r.Streamline.DilateMotionVectors",
-    "value": 0
-  },
-  {
-    "profile_id": "SHF_INTEL_iGPU",
+    "profile_id": "SHF_ALL",
     "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\Windows\\Engine.ini",
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
