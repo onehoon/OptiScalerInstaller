@@ -114,10 +114,10 @@
     "game_name_en": "Kingdom Come: Deliverance II",
     "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1771300/library_600x900_2x.jpg?t=1761038743",
     "cover_filename": "Kingdom Come Deliverance II.webp",
-    "enabled": false,
+    "enabled": true,
     "support_intel": true,
     "support_amd": true,
-    "support_nvidia": true
+    "support_nvidia": false
   },
   {
     "game_id": "LOP",
