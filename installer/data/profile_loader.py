@@ -24,6 +24,35 @@ def _normalize_profile_id(value: object) -> str:
     return str(value or "").strip().casefold()
 
 
+def _derive_all_profile_id(profile_id: str) -> str:
+    """Derive the _ALL wildcard profile id from a specific profile id.
+
+    Rule: game IDs never contain '_', so the first '_' separates game_id from
+    the rest.  'kcd2_intel' → 'kcd2_all', 'kcd2_intel_igpu' → 'kcd2_all'.
+    Returns '' when there is no '_' (bare game_id) or when profile_id already
+    IS the _all id (to avoid duplicate rows).
+    """
+    if not profile_id or "_" not in profile_id:
+        return ""
+    game_id_part = profile_id.split("_", 1)[0]
+    all_id = game_id_part + "_all"
+    # Avoid self-reference if profile_id is already the _all id
+    if all_id == profile_id:
+        return ""
+    return all_id
+
+
+def _get_profile_rows(
+    catalog: dict[str, tuple[dict[str, Any], ...]],
+    profile_id: str,
+) -> list[dict[str, Any]]:
+    """Return _ALL rows first, then vendor-specific rows (specific overrides _ALL)."""
+    all_id = _derive_all_profile_id(profile_id)
+    all_rows = list(catalog.get(all_id, ())) if all_id else []
+    specific_rows = list(catalog.get(profile_id, ()))
+    return [dict(r) for r in all_rows + specific_rows]
+
+
 def _load_profile_rows(source_url: str, *, label: str, timeout_seconds: float = 10.0) -> list[dict[str, Any]]:
     normalized = str(source_url or "").strip()
     if not normalized:
@@ -95,18 +124,10 @@ def attach_profile_catalogs_to_game_db(
     for game_key, raw_game_entry in dict(game_db or {}).items():
         game_entry = dict(raw_game_entry)
         profile_id = _normalize_profile_id(game_entry.get("__gpu_profile_id__"))
-        game_entry["game_ini_profile"] = [
-            dict(row) for row in catalogs.game_ini_profile.get(profile_id, ())
-        ]
-        game_entry["engine_ini_profile"] = [
-            dict(row) for row in catalogs.engine_ini_profile.get(profile_id, ())
-        ]
-        game_entry["game_xml_profile"] = [
-            dict(row) for row in catalogs.game_xml_profile.get(profile_id, ())
-        ]
-        game_entry["registry_profile"] = [
-            dict(row) for row in catalogs.registry_profile.get(profile_id, ())
-        ]
+        game_entry["game_ini_profile"] = _get_profile_rows(catalogs.game_ini_profile, profile_id)
+        game_entry["engine_ini_profile"] = _get_profile_rows(catalogs.engine_ini_profile, profile_id)
+        game_entry["game_xml_profile"] = _get_profile_rows(catalogs.game_xml_profile, profile_id)
+        game_entry["registry_profile"] = _get_profile_rows(catalogs.registry_profile, profile_id)
         attached[str(game_key)] = game_entry
     return attached
 
