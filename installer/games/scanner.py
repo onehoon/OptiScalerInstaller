@@ -178,8 +178,9 @@ def _resolve_matched_file(file_lookup: dict[str, str], required_files: list[str]
 
 
 def _build_game_record(root_dir: str, matched_file: str, entry: GameDbEntry, *, lang: Lang) -> GameRecord:
-    korean_display = entry.get("game_name_kr", "") if lang == "ko" else ""
-    korean_information = entry.get("information_kr", "") if lang == "ko" else ""
+    english_name = str(entry.get("game_name_en", "") or "").strip()
+    korean_name = str(entry.get("game_name_kr", "") or "").strip()
+    default_display = english_name or korean_name or str(entry.get("display", "") or matched_file or "").strip()
     game_record = dict(entry)
 
     match_files = entry.get("match_files")
@@ -196,9 +197,7 @@ def _build_game_record(root_dir: str, matched_file: str, entry: GameDbEntry, *, 
 
     game_record["path"] = root_dir
     game_record["exe"] = matched_file
-    game_record["display"] = korean_display or entry.get("display", "")
-    game_record["game_name"] = entry.get("game_name", entry.get("display", ""))
-    game_record["information"] = korean_information or entry.get("information", "")
+    game_record["display"] = korean_name if lang == "ko" and korean_name else default_display
 
     return game_record
 

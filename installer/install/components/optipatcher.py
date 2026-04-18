@@ -9,19 +9,19 @@ def install_optipatcher(
     target_path: str,
     game_data: Mapping[str, object],
     module_download_links: Mapping[str, object],
-    default_url: str,
     logger=None,
     cached_archive_path: str = "",
 ) -> dict[str, str]:
     if not bool(game_data.get("optipatcher")):
         return {}
 
-    module_key = str(game_data.get("module_dl", "")).strip().lower()
-    opti_key = module_key or "optipatcher"
-    opti_link_entry = module_download_links.get(opti_key) or module_download_links.get("optipatcher")
-    opti_url = str(default_url or "").strip()
+    opti_link_entry = module_download_links.get("optipatcher")
+    opti_url = ""
     if isinstance(opti_link_entry, dict):
-        opti_url = str(opti_link_entry.get("url", opti_url) or opti_url).strip()
+        opti_url = str(opti_link_entry.get("url", "") or "").strip()
+
+    if not (opti_url or cached_archive_path):
+        return {}
 
     installer_services.install_optipatcher(target_path, url=opti_url, logger=logger, cached_archive_path=cached_archive_path)
     if logger:

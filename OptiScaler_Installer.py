@@ -177,11 +177,6 @@ GPU_VENDOR_DB_GIDS = {
     "nvidia": 0,
 }
 SHEET_GID = 0
-
-OPTIPATCHER_URL = _get_runtime_config_value(
-    "OPTIPATCHER_URL",
-    "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
-)
 OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
 OPTISCALER_GAME_MASTER_URL = _get_runtime_config_value("OPTISCALER_GAME_MASTER_URL", "").strip()
 OPTISCALER_RESOURCE_MASTER_URL = _get_runtime_config_value("OPTISCALER_RESOURCE_MASTER_URL", "").strip()
@@ -382,7 +377,6 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     gpu_vendor_db_gids=GPU_VENDOR_DB_GIDS,
     max_supported_gpu_count=MAX_SUPPORTED_GPU_COUNT,
     message_popup_theme=APP_THEME.message_popup_theme,
-    optipatcher_url=OPTIPATCHER_URL,
     root_width_fallback=WINDOW_W,
     root_height_fallback=WINDOW_H,
     supported_games_wiki_url=SUPPORTED_GAMES_WIKI_URL,

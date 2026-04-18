@@ -62,8 +62,6 @@ def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
 
         game_name_en = str(row.get("game_name_en", "") or "").strip()
         game_name_kr = str(row.get("game_name_kr", "") or "").strip()
-        display_name = game_name_en or game_name_kr or exe_path
-
         supported_gpu_rule = str(row.get("supported_gpu", "") or "").strip()
         if not supported_gpu_rule:
             supported_vendors = []
@@ -86,30 +84,15 @@ def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
             "exe_path": exe_path,
             "match_files": match_files,
             "match_anchor": _pick_match_anchor(match_files),
-            "display": display_name,
-            "game_name": game_name_en or display_name,
+            "game_name_en": game_name_en,
             "game_name_kr": game_name_kr,
-            "dll_name": str(row.get("dll_name", "") or "").strip(),
-            "ultimate_asi_loader": bool(row.get("ultimate_asi_loader", False)),
-            "ini_settings": {},
-            "optipatcher": bool(row.get("optipatcher", False)),
-            "specialk": bool(row.get("specialk", False)),
-            "unreal5_url": str(row.get("unreal5_url", "") or "").strip(),
-            "unreal5_rule": str(row.get("unreal5_rule", "") or "").strip(),
-            "reframework_url": str(row.get("reframework_url", "") or "").strip(),
-            "module_dl": str(row.get("module_dl", "") or "").strip().lower(),
-            "information": str(row.get("information_en", "") or "").strip(),
-            "information_kr": str(row.get("information_kr", "") or "").strip(),
+            "optiscaler_dll_name": "",
             "cover_url": str(row.get("cover_url", "") or "").strip(),
             "filename_cover": normalize_cover_filename(str(row.get("cover_filename", "") or "")),
             "support_intel": row.get("support_intel", ""),
             "support_amd": row.get("support_amd", ""),
             "support_nvidia": row.get("support_nvidia", ""),
             "supported_gpu": supported_gpu_rule,
-            "game_ini_profile": [],
-            "engine_ini_profile": [],
-            "game_xml_profile": [],
-            "registry_profile": [],
         }
 
     return db

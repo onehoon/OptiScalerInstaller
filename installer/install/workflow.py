@@ -41,6 +41,11 @@ class InstallWorkflowCallbacks:
 
 def resolve_install_exclude_patterns(module_download_links: Mapping[str, object]) -> list[str]:
     exclude_raw = str(module_download_links.get("__exclude_list__", "")).strip()
+    if not exclude_raw:
+        legacy_entry = module_download_links.get("exclude_list")
+        if isinstance(legacy_entry, Mapping):
+            legacy_filename = legacy_entry.get("filename", "")
+            exclude_raw = str(legacy_filename).strip()
     return [token.strip() for token in exclude_raw.split("|") if token.strip()]
 
 
@@ -87,7 +92,7 @@ def build_install_context(
     else:
         final_dll_name = installer_services.resolve_proxy_dll_name(
             target_path,
-            planned_resolved_dll_name or str(planned_game_data.get("dll_name", "")).strip(),
+            planned_resolved_dll_name or str(planned_game_data.get("optiscaler_dll_name", "")).strip(),
             logger=logger,
         )
 
@@ -108,7 +113,6 @@ def run_install_workflow(
     app: Any,
     install_ctx: InstallContext,
     module_download_links: Mapping[str, object] | None = None,
-    optipatcher_url: str = "",
     gpu_info: Any = None,
     callbacks: InstallWorkflowCallbacks | None = None,
     logger=None,
@@ -180,7 +184,6 @@ def run_install_workflow(
             install_ctx.target_path,
             install_ctx.game_data,
             module_download_links,
-            str(optipatcher_url or ""),
             logger=logger,
             cached_archive_path=optipatcher_cached_archive,
         )

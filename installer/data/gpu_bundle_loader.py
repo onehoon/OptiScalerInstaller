@@ -45,6 +45,19 @@ def build_gpu_bundle_request_url(base_url_or_key: str, *, gpu_vendor: str, gpu_m
     return urlunparse(parsed._replace(query=urlencode(request_query, doseq=True)))
 
 
+def _normalize_gpu_vendor(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    if "nvidia" in text:
+        return "nvidia"
+    if "intel" in text:
+        return "intel"
+    if "amd" in text or "radeon" in text:
+        return "amd"
+    return ""
+
+
 def load_supported_game_bundle(
     base_url_or_key: str,
     gpu_vendor: str,
@@ -76,14 +89,20 @@ def load_supported_game_bundle(
     games_obj = payload.get("games")
     if games_obj is None and all(isinstance(v, Mapping) for v in payload.values()):
         # Backward-compatible format: {"ffxvi": {...}, ...}
-        return _normalize_bundle_games(payload, shared_profiles=shared_profiles)
+        return _normalize_bundle_games(payload, shared_profiles=shared_profiles, request_vendor=gpu_vendor)
 
-    return _normalize_bundle_games(games_obj, shared_profiles=shared_profiles)
+    return _normalize_bundle_games(games_obj, shared_profiles=shared_profiles, request_vendor=gpu_vendor)
 
 
-def _normalize_bundle_games(games_obj: Any, *, shared_profiles: Mapping[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+def _normalize_bundle_games(
+    games_obj: Any,
+    *,
+    shared_profiles: Mapping[str, Any] | None = None,
+    request_vendor: str = "",
+) -> dict[str, dict[str, Any]]:
     shared_profiles = shared_profiles or {}
     bundle: dict[str, dict[str, Any]] = {}
+    normalized_request_vendor = _normalize_gpu_vendor(request_vendor)
 
     if isinstance(games_obj, Mapping):
         items = list(games_obj.values())
@@ -101,6 +120,8 @@ def _normalize_bundle_games(games_obj: Any, *, shared_profiles: Mapping[str, Any
             continue
 
         entry = dict(raw)
+        if not _normalize_gpu_vendor(entry.get("bundle_gpu_vendor")) and normalized_request_vendor:
+            entry["bundle_gpu_vendor"] = normalized_request_vendor
         if shared_profiles and "shared_profiles" not in entry:
             entry["shared_profiles"] = dict(shared_profiles)
         bundle[game_id.casefold()] = entry
@@ -145,7 +166,7 @@ def _resolve_layered_optiscaler_ini_rows(bundle_entry: Mapping[str, Any]) -> lis
 
     game_id = str(bundle_entry.get("game_id") or "").strip()
     profile_id = str(bundle_entry.get("profile_id") or "").strip()
-    vendor = str(bundle_entry.get("bundle_gpu_vendor") or "").strip().lower()
+    vendor = _normalize_gpu_vendor(bundle_entry.get("bundle_gpu_vendor"))
 
     active_profile_ids = {"global_all"}
     if vendor and vendor not in {"all", "default"}:
@@ -186,7 +207,7 @@ def _materialize_ini_settings(rows: list[dict[str, Any]]) -> dict[str, str]:
 
 def _apply_install_profile(game_entry: dict[str, Any], install_profile: Mapping[str, Any]) -> None:
     if "optiscaler_dll_name" in install_profile:
-        game_entry["dll_name"] = str(install_profile.get("optiscaler_dll_name") or "").strip()
+        game_entry["optiscaler_dll_name"] = str(install_profile.get("optiscaler_dll_name") or "").strip()
 
     if "ultimate_asi_loader" in install_profile:
         game_entry["ultimate_asi_loader"] = _to_bool(install_profile.get("ultimate_asi_loader"), False)
@@ -198,12 +219,8 @@ def _apply_install_profile(game_entry: dict[str, Any], install_profile: Mapping[
         game_entry["reframework_url"] = str(install_profile.get("reframework_url") or "").strip()
     if "unreal5" in install_profile:
         game_entry["unreal5"] = _to_bool(install_profile.get("unreal5"), False)
-        game_entry.setdefault("unreal5_rule", "")
     if "rtss_overlay" in install_profile:
         game_entry["rtss_overlay"] = _to_bool(install_profile.get("rtss_overlay"), False)
-
-    game_entry["module_dl"] = str(game_entry.get("module_dl") or "").strip()
-    game_entry.setdefault("unreal5_rule", "")
 
 
 def merge_gpu_bundle_into_game_db(
@@ -239,8 +256,9 @@ def merge_gpu_bundle_into_game_db(
             game_entry["__gpu_bundle_loaded__"] = True
             game_entry["__gpu_bundle_supported__"] = bool(is_enabled)
             game_entry["__gpu_profile_id__"] = str(bundle_entry.get("profile_id") or "").strip()
-            if bundle_entry.get("bundle_gpu_vendor"):
-                game_entry["__gpu_bundle_vendor__"] = str(bundle_entry.get("bundle_gpu_vendor") or "").strip().lower()
+            normalized_vendor = _normalize_gpu_vendor(bundle_entry.get("bundle_gpu_vendor"))
+            if normalized_vendor:
+                game_entry["__gpu_bundle_vendor__"] = normalized_vendor
 
             _apply_install_profile(game_entry, install_profile)
 

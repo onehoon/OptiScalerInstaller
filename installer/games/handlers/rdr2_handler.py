@@ -115,7 +115,7 @@ class Rdr2Handler(BaseGameHandler):
     aliases = ()
 
     def matches(self, game_data: Mapping[str, Any]) -> bool:
-        game_name = str(game_data.get("game_name", "") or "").strip().lower()
+        game_name = str(game_data.get("game_name_en", "") or "").strip().lower()
         exe_name = Path(str(game_data.get("exe", "") or game_data.get("exe_path", "") or "")).name.strip().lower()
         return game_name == EXPECTED_RDR2_GAME_NAME.lower() and exe_name == EXPECTED_RDR2_EXE_NAME
 
@@ -184,7 +184,7 @@ class Rdr2Handler(BaseGameHandler):
     ) -> InstallPlan:
         plan_game_data = dict(game_data)
         plan_game_data["ultimate_asi_loader"] = True
-        plan_game_data["dll_name"] = OPTISCALER_ASI_NAME
+        plan_game_data["optiscaler_dll_name"] = OPTISCALER_ASI_NAME
         if logger:
             logger.info(
                 "RDR2 handler forcing Ultimate ASI Loader and OptiScaler filename: %s",

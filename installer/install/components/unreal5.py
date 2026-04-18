@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from ...system import gpu_service
 from .. import services as installer_services
 
 
@@ -14,13 +13,15 @@ def install_unreal5_patch(
     logger=None,
     cached_archive_path: str = "",
 ) -> bool:
+    if not bool(game_data.get("unreal5")):
+        return False
+
     unreal_link_entry = module_download_links.get("unreal5")
     unreal_url = ""
     if isinstance(unreal_link_entry, dict) and unreal_link_entry.get("url"):
         unreal_url = str(unreal_link_entry["url"]).strip()
 
-    unreal5_rule = str(game_data.get("unreal5_rule", "") or "").strip()
-    if not (unreal_url or cached_archive_path) or not gpu_service.matches_gpu_rule(unreal5_rule, gpu_info):
+    if not (unreal_url or cached_archive_path):
         return False
 
     unreal_installed = bool(installer_services.install_unreal5_from_url(

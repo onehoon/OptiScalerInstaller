@@ -52,7 +52,6 @@ class InstallFlowController:
         install_state: InstallRuntimeState,
         card_ui_state: CardUiRuntimeState,
         callbacks: InstallFlowCallbacks,
-        optipatcher_url: str,
         create_prefixed_logger: Callable[[str], Any],
         logger=None,
     ) -> None:
@@ -66,12 +65,12 @@ class InstallFlowController:
         self._install_state = install_state
         self._card_ui_state = card_ui_state
         self._callbacks = callbacks
-        self._optipatcher_url = str(optipatcher_url or "")
         self._create_prefixed_logger = create_prefixed_logger
         self._logger = logger or logging.getLogger()
 
     def run_install_precheck(self, game_data: Mapping[str, Any]) -> InstallSelectionPrecheckOutcome:
-        logger = self._create_prefixed_logger(str(game_data.get("game_name", "unknown")).strip() or "unknown")
+        logger_name = str(game_data.get("game_name_en", "") or game_data.get("display", "unknown")).strip() or "unknown"
+        logger = self._create_prefixed_logger(logger_name)
         handler = get_game_handler(game_data)
         self._install_state.precheck_ual_detected_names = ()
         try:
@@ -260,7 +259,7 @@ class InstallFlowController:
         specialk_cached_archive: str = "",
         unreal5_cached_archive: str = "",
     ) -> None:
-        game_name = str(game_data.get("game_name", "unknown")).strip() or "unknown"
+        game_name = str(game_data.get("game_name_en", "") or game_data.get("display", "unknown")).strip() or "unknown"
         logger = self._create_prefixed_logger(game_name)
         try:
             ual_detected_names = tuple(self._install_state.precheck_ual_detected_names or ())
@@ -278,7 +277,6 @@ class InstallFlowController:
                 self._app_ref,
                 install_ctx,
                 self._sheet_state.module_download_links,
-                self._optipatcher_url,
                 self._gpu_state.gpu_info,
                 create_install_workflow_callbacks(),
                 logger,
@@ -331,7 +329,6 @@ class InstallFlowController:
 def create_install_flow_controller(
     app: Any,
     *,
-    optipatcher_url: str,
     create_prefixed_logger: Callable[[str], Any],
 ) -> InstallFlowController:
     return InstallFlowController(
@@ -357,7 +354,6 @@ def create_install_flow_controller(
             show_warning=messagebox.showwarning,
             show_error=messagebox.showerror,
         ),
-        optipatcher_url=optipatcher_url,
         create_prefixed_logger=create_prefixed_logger,
         logger=logging.getLogger(),
     )

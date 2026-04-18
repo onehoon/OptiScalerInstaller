@@ -25,8 +25,6 @@ except Exception:  # pragma: no cover - non-Windows runtime fallback
 _DOCUMENTS_ENV_TOKEN = "%DOCUMENTS%"
 _DOCUMENTS_PREFIXES = {"documents", "document"}
 _DOCUMENTS_STYLE_PREFIXES = _DOCUMENTS_PREFIXES | {"my games"}
-_ENGINE_INI_DOCUMENTS_LOCATIONS = {"documents", "document", "my_documents", "my documents"}
-_ENGINE_INI_GAME_DIR_LOCATIONS = {"game_dir", "game", "install_dir", "workspace"}
 _REGISTRY_HIVE_MAP = {
     "hkcu": "HKEY_CURRENT_USER",
     "hkey_current_user": "HKEY_CURRENT_USER",
@@ -157,65 +155,49 @@ def _resolve_documents_candidate_path(relative_path: str) -> Path | None:
 
 
 def resolve_ingame_ini_path(target_path: str, ingame_ini_name: str, logger=None) -> str | None:
-    resolved = _resolve_existing_profile_path(target_path, ingame_ini_name, logger=logger)
+    resolved = _resolve_profile_path(target_path, ingame_ini_name, require_existing=True, logger=logger)
     return str(resolved) if resolved is not None else None
 
 
-def _resolve_existing_profile_path(target_path: str, relative_path: str, logger=None) -> Path | None:
-    raw_path = str(relative_path or "").strip()
+def _resolve_profile_path(
+    target_path: str,
+    configured_path: str,
+    *,
+    require_existing: bool,
+    logger=None,
+) -> Path | None:
+    raw_path = str(configured_path or "").strip()
     if not raw_path:
         return None
 
     expanded_path = Path(os.path.expanduser(os.path.expandvars(raw_path)))
     if expanded_path.is_absolute():
-        return expanded_path if expanded_path.is_file() else None
+        if require_existing and not expanded_path.is_file():
+            return None
+        return expanded_path
+
+    first_part = next(iter(_split_relative_path_parts(raw_path)), "").strip().casefold()
+    if first_part in _DOCUMENTS_STYLE_PREFIXES:
+        documents_candidate = _resolve_documents_candidate_path(raw_path)
+        if documents_candidate is not None and (not require_existing or documents_candidate.is_file()):
+            return documents_candidate
+        if logger:
+            logger.info("Profile target not found under Documents: %s", raw_path)
+        return None
 
     direct_candidate = Path(target_path) / raw_path
-    if direct_candidate.is_file():
+    if not require_existing or direct_candidate.is_file():
         return direct_candidate
 
     documents_candidate = _resolve_documents_candidate_path(raw_path)
     if documents_candidate is not None and documents_candidate.is_file():
         return documents_candidate
 
-    first_part = next(iter(_split_relative_path_parts(raw_path)), "").strip().casefold()
-    if first_part in _DOCUMENTS_STYLE_PREFIXES:
-        if logger:
-            logger.info("Profile target not found under Documents: %s", raw_path)
-        return None
-
     documents_fallback = _resolve_documents_candidate_path(f"Documents\\{raw_path}")
     if documents_fallback is not None and documents_fallback.is_file():
         return documents_fallback
 
     return None
-
-
-def _resolve_engine_profile_path(target_path: str, row: Mapping[str, Any], logger=None) -> Path | None:
-    relative_path = str(row.get("relative_path") or "").strip()
-    location = str(row.get("engine_ini_location") or "").strip()
-
-    if relative_path:
-        expanded_path = Path(os.path.expanduser(os.path.expandvars(relative_path)))
-        if expanded_path.is_absolute():
-            return expanded_path
-
-    normalized_location = location.casefold()
-    if normalized_location in _ENGINE_INI_DOCUMENTS_LOCATIONS:
-        documents_path = _resolve_documents_candidate_path(relative_path or "Engine.ini")
-        if documents_path is not None:
-            return documents_path
-
-    if normalized_location in _ENGINE_INI_GAME_DIR_LOCATIONS or not location:
-        return Path(target_path) / (relative_path or "Engine.ini")
-
-    expanded_location = os.path.expanduser(os.path.expandvars(location))
-    location_path = Path(expanded_location)
-    if location_path.suffix.lower() == ".ini":
-        return location_path
-    if location_path.is_absolute():
-        return location_path / (relative_path or "Engine.ini")
-    return Path(target_path) / location_path / (relative_path or "Engine.ini")
 
 
 def _normalize_profile_scalar(value: object, *, value_type: str = "") -> str:
@@ -260,21 +242,23 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
     for row in list(game_data.get("game_ini_profile") or []):
         if not isinstance(row, Mapping):
             continue
-        relative_path = str(row.get("relative_path") or "").strip()
+        profile_path = str(row.get("path") or "").strip()
         section = str(row.get("section") or "").strip()
         key = str(row.get("key") or "").strip()
-        if not relative_path or not section or not key:
+        if not profile_path or not section or not key:
             continue
 
-        resolved_path = _resolve_existing_profile_path(target_path, relative_path, logger=logger)
-        if resolved_path is None:
-            logger.info("Skipped game_ini_profile because target file was not found: %s", relative_path)
-            continue
-
-        ini_targets.setdefault(resolved_path, {})[(section, key)] = _normalize_profile_scalar(
-            row.get("value"),
-            value_type=str(row.get("value_type") or ""),
+        resolved_path = _resolve_profile_path(
+            target_path,
+            profile_path,
+            require_existing=True,
+            logger=logger,
         )
+        if resolved_path is None:
+            logger.info("Skipped game_ini_profile because target file was not found: %s", profile_path)
+            continue
+
+        ini_targets.setdefault(resolved_path, {})[(section, key)] = _normalize_profile_scalar(row.get("value"))
 
     for file_path, settings in ini_targets.items():
         def _apply_ini() -> None:
@@ -297,21 +281,23 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
     for row in list(game_data.get("game_xml_profile") or []):
         if not isinstance(row, Mapping):
             continue
-        relative_path = str(row.get("relative_path") or "").strip()
-        xpath = str(row.get("xpath") or "").strip()
-        if not relative_path or not xpath:
+        profile_path = str(row.get("path") or "").strip()
+        xml_path = str(row.get("xml_path") or "").strip()
+        if not profile_path or not xml_path:
             continue
 
-        resolved_path = _resolve_existing_profile_path(target_path, relative_path, logger=logger)
-        if resolved_path is None:
-            logger.info("Skipped game_xml_profile because target file was not found: %s", relative_path)
-            continue
-
-        normalized_xpath = xpath[2:] if xpath.startswith("./") else xpath
-        xml_targets.setdefault(resolved_path, {})[normalized_xpath] = _normalize_profile_scalar(
-            row.get("value"),
-            value_type=str(row.get("value_type") or ""),
+        resolved_path = _resolve_profile_path(
+            target_path,
+            profile_path,
+            require_existing=True,
+            logger=logger,
         )
+        if resolved_path is None:
+            logger.info("Skipped game_xml_profile because target file was not found: %s", profile_path)
+            continue
+
+        normalized_xml_path = xml_path[2:] if xml_path.startswith("./") else xml_path
+        xml_targets.setdefault(resolved_path, {})[normalized_xml_path] = _normalize_profile_scalar(row.get("value"))
 
     for file_path, settings in xml_targets.items():
         def _apply_xml() -> None:
@@ -336,20 +322,23 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
     for row in list(game_data.get("engine_ini_profile") or []):
         if not isinstance(row, Mapping):
             continue
+        profile_path = str(row.get("path") or "").strip()
         section = str(row.get("section") or "").strip()
         key = str(row.get("key") or "").strip()
-        if not section or not key:
+        if not profile_path or not section or not key:
             continue
 
-        engine_path = _resolve_engine_profile_path(target_path, row, logger=logger)
+        engine_path = _resolve_profile_path(
+            target_path,
+            profile_path,
+            require_existing=False,
+            logger=logger,
+        )
         if engine_path is None:
             continue
 
         section_map = engine_targets.setdefault(engine_path, {})
-        section_map.setdefault(section, {})[key] = _normalize_profile_scalar(
-            row.get("value"),
-            value_type=str(row.get("value_type") or ""),
-        )
+        section_map.setdefault(section, {})[key] = _normalize_profile_scalar(row.get("value"))
 
     for engine_path, section_map in engine_targets.items():
         try:
@@ -389,10 +378,10 @@ def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
 
     for row in rows:
         hive_name = str(row.get("hive") or "").strip().casefold()
-        reg_path = str(row.get("reg_path") or "").strip()
+        key_path = str(row.get("key_path") or "").strip()
         value_name = str(row.get("value_name") or "").strip()
         value_type_name = str(row.get("value_type") or "").strip().casefold()
-        if not hive_name or not reg_path or not value_name or not value_type_name:
+        if not hive_name or not key_path or not value_name or not value_type_name:
             continue
 
         resolved_hive_name = _REGISTRY_HIVE_MAP.get(hive_name)
@@ -409,7 +398,7 @@ def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
             root_key = getattr(winreg, resolved_hive_name)
             registry_type = getattr(winreg, resolved_type_name)
             registry_value = _coerce_registry_value(row.get("value"), value_type_name)
-            with winreg.CreateKeyEx(root_key, reg_path, 0, winreg.KEY_SET_VALUE) as key:
+            with winreg.CreateKeyEx(root_key, key_path, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.SetValueEx(
                     key,
                     value_name,
@@ -417,9 +406,9 @@ def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
                     registry_type,
                     registry_value,
                 )
-            logger.info("Applied registry_profile value %s\\%s", reg_path, value_name)
+            logger.info("Applied registry_profile value %s\\%s", key_path, value_name)
         except Exception:
-            logger.exception("Failed to apply registry_profile row: %s", reg_path)
+            logger.exception("Failed to apply registry_profile row: %s", key_path)
 
 
 def install_fsr4_dll(target_path: str, fsr4_source_archive: str, logger) -> Path:

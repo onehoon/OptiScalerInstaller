@@ -19,7 +19,7 @@ def _normalize_handler_token(value: Any) -> str:
 
 
 def _iter_game_tokens(game_data: Mapping[str, Any]) -> Iterable[str]:
-    for key in ("game_name", "display", "exe", "exe_path"):
+    for key in ("game_name", "game_name_en", "display", "exe", "exe_path"):
         normalized = _normalize_handler_token(game_data.get(key, ""))
         if normalized:
             yield normalized
@@ -97,7 +97,7 @@ class BaseGameHandler:
         logger,
     ) -> InstallPrecheckResult:
         target_path = str(game_data.get("path", "")).strip()
-        preferred_dll = str(game_data.get("dll_name", "")).strip()
+        preferred_dll = str(game_data.get("optiscaler_dll_name", "")).strip()
         mod_state = scan_mod_precheck_state(target_path, logger=logger)
         conflict_findings = build_mod_conflict_findings(mod_state)
         try:

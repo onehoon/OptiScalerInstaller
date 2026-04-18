@@ -10,7 +10,6 @@ from ..common.network_utils import get_shared_retry_session
 
 
 _PROFILE_SESSION = get_shared_retry_session()
-_PROFILE_CATALOG_FALSE_VALUES = {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-"}
 
 
 @dataclass(frozen=True)
@@ -23,14 +22,6 @@ class ProfileCatalogs:
 
 def _normalize_profile_id(value: object) -> str:
     return str(value or "").strip().casefold()
-
-
-def _is_enabled_flag(value: object) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, bool):
-        return value
-    return str(value or "").strip().lower() not in _PROFILE_CATALOG_FALSE_VALUES
 
 
 def _load_profile_rows(source_url: str, *, label: str, timeout_seconds: float = 10.0) -> list[dict[str, Any]]:
@@ -49,8 +40,6 @@ def _load_profile_rows(source_url: str, *, label: str, timeout_seconds: float = 
 def _build_profile_index(rows: Sequence[Mapping[str, Any]]) -> dict[str, tuple[dict[str, Any], ...]]:
     indexed: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        if not _is_enabled_flag(row.get("enabled")):
-            continue
         profile_id = _normalize_profile_id(row.get("profile_id"))
         if not profile_id:
             continue

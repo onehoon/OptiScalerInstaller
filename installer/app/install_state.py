@@ -49,11 +49,11 @@ def build_selected_game_snapshot(
         header_text = str(
             selected_game.get("display", "")
             or selected_game.get("game_name_kr", "")
-            or selected_game.get("game_name", "")
+            or selected_game.get("game_name_en", "")
         ).strip()
     else:
         header_text = str(
-            selected_game.get("game_name", "")
+            selected_game.get("game_name_en", "")
             or selected_game.get("display", "")
         ).strip()
 

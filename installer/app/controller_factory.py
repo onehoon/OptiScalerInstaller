@@ -41,7 +41,6 @@ class AppControllerFactoryConfig:
     message_popup_theme: Any
     root_height_fallback: int
     root_width_fallback: int
-    optipatcher_url: str
     supported_games_wiki_url: str
     game_ini_profile_url: str = ""
     engine_ini_profile_url: str = ""
@@ -376,7 +375,6 @@ def _build_scan_entry_controller(app: Any) -> ScanEntryController:
 def _build_install_flow_controller(app: Any, config: AppControllerFactoryConfig) -> InstallFlowController:
     return create_install_flow_controller(
         app,
-        optipatcher_url=config.optipatcher_url,
         create_prefixed_logger=config.create_prefixed_logger,
     )
 
