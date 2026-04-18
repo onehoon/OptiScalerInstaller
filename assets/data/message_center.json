@@ -19,7 +19,7 @@
     "en": "[red]Before install, set Borderless, FSR3/FSRFG in-game[end]",
     "url": "",
     "enabled": true,
-    "memo": "DWORIGINS 등 공통"
+    "memo": ""
   },
   {
     "message_id": "install_pre.borderless_required",
