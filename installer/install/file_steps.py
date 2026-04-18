@@ -365,10 +365,23 @@ def _coerce_registry_value(value: object, value_type: str) -> object:
     return str(value or "")
 
 
+def _dedupe_registry_rows(rows: list[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    deduped: dict[tuple[str, str, str], Mapping[str, Any]] = {}
+    for row in rows:
+        hive_name = str(row.get("hive") or "").strip().casefold()
+        key_path = str(row.get("key_path") or "").strip()
+        value_name = str(row.get("value_name") or "").strip()
+        if not hive_name or not key_path or not value_name:
+            continue
+        deduped[(hive_name, key_path, value_name)] = row
+    return list(deduped.values())
+
+
 def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
     rows = [row for row in list(game_data.get("registry_profile") or []) if isinstance(row, Mapping)]
     if not rows:
         return
+    rows = _dedupe_registry_rows(rows)
 
     for row in rows:
         hive_name = str(row.get("hive") or "").strip().casefold()
