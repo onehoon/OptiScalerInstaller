@@ -118,5 +118,35 @@
     "priority": 100,
     "enabled": true,
     "memo": "DLSS설정 후 재실행1"
+  },
+  {
+    "binding_id": "install_pre.borderless_fsr3_required",
+    "game_id": "HFW",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "binding_id": "install_pre.borderless_fsr3_required",
+    "game_id": "HFW",
+    "gpu_vendor": "AMD",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "binding_id": "install_post.dlss_relaunch",
+    "game_id": "HFW",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "enabled": true,
+    "memo": ""
   }
 ]
