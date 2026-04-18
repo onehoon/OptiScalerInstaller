@@ -183,6 +183,8 @@ OPTIPATCHER_URL = _get_runtime_config_value(
     "https://github.com/optiscaler/OptiPatcher/releases/latest/download/OptiPatcher.asi",
 )
 OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
+OPTISCALER_GAME_MASTER_URL = _get_runtime_config_value("OPTISCALER_GAME_MASTER_URL", "").strip()
+OPTISCALER_RESOURCE_MASTER_URL = _get_runtime_config_value("OPTISCALER_RESOURCE_MASTER_URL", "").strip()
 OPTISCALER_MESSAGE_CENTER_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_CENTER_URL", "").strip()
 OPTISCALER_MESSAGE_BINDING_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_BINDING_URL", "").strip()
 
@@ -310,6 +312,9 @@ FSR4_SKIP_GPU_RULE = "*rx 90*"
 APP_BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 ASSETS_DIR = APP_BASE_DIR / "assets"
 DEFAULT_POSTER_CANDIDATES = [
+    ASSETS_DIR / "cover" / "default_poster.webp",
+    ASSETS_DIR / "cover" / "default_poster.jpg",
+    ASSETS_DIR / "cover" / "default_poster.png",
     ASSETS_DIR / "default_poster.webp",
     ASSETS_DIR / "default_poster.jpg",
     ASSETS_DIR / "default_poster.png",
@@ -365,6 +370,8 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     create_prefixed_logger=get_prefixed_logger,
     default_sheet_gid=SHEET_GID,
     gpu_bundle_url=OPTISCALER_GPU_BUNDLE_URL,
+    game_master_url=OPTISCALER_GAME_MASTER_URL,
+    resource_master_url=OPTISCALER_RESOURCE_MASTER_URL,
     message_binding_url=OPTISCALER_MESSAGE_BINDING_URL,
     message_center_url=OPTISCALER_MESSAGE_CENTER_URL,
     gpu_notice_theme=APP_THEME.gpu_notice_theme,
@@ -604,7 +611,31 @@ class OptiManagerApp:
     def _is_multi_gpu_block_active(self) -> bool:
         return self.gpu_state.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
+    @staticmethod
+    def _is_truthy_support_flag(value: object) -> bool:
+        if isinstance(value, bool):
+            return value
+        text = str(value or "").strip().lower()
+        if not text:
+            return False
+        if text in {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-", "native xefg"}:
+            return False
+        return True
+
+    def _is_vendor_allowed_by_game_flags(self, game_data: dict) -> bool:
+        vendor = str(self.sheet_state.active_vendor or "").strip().lower()
+        if vendor not in {"intel", "amd", "nvidia"}:
+            return True
+
+        support_key = f"support_{vendor}"
+        if support_key not in game_data:
+            return True
+
+        return self._is_truthy_support_flag(game_data.get(support_key))
+
     def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
+        if not self._is_vendor_allowed_by_game_flags(game_data):
+            return False
         if bool(game_data.get("__gpu_bundle_loaded__", False)):
             return bool(game_data.get("__gpu_bundle_supported__", False))
         return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), self.gpu_state.gpu_info)

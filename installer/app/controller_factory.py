@@ -31,6 +31,8 @@ class AppControllerFactoryConfig:
     create_prefixed_logger: Callable[[str], Any]
     default_sheet_gid: int
     gpu_bundle_url: str
+    game_master_url: str
+    resource_master_url: str
     message_binding_url: str
     message_center_url: str
     gpu_notice_theme: Any
@@ -221,14 +223,25 @@ def _build_archive_controller(app: Any) -> ArchivePreparationController:
 
 
 def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> GameDbLoadController:
+    load_game_db = (
+        (lambda gid: sheet_loader.load_game_db_from_remote_json(config.game_master_url, gid))
+        if str(config.game_master_url or "").strip()
+        else sheet_loader.load_game_db_from_local_json
+    )
+    load_module_download_links = (
+        (lambda: sheet_loader.load_module_download_links_from_remote_json(config.resource_master_url))
+        if str(config.resource_master_url or "").strip()
+        else sheet_loader.load_module_download_links_from_local_json
+    )
+
     return GameDbLoadController(
         executor=app._task_executor,
         schedule=lambda callback: app.root.after(0, callback),
         callbacks=GameDbControllerCallbacks(
             on_load_complete=app._on_game_db_loaded,
         ),
-        load_game_db=sheet_loader.load_game_db_from_local_json,
-        load_module_download_links=sheet_loader.load_module_download_links_from_local_json,
+        load_game_db=load_game_db,
+        load_module_download_links=load_module_download_links,
         message_center_url=config.message_center_url,
         message_binding_url=config.message_binding_url,
         load_message_center=message_loader.load_message_center,

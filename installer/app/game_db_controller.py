@@ -128,7 +128,8 @@ class GameDbLoadController:
                     bundle = self._load_gpu_bundle(self._gpu_bundle_url, game_db_vendor, gpu_model)
                     game_db = self._merge_gpu_bundle(game_db, bundle)
                 except Exception as bundle_err:
-                    self._logger.warning("Failed to load GPU bundle: %s", bundle_err)
+                    self._logger.error("Failed to load GPU bundle: %s", bundle_err)
+                    raise RuntimeError("GPU bundle load failed") from bundle_err
 
             module_links: dict[str, Any] = {}
             try:

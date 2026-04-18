@@ -7,6 +7,10 @@ from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 from ..common.cover_utils import normalize_cover_filename
+from ..common.network_utils import get_shared_retry_session
+
+
+_file_session = get_shared_retry_session()
 
 
 def _split_match_files(match_text: str) -> list[str]:
@@ -37,6 +41,21 @@ def load_game_db_from_local_json(_gid=0):
     with game_master_path.open("r", encoding="utf-8") as fp:
         rows = json.load(fp)
 
+    return _build_game_db_from_rows(rows)
+
+
+def load_game_db_from_remote_json(source_url: str, _gid=0, *, timeout_seconds: float = 10.0):
+    normalized = str(source_url or "").strip()
+    if not normalized:
+        raise ValueError("Game master URL is empty")
+    response = _file_session.get(normalized, timeout=timeout_seconds)
+    response.raise_for_status()
+    rows = json.loads(response.content.decode("utf-8-sig"))
+    return _build_game_db_from_rows(rows)
+
+
+def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
+
     if not isinstance(rows, list):
         raise ValueError("game_master.json must contain a list")
 
@@ -44,7 +63,8 @@ def load_game_db_from_local_json(_gid=0):
     for sheet_order, row in enumerate(rows):
         if not isinstance(row, dict):
             continue
-        if not bool(row.get("enabled", True)):
+        enabled = _is_enabled_flag(row.get("enabled", True))
+        if not enabled:
             continue
 
         exe_path = str(row.get("match_exe", "") or "").strip()
@@ -74,6 +94,7 @@ def load_game_db_from_local_json(_gid=0):
 
         db[match_rule_key] = {
             "game_id": str(row.get("game_id", "") or "").strip(),
+            "enabled": enabled,
             "sheet_order": sheet_order,
             "exe_path": exe_path,
             "match_files": match_files,
@@ -96,6 +117,9 @@ def load_game_db_from_local_json(_gid=0):
             "information_kr": str(row.get("information_kr", "") or "").strip(),
             "cover_url": str(row.get("cover_url", "") or "").strip(),
             "filename_cover": normalize_cover_filename(str(row.get("cover_filename", "") or "")),
+            "support_intel": row.get("support_intel", ""),
+            "support_amd": row.get("support_amd", ""),
+            "support_nvidia": row.get("support_nvidia", ""),
             "supported_gpu": supported_gpu_rule,
             "ingame_ini": str(row.get("ingame_ini", "") or "").strip(),
             "ingame_settings": {},
@@ -112,6 +136,21 @@ def load_module_download_links_from_local_json():
 
     with resource_master_path.open("r", encoding="utf-8") as fp:
         rows = json.load(fp)
+
+    return _build_module_download_links_from_rows(rows)
+
+
+def load_module_download_links_from_remote_json(source_url: str, *, timeout_seconds: float = 10.0):
+    normalized = str(source_url or "").strip()
+    if not normalized:
+        raise ValueError("Resource master URL is empty")
+    response = _file_session.get(normalized, timeout=timeout_seconds)
+    response.raise_for_status()
+    rows = json.loads(response.content.decode("utf-8-sig"))
+    return _build_module_download_links_from_rows(rows)
+
+
+def _build_module_download_links_from_rows(rows: object) -> dict[str, dict[str, str] | str]:
 
     if not isinstance(rows, list):
         raise ValueError("resource_master.json must contain a list")
@@ -154,9 +193,15 @@ def _is_truthy_support_flag(value: object) -> bool:
     text = str(value or "").strip().lower()
     if not text:
         return False
-    if text in {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-"}:
+    if text in {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-", "native xefg"}:
         return False
     return True
+
+
+def _is_enabled_flag(value: object) -> bool:
+    if value is None:
+        return True
+    return _is_truthy_support_flag(value)
 
 
 def _is_true_value(value):
