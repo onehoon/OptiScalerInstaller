@@ -1,26 +1,20 @@
 [
   {
     "profile_id": "RDR2_DEFAULT",
-    "relative_path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xpath": "./rage__fwuiSystemSettingsCollection/advancedGraphics/frameGeneration",
-    "value": true,
-    "value_type": "bool",
-    "enabled": true
+    "path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
+    "xml_path": "./rage__fwuiSystemSettingsCollection/advancedGraphics/frameGeneration",
+    "value": true
   },
   {
     "profile_id": "RDR2_DEFAULT",
-    "relative_path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xpath": "./rage__fwuiSystemSettingsCollection/graphics/dlssIndex",
-    "value": 1,
-    "value_type": "int",
-    "enabled": true
+    "path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
+    "xml_path": "./rage__fwuiSystemSettingsCollection/graphics/dlssIndex",
+    "value": 1
   },
   {
     "profile_id": "RDR2_DEFAULT",
-    "relative_path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xpath": "./rage__fwuiSystemSettingsCollection/video/windowed",
-    "value": true,
-    "value_type": "bool",
-    "enabled": true
+    "path": "Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
+    "xml_path": "./rage__fwuiSystemSettingsCollection/video/windowed",
+    "value": true
   }
 ]
