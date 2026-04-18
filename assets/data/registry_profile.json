@@ -1,11 +1,27 @@
 [
   {
-    "profile_id": "HFW_NVIDIA",
+    "profile_id": "HFW_ALL",
     "hive": "HKCU",
     "key_path": "Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition\\Graphics",
     "value_name": "ExclusiveFullscreen",
     "value_type": "REG_DWORD",
     "value": 0
+  },
+  {
+    "profile_id": "HFW_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition\\Graphics",
+    "value_name": "FrameGen",
+    "value_type": "REG_DWORD",
+    "value": 1
+  },
+  {
+    "profile_id": "HFW_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition\\Graphics",
+    "value_name": "UpscaleMethod",
+    "value_type": "REG_DWORD",
+    "value": 3
   },
   {
     "profile_id": "HFW_NVIDIA",
