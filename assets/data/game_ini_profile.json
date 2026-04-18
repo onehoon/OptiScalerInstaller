@@ -1,42 +1,79 @@
 [
   {
     "profile_id": "FFXVI_DEFAULT",
-    "relative_path": "My Games\\FFXVI\\Config\\GameUserSettings.ini",
+    "path": "My Games\\FFXVI\\Config\\GameUserSettings.ini",
     "section": "Graphics",
     "key": "Upscaler",
-    "value": "DLSS",
-    "enabled": true
+    "value": "DLSS"
   },
   {
     "profile_id": "FFXVI_DEFAULT",
-    "relative_path": "My Games\\FFXVI\\Config\\GameUserSettings.ini",
+    "path": "My Games\\FFXVI\\Config\\GameUserSettings.ini",
     "section": "Graphics",
     "key": "FrameGeneration",
-    "value": true,
-    "enabled": true
+    "value": true
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
-    "relative_path": "Config\\graphics.ini",
+    "path": "Config\\graphics.ini",
     "section": "Display",
     "key": "FullscreenMode",
-    "value": "Borderless",
-    "enabled": true
+    "value": "Borderless"
   },
   {
     "profile_id": "DWORIGINS_INTEL_DEFAULT",
-    "relative_path": "Config\\graphics.ini",
+    "path": "Config\\graphics.ini",
     "section": "Upscaling",
     "key": "Mode",
-    "value": "FSR3",
-    "enabled": true
+    "value": "FSR3"
   },
   {
     "profile_id": "DWORIGINS_NVIDIA_DEFAULT",
-    "relative_path": "Config\\graphics.ini",
+    "path": "Config\\graphics.ini",
     "section": "Upscaling",
     "key": "Mode",
-    "value": "DLSS",
-    "enabled": true
+    "value": "DLSS"
+  },
+  {
+    "profile_id": "",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
+  },
+  {
+    "profile_id": "SHF_NVIDIA",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
+  },
+  {
+    "profile_id": "SHF_AMD",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
+  },
+  {
+    "profile_id": "SHF_INTEL",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
+  },
+  {
+    "profile_id": "SHF_AMD_iGPU",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
+  },
+  {
+    "profile_id": "SHF_INTEL_iGPU",
+    "path": "",
+    "section": "",
+    "key": "",
+    "value": ""
   }
 ]
