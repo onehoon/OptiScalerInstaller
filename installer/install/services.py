@@ -374,8 +374,6 @@ def extract_archive(archive_path, target_path, logger=None):
             check=True,
             **subprocess_no_window_kwargs(),
         )
-        if logger:
-            logger.info("Extracted archive %s to %s using tar.exe", archive_path, target_path)
 
     try:
         if ext == ".zip":

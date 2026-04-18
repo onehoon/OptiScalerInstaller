@@ -58,6 +58,7 @@ class SheetRuntimeState:
     active_gid: int = 0
     game_db: dict[str, Any] = field(default_factory=dict)
     module_download_links: dict[str, Any] = field(default_factory=dict)
+    startup_warning_text: str = ""
 
 
 @dataclass
@@ -140,6 +141,7 @@ _RUNTIME_STATE_FIELD_MAP = {
     "active_game_db_gid": ("_sheet_state", "active_gid", SheetRuntimeState),
     "game_db": ("_sheet_state", "game_db", SheetRuntimeState),
     "module_download_links": ("_sheet_state", "module_download_links", SheetRuntimeState),
+    "startup_warning_text": ("_sheet_state", "startup_warning_text", SheetRuntimeState),
     "install_in_progress": ("_install_state", "in_progress", InstallRuntimeState),
     "_game_popup_confirmed": ("_install_state", "popup_confirmed", InstallRuntimeState),
     "install_precheck_running": ("_install_state", "precheck_running", InstallRuntimeState),
@@ -151,7 +153,7 @@ _RUNTIME_STATE_FIELD_MAP = {
 }
 
 
-def build_runtime_state_bundle(*, checking_gpu_text: str, default_sheet_gid: int) -> RuntimeStateBundle:
+def build_runtime_state_bundle(*, checking_gpu_text: str, default_sheet_gid: int = 0) -> RuntimeStateBundle:
     return RuntimeStateBundle(
         archive_state=ArchiveRuntimeState(),
         gpu_state=GpuRuntimeState(gpu_info=str(checking_gpu_text or "")),

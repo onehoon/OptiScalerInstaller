@@ -26,7 +26,7 @@ class GpuFlowState:
     gpu_selection_pending: bool
     selected_adapter: gpu_service.GpuAdapterChoice | None
     game_db_vendor: str | None
-    game_db_gid: int | None
+    game_db_gid: int | None = None
 
 
 @dataclass(frozen=True)
@@ -46,15 +46,15 @@ class GpuFlowController:
         executor: Executor,
         schedule: SchedulerCallback,
         callbacks: GpuFlowCallbacks,
-        vendor_db_gids: Mapping[str, int],
-        default_gid: int,
+        vendor_db_gids: Mapping[str, int] | None = None,
+        default_gid: int = 0,
         unknown_gpu_text: str,
         waiting_for_gpu_selection_text: str,
         unsupported_gpu_message: str,
         unsupported_gpu_info_text: str,
         detect_gpu_context: GpuContextDetector,
         select_dual_gpu_adapter: GpuAdapterSelector,
-        show_unsupported_gpu_notice: Callable[[], None],
+        show_unsupported_gpu_notice: Callable[[], None] = lambda: None,
         max_supported_gpu_count: int = 2,
         logger=None,
     ) -> None:

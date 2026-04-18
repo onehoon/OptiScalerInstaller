@@ -68,7 +68,11 @@ def resolve_safe_child_path(base_dir: Path, child_path: str) -> Optional[Path]:
 
 
 def get_installer_update_entry(module_download_links: Mapping[str, object]) -> dict:
-    entry = module_download_links.get("latest_installer_dl", {}) if isinstance(module_download_links, Mapping) else {}
+    if not isinstance(module_download_links, Mapping):
+        return {}
+    entry = module_download_links.get("latest_installer_dl", {})
+    if not isinstance(entry, dict) or not entry:
+        entry = module_download_links.get("optiscaler_installer", {})
     return entry if isinstance(entry, dict) else {}
 
 

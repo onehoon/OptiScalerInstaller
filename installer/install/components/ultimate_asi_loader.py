@@ -40,10 +40,11 @@ def _resolve_ual_representative_name(dll_names: tuple[str, ...]) -> str:
 
 def install_ultimate_asi_loader(
     target_path: str,
-    module_download_links: Mapping[str, object],
+    module_download_links: Mapping[str, object] | None = None,
     ual_detected_names: tuple[str, ...] | None = None,
     logger=None,
     cached_archive_path: str = "",
+    resource_master: Mapping[str, object] | None = None,
 ) -> None:
     """Install or update Ultimate ASI Loader.
 
@@ -66,7 +67,11 @@ def install_ultimate_asi_loader(
     if not target_dir.is_dir():
         raise ValueError(f"Invalid target folder: {target_path}")
 
-    link_entry = module_download_links.get("ultimateasiloader")
+    links = module_download_links if isinstance(module_download_links, Mapping) else resource_master
+    if not isinstance(links, Mapping):
+        links = {}
+
+    link_entry = links.get("ultimateasiloader")
     url = ""
     if isinstance(link_entry, dict):
         url = str(link_entry.get("url", "") or "").strip()

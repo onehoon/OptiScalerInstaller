@@ -200,7 +200,8 @@ class BottomPanelPresenter:
         version_label: Any,
         *,
         sheet_loading: bool,
-        module_download_links: dict[str, Any],
+        module_download_links: dict[str, Any] | None = None,
+        resource_master: dict[str, Any] | None = None,
         version_line_template: str,
     ) -> None:
         if version_label is None:
@@ -210,7 +211,8 @@ class BottomPanelPresenter:
                 version_label.configure(text="")
             return
 
-        entry = module_download_links.get("optiscaler", {}) if isinstance(module_download_links, dict) else {}
+        links = module_download_links if isinstance(module_download_links, dict) else resource_master
+        entry = links.get("optiscaler", {}) if isinstance(links, dict) else {}
         archive_name = ""
         version = ""
 

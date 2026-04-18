@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import logging
+from queue import Empty, SimpleQueue
 from tkinter import filedialog, messagebox
 from typing import Any
 
@@ -64,15 +65,50 @@ class AppControllers:
     card_render: CardRenderController
 
 
+def _build_thread_safe_ui_scheduler(root: Any, *, logger: Any = None, poll_ms: int = 25) -> Callable[[Callable[[], None]], None]:
+    pending_callbacks: SimpleQueue[Callable[[], None]] = SimpleQueue()
+    schedule_logger = logger or logging.getLogger()
+
+    def _drain_pending_callbacks() -> None:
+        while True:
+            try:
+                callback = pending_callbacks.get_nowait()
+            except Empty:
+                break
+            try:
+                callback()
+            except Exception:
+                schedule_logger.exception("[APP] Scheduled UI callback failed")
+
+        try:
+            if hasattr(root, "winfo_exists") and callable(root.winfo_exists) and not root.winfo_exists():
+                return
+            root.after(poll_ms, _drain_pending_callbacks)
+        except Exception:
+            # App may be closing; callbacks are best-effort.
+            return
+
+    try:
+        root.after(poll_ms, _drain_pending_callbacks)
+    except Exception:
+        schedule_logger.debug("[APP] Failed to start UI callback scheduler", exc_info=True)
+
+    def _schedule(callback: Callable[[], None]) -> None:
+        pending_callbacks.put(callback)
+
+    return _schedule
+
+
 def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppControllers:
+    ui_schedule = _build_thread_safe_ui_scheduler(app.root, logger=logging.getLogger())
     app_notice = _build_app_notice_controller(app, config)
     app_actions = _build_app_actions_controller(app, config)
     app_shutdown = _build_app_shutdown_controller(app)
-    archive = _build_archive_controller(app)
-    game_db = _build_game_db_controller(app, config)
-    gpu_flow = _build_gpu_flow_controller(app, config)
+    archive = _build_archive_controller(app, ui_schedule)
+    game_db = _build_game_db_controller(app, config, ui_schedule)
+    gpu_flow = _build_gpu_flow_controller(app, config, ui_schedule)
     scan_feedback = _build_scan_feedback_controller(app, config)
-    scan = _build_scan_controller(app, scan_feedback)
+    scan = _build_scan_controller(app, scan_feedback, ui_schedule)
     scan_entry = _build_scan_entry_controller(app)
     install_flow = _build_install_flow_controller(app, config)
     install_selection = _build_install_selection_controller(app, install_flow)
@@ -207,10 +243,10 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
     )
 
 
-def _build_archive_controller(app: Any) -> ArchivePreparationController:
+def _build_archive_controller(app: Any, schedule_ui: Callable[[Callable[[], None]], None]) -> ArchivePreparationController:
     return ArchivePreparationController(
         executor=app._download_executor,
-        schedule=lambda callback: app.root.after(0, callback),
+        schedule=schedule_ui,
         callbacks=ArchivePreparationCallbacks(
             on_optiscaler_state_changed=app._on_optiscaler_archive_state_changed,
             on_fsr4_state_changed=app._on_fsr4_archive_state_changed,
@@ -232,7 +268,11 @@ def _require_remote_json_url(name: str, value: str) -> str:
     return normalized
 
 
-def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> GameDbLoadController:
+def _build_game_db_controller(
+    app: Any,
+    config: AppControllerFactoryConfig,
+    schedule_ui: Callable[[Callable[[], None]], None],
+) -> GameDbLoadController:
     game_master_url = _require_remote_json_url("game_master_url", config.game_master_url)
     resource_master_url = _require_remote_json_url("resource_master_url", config.resource_master_url)
     message_center_url = _require_remote_json_url("message_center_url", config.message_center_url)
@@ -246,7 +286,7 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
 
     return GameDbLoadController(
         executor=app._task_executor,
-        schedule=lambda callback: app.root.after(0, callback),
+        schedule=schedule_ui,
         callbacks=GameDbControllerCallbacks(
             on_load_complete=app._on_game_db_loaded,
         ),
@@ -270,10 +310,14 @@ def _build_game_db_controller(app: Any, config: AppControllerFactoryConfig) -> G
     )
 
 
-def _build_gpu_flow_controller(app: Any, config: AppControllerFactoryConfig) -> GpuFlowController:
+def _build_gpu_flow_controller(
+    app: Any,
+    config: AppControllerFactoryConfig,
+    schedule_ui: Callable[[Callable[[], None]], None],
+) -> GpuFlowController:
     return GpuFlowController(
         executor=app._task_executor,
-        schedule=lambda callback: app.root.after(0, callback),
+        schedule=schedule_ui,
         callbacks=GpuFlowCallbacks(
             apply_state=app._apply_gpu_flow_state,
             handle_unsupported_gpu=app._handle_unsupported_gpu_block,
@@ -335,10 +379,14 @@ def _build_scan_feedback_controller(app: Any, config: AppControllerFactoryConfig
     )
 
 
-def _build_scan_controller(app: Any, scan_feedback: ScanFeedbackController) -> ScanController:
+def _build_scan_controller(
+    app: Any,
+    scan_feedback: ScanFeedbackController,
+    schedule_ui: Callable[[Callable[[], None]], None],
+) -> ScanController:
     return ScanController(
         executor=app._scan_executor,
-        schedule=lambda callback: app.root.after(0, callback),
+        schedule=schedule_ui,
         callbacks=ScanControllerCallbacks(
             prepare_scan_ui=scan_feedback.prepare_scan_ui,
             reset_scan_results=app._reset_scan_results_for_new_scan,

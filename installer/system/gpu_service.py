@@ -43,7 +43,7 @@ class GpuContext:
     gpu_count: int
     gpu_info: str
     selected_vendor: str
-    selected_gid: int
+    selected_gid: int = 0
     adapters: tuple[GpuAdapterChoice, ...] = ()
     selected_model_name: str = ""
 

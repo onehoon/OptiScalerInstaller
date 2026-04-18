@@ -56,8 +56,8 @@ class StartupRuntimeCoordinator:
         ual_cache_dir: Path,
         unreal5_cache_dir: Path,
         manifest_root: Path,
-        default_sheet_gid: int,
-        unknown_gpu_text: str,
+        default_sheet_gid: int = 0,
+        unknown_gpu_text: str = "Unknown GPU",
         callbacks: StartupRuntimeCallbacks,
         logger=None,
     ) -> None:
@@ -137,6 +137,7 @@ class StartupRuntimeCoordinator:
         sheet_state.active_vendor = str(result.game_db_vendor or "default")
         sheet_state.game_db = result.game_db if result.ok else {}
         sheet_state.module_download_links = result.module_download_links if result.ok else {}
+        sheet_state.startup_warning_text = str(getattr(result, "startup_warning_text", "") or "")
         sheet_state.status = result.ok
 
         if result.ok:
@@ -178,6 +179,10 @@ class StartupRuntimeCoordinator:
         self.start_ual_archive_prepare()
         self.start_unreal5_archive_prepare()
         self._callbacks.update_install_button_state()
+
+    # Backward-compatible entrypoint used by legacy tests/callers.
+    def on_resource_master_ready(self, resource_master: Mapping[str, Any]) -> None:
+        self._sheet_state.module_download_links = dict(resource_master or {})
 
     def start_fsr4_archive_prepare(self) -> None:
         controller = self._callbacks.get_archive_controller()

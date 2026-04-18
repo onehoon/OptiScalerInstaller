@@ -101,7 +101,7 @@ class ArchivePreparationController:
                     error_message="",
                 )
 
-        self._logger.info("[APP] Starting OptiScaler archive download: %s -> %s", url, cache_path)
+        self._logger.info("[APP] Starting OptiScaler archive download: %s", cache_path)
         return self._start_download(
             asset_key="optiscaler",
             asset_label="OptiScaler archive",
@@ -397,7 +397,7 @@ class ArchivePreparationController:
                 cache_path.unlink(missing_ok=True)
                 raise RuntimeError(f"Downloaded {asset_label} file is not a valid zip file: {cache_path}")
 
-            self._logger.info("[APP] %s download completed: %s", asset_label, cache_path)
+            self._logger.info("[APP] %s download completed", asset_label)
             if cleanup_stale:
                 self._cleanup_stale_archives(cache_dir, filename, label="OptiScaler archive cache")
             if manifest_root and version:

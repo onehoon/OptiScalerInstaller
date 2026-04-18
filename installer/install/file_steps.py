@@ -430,7 +430,7 @@ def install_fsr4_dll(target_path: str, fsr4_source_archive: str, logger) -> Path
         except OSError:
             pass
         shutil.copy2(source_dll, destination_dll)
-        logger.info("Installed FSR4 DLL to %s", destination_dll)
+        logger.info("Installed FSR4 DLL")
         return destination_dll
 
 
@@ -462,7 +462,7 @@ def install_base_payload(
             exclude_patterns=exclude_patterns,
             logger=logger,
         )
-        logger.info("Extracted and installed files to %s", target_path)
+        logger.info("Extracted and installed OptiScaler files")
 
 
 def create_install_workflow_callbacks() -> InstallWorkflowCallbacks:

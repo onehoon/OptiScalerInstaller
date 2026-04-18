@@ -196,7 +196,7 @@ def run_install_workflow(
             force_frame_generation=True,
             logger=logger,
         )
-    logger.info("Applied ini settings to %s", ini_path)
+    logger.info("Applied OptiScaler INI")
 
     callbacks.apply_optional_ingame_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
     callbacks.apply_optional_engine_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
@@ -219,6 +219,7 @@ def run_install_workflow(
     install_ctx.handler.finalize_install(app, install_ctx.game_data, install_ctx.target_path, logger)
 
     rtss_notice.apply_rtss_global_settings_if_needed(logger=logger)
+    rtss_notice.apply_rtss_game_profile_overlay_if_needed(install_ctx.game_data, logger=logger)
 
     logger.info("Install completed")
     installed_game = dict(install_ctx.game_data)
