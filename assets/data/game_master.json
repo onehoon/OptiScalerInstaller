@@ -117,7 +117,7 @@
     "enabled": true,
     "support_intel": true,
     "support_amd": true,
-    "support_nvidia": false
+    "support_nvidia": true
   },
   {
     "game_id": "LOP",
