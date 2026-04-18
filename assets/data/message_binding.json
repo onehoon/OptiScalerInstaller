@@ -112,7 +112,17 @@
   {
     "binding_id": "install_pre.borderless_fsr3_required",
     "game_id": "FFXVI",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "binding_id": "install_pre.borderless_fsr3_required",
+    "game_id": "FFXVI",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -125,7 +135,7 @@
     "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
-    "priority": 90,
+    "priority": 100,
     "enabled": true,
     "memo": ""
   }
