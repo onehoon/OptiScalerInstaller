@@ -4,7 +4,7 @@
     "msg_group": "global",
     "variant": "startup_warning",
     "category": "popup",
-    "ko": "[RED]뉴디비테스트[END]",
+    "ko": "[RED]뉴디비테스트1[END]",
     "en": "[RED]NewDB Test[END]",
     "url": "",
     "enabled": true,
