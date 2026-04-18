@@ -390,8 +390,17 @@ def build_install_information_text(
     lang: Lang,
     stage: str = "install_pre",
 ) -> str:
-    stage_key = "install_post" if str(stage or "").strip().lower() == "install_post" else "install_pre"
-    return pick_bound_message(source, stage_key, lang)
+    _ = str(stage or "").strip().lower()  # Keep signature stable for existing call sites.
+    pre_text = pick_bound_message(source, "install_pre", lang)
+    post_text = pick_bound_message(source, "install_post", lang)
+
+    if pre_text and post_text:
+        return "[P]".join((pre_text, post_text))
+    if pre_text:
+        return pre_text
+    if post_text:
+        return post_text
+    return ""
 
 
 def pick_module_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
