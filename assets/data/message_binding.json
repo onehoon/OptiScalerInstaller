@@ -91,7 +91,7 @@
     "game_id": "SHF",
     "gpu_vendor": "ALL",
     "stage": "install_post",
-    "message_id": "install_post.DLSS_upscaling",
+    "message_id": "install_post.dlss_only",
     "priority": 100,
     "memo": ""
   },
@@ -148,7 +148,7 @@
     "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.steam_dx12_required",
-    "priority": 100,
+    "priority": 90,
     "memo": ""
   },
   {
@@ -164,6 +164,342 @@
     "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SB",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "GOT",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "GOT",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "GOWR",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "HZDR",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "HZDR",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "SMR",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SMR",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "SM2",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SM2",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "DSD",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "DSD",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre_XeSS_Upscaler",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "SH2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "TLOU2",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "TLOU2",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "Jedisurvivor",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "AW2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Avowed",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "DRG",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "FP2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "RiftApart",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "RiftApart",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "Remnant2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Stalker2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "TheAlters",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "TQ2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "starfield",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Wuchang",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "ROTTR",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "UNCHARTED",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "HITMAN3",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "CrimsonDesert",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "CrimsonDesert",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "TW3",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_TW3",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "TW3",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post_XeSS_Upscaler",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "MHS3",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_FSR3_Upscalier",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "MHS3",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_MHS3",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "MHW",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_MHW",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "BMW",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "E33",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "RDR2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Avatar",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
     "priority": 100,
     "memo": ""
   }
