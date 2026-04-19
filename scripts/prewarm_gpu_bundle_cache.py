@@ -186,13 +186,14 @@ def _request_bundle(
 
 
 def main() -> int:
-        parser.add_argument(
-            "--force",
-            action="store_true",
-            help="Force cache overwrite (force=1 param to Apps Script)",
-        )
+
     parser = argparse.ArgumentParser(
         description="Prewarm OptiScaler Apps Script GPU bundle cache using an editable model list."
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force cache overwrite (force=1 param to Apps Script)",
     )
     parser.add_argument(
         "--base-url",
