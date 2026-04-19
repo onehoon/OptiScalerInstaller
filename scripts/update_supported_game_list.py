@@ -18,6 +18,7 @@ NATIVE_XEFG_TEXT = "Native XeFG Support"
 NEW_GAMES_HEADING = "## 신규 지원 게임 추가 / Newly Supported Games"
 NEW_GAMES_METADATA_START = "<!-- newly-supported-games"
 NEW_GAMES_METADATA_END = "-->"
+LEGACY_NEW_GAMES_TABLE_HEADER = "| Korean Title | English Title |"
 NEW_GAMES_TABLE_HEADER = "| Korean Title | English Title | Intel | AMD | NVIDIA |"
 NEW_GAMES_TABLE_SEPARATOR = "|---|---|---|---|---|"
 NEW_GAMES_HEADING_ALIASES = {
@@ -571,12 +572,22 @@ def extract_existing_new_games_block(markdown_text: str) -> str:
     break_markers = {
         WIKI_CAUTION_BLOCKS[0],
         RADEON_IGPU_NOTE_BLOCKS[0],
-        SUPPORTED_GAMES_TABLE_HEADER,
     }
+    seen_new_games_table_header = False
     for index in range(start_index + 1, len(lines)):
-        if normalize_text(lines[index]) in break_markers:
+        stripped = normalize_text(lines[index])
+        if stripped in break_markers:
             end_index = index
             break
+        if stripped == NEW_GAMES_TABLE_HEADER:
+            if seen_new_games_table_header:
+                end_index = index
+                break
+            seen_new_games_table_header = True
+            continue
+        if stripped == LEGACY_NEW_GAMES_TABLE_HEADER and not seen_new_games_table_header:
+            seen_new_games_table_header = True
+            continue
 
     while end_index > start_index and not normalize_text(lines[end_index - 1]):
         end_index -= 1
@@ -654,7 +665,7 @@ def extract_new_games_table_records(block_text: str, fallback_detected_on: str) 
     header_index = None
 
     for index, line in enumerate(lines):
-        if normalize_text(line) == NEW_GAMES_TABLE_HEADER:
+        if normalize_text(line) in {NEW_GAMES_TABLE_HEADER, LEGACY_NEW_GAMES_TABLE_HEADER}:
             header_index = index
             break
 
