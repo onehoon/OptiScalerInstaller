@@ -307,10 +307,13 @@ def build_intel_label(tokens: list[str]) -> str:
             arc_found = True
         elif stripped in {"130V", "140V", "130T", "140T"}:
             models.append(stripped)
-    if arc_found:
-        return "Intel Arc"
+    if arc_found and not models:
+        return "Intel Arc Series"
     if models:
-        return "Intel Arc " + "/".join(models)
+        if len(models) == 1:
+            return f"Intel {models[0]}"
+        else:
+            return "Intel Arc " + "/".join(models)
     return ""
 
 
