@@ -500,8 +500,8 @@
     "cover_filename": "Red Dead Redemption 2.webp",
     "enabled": true,
     "support_intel": true,
-    "support_amd": false,
-    "support_nvidia": false
+    "support_amd": true,
+    "support_nvidia": true
   },
   {
     "game_id": "Avatar",
