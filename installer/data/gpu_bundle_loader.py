@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import logging
 import re
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -28,13 +29,22 @@ def _normalize_apps_script_base_url(base_url_or_key: str) -> str:
     raise ValueError(f"Invalid GPU bundle URL or Apps Script key: {raw}")
 
 
-def build_gpu_bundle_request_url(base_url_or_key: str, *, gpu_vendor: str, gpu_model: str) -> str:
+def build_gpu_bundle_request_url(
+    base_url_or_key: str,
+    *,
+    gpu_vendor: str,
+    gpu_model: str,
+    debug: bool | None = None,
+) -> str:
     base_url = _normalize_apps_script_base_url(base_url_or_key)
     parsed = urlparse(base_url)
+    excluded_query_keys = {"action", "vendor", "gpu"}
+    if debug is not None:
+        excluded_query_keys.add("debug")
     preserved = [
         (k, v)
         for k, v in parse_qsl(parsed.query, keep_blank_values=True)
-        if k.lower() not in {"action", "vendor", "gpu"}
+        if k.lower() not in excluded_query_keys
     ]
 
     request_query = preserved + [
@@ -42,6 +52,8 @@ def build_gpu_bundle_request_url(base_url_or_key: str, *, gpu_vendor: str, gpu_m
         ("vendor", str(gpu_vendor or "").strip().lower()),
         ("gpu", str(gpu_model or "").strip()),
     ]
+    if debug:
+        request_query.append(("debug", "1"))
     return urlunparse(parsed._replace(query=urlencode(request_query, doseq=True)))
 
 
@@ -64,11 +76,15 @@ def load_supported_game_bundle(
     gpu_model: str,
     *,
     timeout_seconds: float = 10.0,
+    debug: bool | None = None,
+    logger: logging.Logger | None = None,
 ) -> dict[str, dict[str, Any]]:
+    use_logger = logger or logging.getLogger(__name__)
     request_url = build_gpu_bundle_request_url(
         base_url_or_key,
         gpu_vendor=gpu_vendor,
         gpu_model=gpu_model,
+        debug=debug,
     )
     read_timeout = max(float(timeout_seconds or 0.0), 1.0)
     response = _GPU_BUNDLE_SESSION.get(
@@ -84,6 +100,9 @@ def load_supported_game_bundle(
     if payload.get("ok") is False:
         raise ValueError(str(payload.get("error") or "GPU bundle request failed"))
 
+    if debug:
+        _log_gpu_bundle_debug_response(payload, logger=use_logger)
+
     shared_profiles = payload.get("profiles") if isinstance(payload.get("profiles"), Mapping) else {}
 
     games_obj = payload.get("games")
@@ -92,6 +111,31 @@ def load_supported_game_bundle(
         return _normalize_bundle_games(payload, shared_profiles=shared_profiles, request_vendor=gpu_vendor)
 
     return _normalize_bundle_games(games_obj, shared_profiles=shared_profiles, request_vendor=gpu_vendor)
+
+
+def _log_gpu_bundle_debug_response(payload: Mapping[str, Any], *, logger: logging.Logger) -> None:
+    raw_debug_payload = payload.get("debug")
+    if raw_debug_payload is None:
+        logger.warning("[GPU-BUNDLE] debug requested but response.debug missing")
+        return
+    if not isinstance(raw_debug_payload, Mapping):
+        logger.warning("[GPU-BUNDLE] debug payload ignored: expected object")
+        return
+
+    cache_hit_text = "true" if _to_bool(raw_debug_payload.get("cache_hit"), False) else "false"
+    logger.info(
+        "[GPU-BUNDLE] debug cache_hit=%s cache_key=%s version=%s vendor=%s gpu=%s",
+        cache_hit_text,
+        _normalize_debug_field(raw_debug_payload.get("cache_key")),
+        _normalize_debug_field(raw_debug_payload.get("version")),
+        _normalize_debug_field(raw_debug_payload.get("vendor")),
+        _normalize_debug_field(raw_debug_payload.get("gpu")),
+    )
+
+
+def _normalize_debug_field(value: object, default: str = "-") -> str:
+    text = str(value or "").strip()
+    return text or default
 
 
 def _normalize_bundle_games(

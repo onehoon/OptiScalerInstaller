@@ -168,6 +168,19 @@ def _get_int_env(name: str, default: int = 0) -> int:
         return default
 
 
+def _get_bool_env(name: str, default: bool = False) -> bool:
+    raw = _get_runtime_config_value(name, "")
+    text = str(raw).strip().lower()
+    if not text:
+        return default
+    if text in {"1", "true", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "no", "n", "off"}:
+        return False
+    logging.warning("[APP] Invalid boolean env %s=%r, using %s", name, raw, default)
+    return default
+
+
 # Allow overriding these values via build-time config for frozen builds
 # and via environment variables/.env during source development.
 SUPPORTED_GAMES_WIKI_URL = _get_runtime_config_value("SUPPORTED_GAMES_WIKI_URL", "").strip()
@@ -178,6 +191,7 @@ GPU_VENDOR_DB_GIDS = {
 }
 SHEET_GID = 0
 OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
+OPTISCALER_GPU_BUNDLE_DEBUG = _get_bool_env("OPTISCALER_GPU_BUNDLE_DEBUG", False)
 OPTISCALER_GAME_MASTER_URL = _get_runtime_config_value("OPTISCALER_GAME_MASTER_URL", "").strip()
 OPTISCALER_RESOURCE_MASTER_URL = _get_runtime_config_value("OPTISCALER_RESOURCE_MASTER_URL", "").strip()
 OPTISCALER_MESSAGE_CENTER_URL = _get_runtime_config_value("OPTISCALER_MESSAGE_CENTER_URL", "").strip()
@@ -370,6 +384,7 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     create_prefixed_logger=get_prefixed_logger,
     default_sheet_gid=SHEET_GID,
     gpu_bundle_url=OPTISCALER_GPU_BUNDLE_URL,
+    gpu_bundle_debug=OPTISCALER_GPU_BUNDLE_DEBUG,
     game_master_url=OPTISCALER_GAME_MASTER_URL,
     resource_master_url=OPTISCALER_RESOURCE_MASTER_URL,
     message_binding_url=OPTISCALER_MESSAGE_BINDING_URL,

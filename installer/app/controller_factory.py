@@ -48,6 +48,7 @@ class AppControllerFactoryConfig:
     game_xml_profile_url: str = ""
     registry_profile_url: str = ""
     game_json_profile_url: str = ""
+    gpu_bundle_debug: bool = False
 
 
 @dataclass(frozen=True)
@@ -285,6 +286,13 @@ def _build_game_db_controller(
     game_json_profile_url = str(config.game_json_profile_url or "").strip()
     load_game_db = lambda gid: sheet_loader.load_game_db_from_remote_json(game_master_url, gid)
     load_module_download_links = lambda: sheet_loader.load_module_download_links_from_remote_json(resource_master_url)
+    load_gpu_bundle = lambda base_url, vendor, gpu_model: gpu_bundle_loader.load_supported_game_bundle(
+        base_url,
+        vendor,
+        gpu_model,
+        debug=config.gpu_bundle_debug,
+        logger=logging.getLogger(),
+    )
 
     return GameDbLoadController(
         executor=app._task_executor,
@@ -301,7 +309,7 @@ def _build_game_db_controller(
         build_message_repository=message_loader.build_message_repository,
         materialize_bound_messages=message_loader.materialize_bound_messages_into_game_db,
         gpu_bundle_url=config.gpu_bundle_url,
-        load_gpu_bundle=gpu_bundle_loader.load_supported_game_bundle,
+        load_gpu_bundle=load_gpu_bundle,
         merge_gpu_bundle=gpu_bundle_loader.merge_gpu_bundle_into_game_db,
         game_ini_profile_url=game_ini_profile_url,
         engine_ini_profile_url=engine_ini_profile_url,
