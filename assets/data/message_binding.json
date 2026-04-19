@@ -158,5 +158,13 @@
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
     "memo": ""
+  },
+  {
+    "game_id": "Control",
+    "gpu_vendor": "all",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
   }
 ]
