@@ -101,7 +101,7 @@ class ArchivePreparationController:
                     error_message="",
                 )
 
-        self._logger.info("[APP] Starting OptiScaler archive download: %s", cache_path)
+        self._logger.info("[APP] Starting OptiScaler archive download: %s", filename)
         return self._start_download(
             asset_key="optiscaler",
             asset_label="OptiScaler archive",
