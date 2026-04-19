@@ -114,8 +114,8 @@
   {
     "message_id": "install_pre_TW3",
     "category": "popup",
-    "ko": "- 다이렉트X12로 실행해야합니다.\n- 화면 옵션에서 전체창을 선택해야합니다.\n- ReShade, SpeciaK, 각종 MOD와 충돌이 발생할 수 있습니다.",
-    "en": "- Must be launched in DirectX 12 mode.\n- Set the Display Mode to 'Borderless Window' in the graphics options.\n- Conflicts may occur with ReShade, SpecialK, other MODs",
+    "ko": "[red]다이렉트X12로 실행해야합니다.[p]화면 옵션에서 전체창을 선택해야합니다.[p]ReShade, SpeciaK 등 각종 MOD와 충돌이 발생할 수 있습니다.[end]",
+    "en": "[red]Must be launched in DirectX 12 mode.[p]Set the Display Mode to 'Borderless Window' in the graphics options.[p]Conflicts may occur with ReShade, SpecialK, other MOD[end]",
     "url": "",
     "memo": "위쳐3"
   },
@@ -138,8 +138,8 @@
   {
     "message_id": "install_pre_MHS3",
     "category": "popup",
-    "ko": "MOD 사용자 설치하지마세요\n설치 전 인게임 그래픽 FSR로 설정하세요\n리프레임워크 동작하지 않아서 MOD사용불가",
-    "en": "If you use MOD, DO NOT INSTALL\nBefore install set in-game setting to FSR\nreframework not working (NO MOD)",
+    "ko": "[red]설치 전 인게임 그래픽 FSR로 설정하세요[p]MOD 사용자 설치하지마세요[p]리프레임워크 동작하지 않아서 MOD사용불가[end]",
+    "en": "[red]Before install set in-game setting to FSR[p]If you use MOD, DO NOT INSTALL[p]reframework not working (NO MOD)[end]",
     "url": "",
     "memo": ""
   },
