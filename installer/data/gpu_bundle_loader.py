@@ -10,7 +10,7 @@ from ..common.network_utils import build_retry_session
 
 _SCRIPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{20,}$")
 _GPU_BUNDLE_SESSION = build_retry_session(total=4, backoff_factor=0.6)
-_GPU_BUNDLE_CONNECT_TIMEOUT_SECONDS = 3.0
+_GPU_BUNDLE_CONNECT_TIMEOUT_SECONDS = 5.0
 
 
 def _normalize_apps_script_base_url(base_url_or_key: str) -> str:
