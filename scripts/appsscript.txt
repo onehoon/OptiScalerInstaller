@@ -1,0 +1,535 @@
+/**
+ * OptiScaler GPU bundle endpoint
+ *
+ * Sheets:
+ * - install_profile
+ * - optiscaler_ini_profile
+ *
+ * Script Properties:
+ * - OPTISCALER_PROFILE_SPREADSHEET_ID
+ * - OPTISCALER_GPU_BUNDLE_VERSION (optional)
+ *
+ * Family cache buckets:
+ * - NVIDIA: RTX 20 / RTX 30 / RTX 40 / RTX 50
+ * - AMD: RADEON GRAPHICS / 780M / 880M / 890M / 8060S / RX 6 / RX 7 / RX 90
+ * - Intel: 130V / 140V / 130T / 140T / ARC GRAPHICS
+ */
+
+function doGet(e) {
+  var action = normalizeText_(e && e.parameter && e.parameter.action).toLowerCase();
+  var force = e && e.parameter && e.parameter.force === "1"; // 추가
+  if (action !== "getsupportedgamebundle") {
+    return jsonOutput_({
+      ok: false,
+      error: "Unsupported action"
+    });
+  }
+
+  var vendor = normalizeText_(e && e.parameter && e.parameter.vendor).toLowerCase();
+  var gpu = normalizeText_(e && e.parameter && e.parameter.gpu);
+
+  try {
+    var result = getSupportedGameBundleCached_(vendor, gpu, force); // force 전달
+    return jsonOutput_({
+      ok: true,
+      games: result.games,
+      profiles: result.profiles
+    });
+  } catch (err) {
+    return jsonOutput_({
+      ok: false,
+      error: err && err.message ? err.message : String(err)
+    });
+  }
+}
+
+function getSupportedGameBundleCached_(vendor, gpu, force) {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = buildBundleCacheKey_(vendor, gpu);
+
+  if (force) {
+    cache.remove(cacheKey); // 강제 캐시 삭제
+  }
+
+  var cached = cache.get(cacheKey);
+  if (cached && !force) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {
+      // Ignore malformed cache and rebuild.
+    }
+  }
+
+  var result = getSupportedGameBundle_(vendor, gpu);
+
+  try {
+    cache.put(cacheKey, JSON.stringify(result), 21600); // up to 6 hours
+  } catch (e) {
+    // Cache put can fail when payload is too large or entry is evicted.
+  }
+
+  return result;
+}
+
+function getSupportedGameBundle_(vendor, gpu) {
+  var spreadsheet = resolveSpreadsheet_();
+
+  var installSheet = spreadsheet.getSheetByName("install_profile");
+  if (!installSheet) {
+    throw new Error("install_profile sheet not found");
+  }
+
+  var installValues = readUsedSheetValues_(installSheet);
+  var selectedByGameId = selectInstallProfilesFromValues_(installValues, vendor, gpu);
+  var gameIds = Object.keys(selectedByGameId).sort();
+
+  var optiscalerIniLayerProfiles = buildOptiscalerIniLayerProfiles_(selectedByGameId, vendor);
+
+  var sharedOptiscalerIni = buildProfileRowListFromSheet_(
+    spreadsheet,
+    "optiscaler_ini_profile",
+    optiscalerIniLayerProfiles,
+    ["profile_id", "section", "key", "value", "priority", "enabled", "memo"]
+  );
+
+  var bundle = [];
+  for (var j = 0; j < gameIds.length; j++) {
+    var gameId = gameIds[j];
+    var profile = selectedByGameId[gameId];
+    var profileId = normalizeText_(profile.profile_id);
+
+    bundle.push({
+      game_id: normalizeText_(profile.game_id),
+      profile_id: profileId,
+      install_profile: {
+        profile_id: profileId,
+        optiscaler_dll_name: normalizeText_(profile.optiscaler_dll_name),
+        ultimate_asi_loader: parseBool_(profile.ultimate_asi_loader, false),
+        optipatcher: parseBool_(profile.optipatcher, false),
+        specialk: parseBool_(profile.specialk, false),
+        reframework_url: normalizeOptionalText_(profile.reframework_url),
+        unreal5: parseBool_(profile.unreal5, false),
+        rtss_overlay: parseBool_(profile.rtss_overlay, false),
+        enabled: parseBool_(profile.enabled, true)
+      }
+    });
+  }
+
+  return {
+    games: bundle,
+    profiles: {
+      optiscaler_ini: sharedOptiscalerIni
+    }
+  };
+}
+
+/**
+ * install_profile values array -> game_id별 최종 프로파일 선택
+ */
+function selectInstallProfilesFromValues_(values, vendor, gpu) {
+  if (!values || values.length < 2) {
+    return {};
+  }
+
+  var headers = values[0].map(normalizeHeader_);
+  var idx = {
+    enabled: headers.indexOf("enabled"),
+    game_id: headers.indexOf("game_id"),
+    vendor: headers.indexOf("gpu_vendor"),
+    model: headers.indexOf("gpu_model_match"),
+    priority: headers.indexOf("priority")
+  };
+
+  if (idx.game_id < 0) {
+    return {};
+  }
+
+  var selected = {};
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+
+    if (idx.enabled > -1 && !parseBool_(row[idx.enabled], true)) {
+      continue;
+    }
+
+    var gameId = normalizeText_(row[idx.game_id]);
+    if (!gameId) {
+      continue;
+    }
+
+    var rowVendor = normalizeText_(row[idx.vendor]).toLowerCase();
+    if (rowVendor && rowVendor !== "all" && rowVendor !== vendor) {
+      continue;
+    }
+
+    var modelRule = normalizeText_(row[idx.model]);
+    if (modelRule && !matchesGpuRule_(vendor, gpu, modelRule)) {
+      continue;
+    }
+
+    var candidate = {
+      rowValues: row,
+      priority: parsePriority_(row[idx.priority], modelRule ? 50 : 90),
+      specificity: buildGpuRuleSpecificityScore_(modelRule),
+      index: i
+    };
+
+    var existing = selected[gameId];
+    if (
+      !existing ||
+      candidate.specificity > existing.specificity ||
+      (candidate.specificity === existing.specificity && candidate.priority < existing.priority) ||
+      (candidate.specificity === existing.specificity && candidate.priority === existing.priority && candidate.index < existing.index)
+    ) {
+      selected[gameId] = candidate;
+    }
+  }
+
+  var result = {};
+  for (var selectedGameId in selected) {
+    var item = {};
+    var rowData = selected[selectedGameId].rowValues;
+    for (var k = 0; k < headers.length; k++) {
+      item[headers[k]] = rowData[k];
+    }
+    result[selectedGameId] = item;
+  }
+
+  return result;
+}
+
+/**
+ * OptiScaler.ini 레이어용 profile id 집합 생성
+ * - GLOBAL_ALL
+ * - GLOBAL_<VENDOR>
+ * - <GAME_ID>_ALL
+ * - <PROFILE_ID>
+ */
+function buildOptiscalerIniLayerProfiles_(selectedByGameId, vendor) {
+  var ids = new Set();
+  ids.add(normalizeProfileIdKey_("GLOBAL_ALL"));
+
+  var normalizedVendor = normalizeText_(vendor).toUpperCase();
+  if (normalizedVendor && normalizedVendor !== "ALL" && normalizedVendor !== "DEFAULT") {
+    ids.add(normalizeProfileIdKey_("GLOBAL_" + normalizedVendor));
+  }
+
+  var gameIds = Object.keys(selectedByGameId);
+  for (var i = 0; i < gameIds.length; i++) {
+    var selected = selectedByGameId[gameIds[i]];
+    var gameId = normalizeText_(selected.game_id).toUpperCase();
+    var profileId = normalizeText_(selected.profile_id);
+
+    if (gameId) {
+      ids.add(normalizeProfileIdKey_(gameId + "_ALL"));
+    }
+    if (profileId) {
+      ids.add(normalizeProfileIdKey_(profileId));
+    }
+  }
+
+  return ids;
+}
+
+/**
+ * optiscaler_ini_profile용 raw row list
+ * GLOBAL + GAME_ALL + PROFILE_ID 레이어를 그대로 내려줌
+ */
+function buildProfileRowListFromSheet_(spreadsheet, sheetName, activeProfiles, allowedKeys) {
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) return [];
+
+  if (!activeProfiles || activeProfiles.size === 0) return [];
+
+  var values = readUsedSheetValues_(sheet);
+  if (!values || values.length < 2) return [];
+
+  var headers = values[0].map(normalizeHeader_);
+  var profileIdIdx = headers.indexOf("profile_id");
+  var enabledIdx = headers.indexOf("enabled");
+
+  if (profileIdIdx < 0) return [];
+
+  var colMap = [];
+  for (var k = 0; k < allowedKeys.length; k++) {
+    var foundIdx = headers.indexOf(allowedKeys[k]);
+    if (foundIdx > -1) {
+      colMap.push({ name: allowedKeys[k], idx: foundIdx });
+    }
+  }
+
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+
+    if (enabledIdx > -1 && !parseBool_(row[enabledIdx], true)) {
+      continue;
+    }
+
+    var profileId = normalizeText_(row[profileIdIdx]);
+    var profileKey = normalizeProfileIdKey_(profileId);
+    if (!profileKey || !activeProfiles.has(profileKey)) {
+      continue;
+    }
+
+    var item = {};
+    for (var j = 0; j < colMap.length; j++) {
+      var keyName = colMap[j].name;
+      var rawValue = row[colMap[j].idx];
+      item[keyName] = keyName === "value" ? normalizeProfileValue_(rawValue) : rawValue;
+    }
+
+    rows.push(item);
+  }
+
+  return rows;
+}
+
+// ------------------------------------------------------------------
+// Matching + cache helpers
+// ------------------------------------------------------------------
+
+function matchesGpuRule_(vendor, gpu, rule) {
+  var raw = collapseSpaces_(gpu);
+  var stripped = stripGpuNoise_(gpu);
+  var canonical = normalizeGpuModelForMatch_(vendor, gpu);
+
+  return wildcardMatch_(raw, rule) ||
+         wildcardMatch_(stripped, rule) ||
+         wildcardMatch_(canonical, rule);
+}
+
+function buildBundleCacheKey_(vendor, gpu) {
+  var version = PropertiesService.getScriptProperties().getProperty("OPTISCALER_GPU_BUNDLE_VERSION") || "v1";
+  var vendorKey = normalizeText_(vendor).toLowerCase() || "default";
+  var gpuBucket = resolveGpuCacheBucket_(vendor, gpu) || fallbackGpuCacheBucket_(gpu);
+
+  return ["bundle", version, vendorKey, buildCacheToken_(gpuBucket)].join(":");
+}
+
+function resolveGpuCacheBucket_(vendor, gpu) {
+  var v = normalizeText_(vendor).toLowerCase();
+  var upper = stripGpuNoise_(gpu).toUpperCase();
+  var m;
+
+  if (v === "nvidia") {
+    m = upper.match(/\bRTX\s*(20|30|40|50)\d{2}\b/);
+    if (m) {
+      return "RTX " + m[1];
+    }
+  }
+
+  if (v === "amd") {
+    if (/\b780M\b/.test(upper)) return "780M";
+    if (/\b880M\b/.test(upper)) return "880M";
+    if (/\b890M\b/.test(upper)) return "890M";
+    if (/\b8060S\b/.test(upper)) return "8060S";
+
+    m = upper.match(/\bRX\s*(9)\d{3}\b/);
+    if (m) return "RX 90";
+
+    m = upper.match(/\bRX\s*(7)\d{3}\b/);
+    if (m) return "RX 7";
+
+    m = upper.match(/\bRX\s*(6)\d{3}\b/);
+    if (m) return "RX 6";
+
+    if (/\bRADEON\b.*\bGRAPHICS\b/.test(upper)) return "RADEON GRAPHICS";
+  }
+
+  if (v === "intel") {
+    if (/\b130V\b/.test(upper)) return "130V";
+    if (/\b140V\b/.test(upper)) return "140V";
+    if (/\b130T\b/.test(upper)) return "130T";
+    if (/\b140T\b/.test(upper)) return "140T";
+    if (/\bARC\b.*\bGRAPHICS\b/.test(upper)) return "ARC GRAPHICS";
+  }
+
+  return "";
+}
+
+function normalizeGpuModelForMatch_(vendor, gpu) {
+  var bucket = resolveGpuCacheBucket_(vendor, gpu);
+  if (bucket) {
+    return bucket;
+  }
+  return stripGpuNoise_(gpu).toUpperCase();
+}
+
+function fallbackGpuCacheBucket_(gpu) {
+  var upper = stripGpuNoise_(gpu).toUpperCase();
+  if (!upper) return "UNKNOWN";
+  return upper;
+}
+
+function buildCacheToken_(value) {
+  var text = normalizeText_(value).toUpperCase();
+  if (!text) return "UNKNOWN";
+
+  text = text
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (!text) return "UNKNOWN";
+  return text.substring(0, 120);
+}
+
+function collapseSpaces_(value) {
+  return normalizeText_(value).replace(/\s+/g, " ");
+}
+
+function stripGpuNoise_(value) {
+  return collapseSpaces_(value)
+    .replace(/\((?:tm|r)\)/ig, "")
+    .replace(/[™®]/g, "")
+    .replace(/\bcorporation\b/ig, "")
+    .trim();
+}
+
+function buildGpuRuleSpecificityScore_(rule) {
+  var normalized = normalizeText_(rule);
+  if (!normalized) return 0;
+
+  var parts = normalized.split("|");
+  var best = 0;
+
+  for (var i = 0; i < parts.length; i++) {
+    var token = normalizeText_(parts[i]).toLowerCase().replace(/[*?]/g, " ");
+    token = token.replace(/\s+/g, " ").trim();
+    if (!token) continue;
+
+    if (/\b(130v|140v|130t|140t|780m|880m|890m|8060s)\b/i.test(token)) {
+      best = Math.max(best, 30);
+    } else if (/\b(rtx 20|rtx 30|rtx 40|rtx 50|rx 6|rx 7|rx 90|arc|radeon graphics|z1e|z2e)\b/i.test(token)) {
+      best = Math.max(best, 20);
+    } else {
+      best = Math.max(best, 10);
+    }
+  }
+
+  return best;
+}
+
+// ------------------------------------------------------------------
+// Common utilities
+// ------------------------------------------------------------------
+
+function resolveSpreadsheet_() {
+  var spreadsheetId = PropertiesService.getScriptProperties().getProperty("OPTISCALER_PROFILE_SPREADSHEET_ID");
+  if (spreadsheetId) {
+    return SpreadsheetApp.openById(spreadsheetId);
+  }
+
+  var activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (activeSpreadsheet) {
+    return activeSpreadsheet;
+  }
+
+  throw new Error("Spreadsheet not configured.");
+}
+
+function readUsedSheetValues_(sheet) {
+  var lastRow = sheet.getLastRow();
+  var lastColumn = sheet.getLastColumn();
+  if (lastRow < 1 || lastColumn < 1) {
+    return [];
+  }
+  return sheet.getRange(1, 1, lastRow, lastColumn).getValues();
+}
+
+function wildcardMatch_(text, pattern) {
+  var normalizedPattern = collapseSpaces_(pattern);
+  if (!normalizedPattern) return true;
+
+  var parts = normalizedPattern.split("|");
+  for (var i = 0; i < parts.length; i++) {
+    var part = collapseSpaces_(parts[i]);
+    if (!part) continue;
+    if (wildcardMatchSingle_(text, part)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function wildcardMatchSingle_(text, pattern) {
+  var t = collapseSpaces_(text).toLowerCase();
+  var p = collapseSpaces_(pattern).toLowerCase();
+
+  if (!p || p === "*" || p === "all") {
+    return true;
+  }
+
+  var regexText = "^" + p
+    .replace(/[.+^${}()|[\\]\\\\]/g, "\\$&")
+    .replace(/\\*/g, ".*")
+    .replace(/\\?/g, ".") + "$";
+
+  return new RegExp(regexText, "i").test(t);
+}
+
+function parseBool_(value, defaultValue) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  var normalized = normalizeText_(value).toLowerCase();
+  if (!normalized) {
+    return !!defaultValue;
+  }
+  if (["1", "true", "yes", "y", "on"].indexOf(normalized) !== -1) {
+    return true;
+  }
+  if (["0", "false", "no", "n", "off"].indexOf(normalized) !== -1) {
+    return false;
+  }
+  return !!defaultValue;
+}
+
+function parsePriority_(value, defaultValue) {
+  var normalized = normalizeText_(value);
+  if (!normalized) {
+    return defaultValue;
+  }
+  var parsed = parseInt(normalized, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
+function normalizeHeader_(value) {
+  return collapseSpaces_(value).toLowerCase().replace(/\\s+/g, "_");
+}
+
+function normalizeText_(value) {
+  return value === null || value === undefined ? "" : String(value).trim();
+}
+
+function normalizeOptionalText_(value) {
+  var text = normalizeText_(value);
+  var lowered = text.toLowerCase();
+  if (text === '""' || text === "''" || lowered === "false") {
+    return "";
+  }
+  return text;
+}
+
+function normalizeProfileIdKey_(value) {
+  return normalizeText_(value).toUpperCase();
+}
+
+function normalizeProfileValue_(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  return String(value).trim();
+}
+
+function jsonOutput_(payload) {
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
