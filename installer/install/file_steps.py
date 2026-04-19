@@ -12,7 +12,7 @@ import tempfile as tempfile_module
 from typing import Any
 
 from ..common.windows_paths import iter_documents_dir_candidates, normalize_candidate_path
-from ..config import ini_utils, xml_utils
+from ..config import ini_utils, json_utils, xml_utils
 from . import services as installer_services
 from .workflow import InstallWorkflowCallbacks
 
@@ -352,6 +352,46 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
                 ini_utils._set_file_readonly(engine_path)
 
 
+def apply_optional_json_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
+    json_targets: dict[Path, list[dict[str, Any]]] = {}
+    for row in list(game_data.get("game_json_profile") or []):
+        if not isinstance(row, Mapping):
+            continue
+        profile_path = str(row.get("path") or "").strip()
+        json_path = str(row.get("json_path") or "").strip()
+        op = str(row.get("op") or "set").strip().casefold() or "set"
+        if not profile_path or not json_path:
+            continue
+        if op != "set":
+            logger.info("Skipped game_json_profile row with unsupported op '%s': %s", op, json_path)
+            continue
+
+        resolved_path = _resolve_profile_path(
+            target_path,
+            profile_path,
+            require_existing=True,
+            logger=logger,
+        )
+        if resolved_path is None:
+            logger.info("Skipped game_json_profile because target file was not found: %s", profile_path)
+            continue
+
+        json_targets.setdefault(resolved_path, []).append(dict(row))
+
+    for file_path, rows in json_targets.items():
+        def _apply_json() -> None:
+            changed = json_utils.apply_json_settings(file_path, rows, logger=logger)
+            if changed:
+                logger.info("Applied game_json_profile settings to %s", file_path)
+
+        _apply_existing_file_settings(
+            file_path,
+            logger=logger,
+            apply_callback=_apply_json,
+            restore_original_readonly=True,
+        )
+
+
 def _coerce_registry_value(value: object, value_type: str) -> object:
     normalized_type = str(value_type or "").strip().casefold()
     if normalized_type == "reg_dword":
@@ -476,6 +516,7 @@ def create_install_workflow_callbacks() -> InstallWorkflowCallbacks:
     return InstallWorkflowCallbacks(
         install_base_payload=install_base_payload,
         apply_optional_ingame_ini_settings=apply_optional_ingame_ini_settings,
+        apply_optional_json_settings=apply_optional_json_settings,
         apply_optional_engine_ini_settings=apply_optional_engine_ini_settings,
         apply_optional_registry_settings=apply_optional_registry_settings,
         install_fsr4_dll=install_fsr4_dll,
@@ -485,6 +526,7 @@ def create_install_workflow_callbacks() -> InstallWorkflowCallbacks:
 __all__ = [
     "apply_optional_engine_ini_settings",
     "apply_optional_ingame_ini_settings",
+    "apply_optional_json_settings",
     "apply_optional_registry_settings",
     "create_install_workflow_callbacks",
     "install_base_payload",

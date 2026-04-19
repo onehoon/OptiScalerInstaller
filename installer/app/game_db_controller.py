@@ -18,7 +18,7 @@ MessageRepoBuilder = Callable[[dict[str, message_loader.MessageTemplate], tuple[
 MessageMaterializer = Callable[[dict[str, dict[str, Any]], message_loader.MessageRepository], dict[str, dict[str, Any]]]
 GpuBundleLoader = Callable[[str, str, str], dict[str, dict[str, Any]]]
 GpuBundleMerger = Callable[[dict[str, dict[str, Any]], dict[str, dict[str, Any]]], dict[str, dict[str, Any]]]
-ProfileCatalogLoader = Callable[[str, str, str, str], profile_loader.ProfileCatalogs]
+ProfileCatalogLoader = Callable[[str, str, str, str, str], profile_loader.ProfileCatalogs]
 ProfileCatalogAttacher = Callable[[dict[str, dict[str, Any]], profile_loader.ProfileCatalogs], dict[str, dict[str, Any]]]
 
 
@@ -67,6 +67,7 @@ class GameDbLoadController:
         engine_ini_profile_url: str = "",
         game_xml_profile_url: str = "",
         registry_profile_url: str = "",
+        game_json_profile_url: str = "",
         load_profile_catalogs: ProfileCatalogLoader = profile_loader.load_profile_catalogs,
         attach_profile_catalogs: ProfileCatalogAttacher = profile_loader.attach_profile_catalogs_to_game_db,
         message_lang: str = "en",
@@ -90,6 +91,7 @@ class GameDbLoadController:
         self._engine_ini_profile_url = str(engine_ini_profile_url or "").strip()
         self._game_xml_profile_url = str(game_xml_profile_url or "").strip()
         self._registry_profile_url = str(registry_profile_url or "").strip()
+        self._game_json_profile_url = str(game_json_profile_url or "").strip()
         self._load_profile_catalogs = load_profile_catalogs
         self._attach_profile_catalogs = attach_profile_catalogs
         self._message_lang = str(message_lang or "en").strip() or "en"
@@ -161,6 +163,7 @@ class GameDbLoadController:
                         self._engine_ini_profile_url,
                         self._game_xml_profile_url,
                         self._registry_profile_url,
+                        self._game_json_profile_url,
                     )
                     game_db = self._attach_profile_catalogs(game_db, catalogs)
                 except Exception as profile_err:

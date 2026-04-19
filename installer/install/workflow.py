@@ -34,6 +34,7 @@ class InstallContext:
 class InstallWorkflowCallbacks:
     install_base_payload: Callable[[str, str, str, list[str], Any], None]
     apply_optional_ingame_ini_settings: Callable[[str, dict[str, Any], Any], None]
+    apply_optional_json_settings: Callable[[str, dict[str, Any], Any], None]
     apply_optional_engine_ini_settings: Callable[[str, dict[str, Any], Any], None]
     apply_optional_registry_settings: Callable[[dict[str, Any], Any], None]
     install_fsr4_dll: Callable[[str, str, Any], Any]
@@ -199,6 +200,7 @@ def run_install_workflow(
     logger.info("Applied OptiScaler INI")
 
     callbacks.apply_optional_ingame_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
+    callbacks.apply_optional_json_settings(install_ctx.target_path, install_ctx.game_data, logger)
     callbacks.apply_optional_engine_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
     callbacks.apply_optional_registry_settings(install_ctx.game_data, logger)
 

@@ -47,6 +47,7 @@ class AppControllerFactoryConfig:
     engine_ini_profile_url: str = ""
     game_xml_profile_url: str = ""
     registry_profile_url: str = ""
+    game_json_profile_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -281,6 +282,7 @@ def _build_game_db_controller(
     engine_ini_profile_url = _require_remote_json_url("engine_ini_profile_url", config.engine_ini_profile_url)
     game_xml_profile_url = _require_remote_json_url("game_xml_profile_url", config.game_xml_profile_url)
     registry_profile_url = _require_remote_json_url("registry_profile_url", config.registry_profile_url)
+    game_json_profile_url = str(config.game_json_profile_url or "").strip()
     load_game_db = lambda gid: sheet_loader.load_game_db_from_remote_json(game_master_url, gid)
     load_module_download_links = lambda: sheet_loader.load_module_download_links_from_remote_json(resource_master_url)
 
@@ -305,6 +307,7 @@ def _build_game_db_controller(
         engine_ini_profile_url=engine_ini_profile_url,
         game_xml_profile_url=game_xml_profile_url,
         registry_profile_url=registry_profile_url,
+        game_json_profile_url=game_json_profile_url,
         message_lang=app.lang,
         logger=logging.getLogger(),
     )

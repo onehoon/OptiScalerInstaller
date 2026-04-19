@@ -186,6 +186,7 @@ OPTISCALER_GAME_INI_PROFILE_URL = _get_runtime_config_value("OPTISCALER_GAME_INI
 OPTISCALER_ENGINE_INI_PROFILE_URL = _get_runtime_config_value("OPTISCALER_ENGINE_INI_PROFILE_URL", "").strip()
 OPTISCALER_GAME_XML_PROFILE_URL = _get_runtime_config_value("OPTISCALER_GAME_XML_PROFILE_URL", "").strip()
 OPTISCALER_REGISTRY_PROFILE_URL = _get_runtime_config_value("OPTISCALER_REGISTRY_PROFILE_URL", "").strip()
+OPTISCALER_GAME_JSON_PROFILE_URL = _get_runtime_config_value("OPTISCALER_GAME_JSON_PROFILE_URL", "").strip()
 
 
 class PrefixedLoggerAdapter(logging.LoggerAdapter):
@@ -384,6 +385,7 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     engine_ini_profile_url=OPTISCALER_ENGINE_INI_PROFILE_URL,
     game_xml_profile_url=OPTISCALER_GAME_XML_PROFILE_URL,
     registry_profile_url=OPTISCALER_REGISTRY_PROFILE_URL,
+    game_json_profile_url=OPTISCALER_GAME_JSON_PROFILE_URL,
 )
 
 class OptiManagerApp:
