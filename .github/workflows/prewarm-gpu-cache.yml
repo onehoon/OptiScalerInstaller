@@ -12,7 +12,7 @@ on:
         description: "Pass debug=1 to the Apps Script endpoint"
         required: false
         type: boolean
-        default: false
+        default: true
       delay:
         description: "Delay between requests in seconds"
         required: false
