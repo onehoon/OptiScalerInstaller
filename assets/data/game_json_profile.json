@@ -40,6 +40,46 @@
     "memo": ""
   },
   {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_eWindowMode",
+    "op": "set",
+    "value": 1,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_eSSAAMethod",
+    "op": "set",
+    "value": 2,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_DLSSFG",
+    "op": "set",
+    "value": true,
+    "value_type": "boolean",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_eMotionBlur",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
     "profile_id": "Control_ALL",
     "path": "renderer.ini",
     "json_path": "/m_bFilmGrain",
