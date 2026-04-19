@@ -956,7 +956,7 @@ class OptiManagerApp:
         self._poster_queue.pump()
 
     def _start_auto_scan(self):
-        """Kick off a silent auto-scan of known Steam/game directories."""
+        """Kick off a silent auto-scan of known launcher/game directories."""
         if self.gpu_state.multi_gpu_blocked:
             return
         if self.install_state.in_progress:

@@ -60,8 +60,8 @@ _DRIVE_REMOVABLE = 2
 _DRIVE_FIXED = 3
 
 
-def _get_non_system_drive_letters() -> list[str]:
-    """Return uppercase drive letters to auto-scan, excluding C:."""
+def _get_drive_letters(*, include_system: bool) -> list[str]:
+    """Return uppercase drive letters to auto-scan."""
     if os.name != "nt":
         return []
 
@@ -72,7 +72,7 @@ def _get_non_system_drive_letters() -> list[str]:
         for i, letter in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
             if not (bitmask >> i & 1):
                 continue
-            if letter == "C":
+            if not include_system and letter == "C":
                 continue
             root = f"{letter}:\\\\"
             # Include removable media like microSD cards in auto-scan candidates.
@@ -81,7 +81,12 @@ def _get_non_system_drive_letters() -> list[str]:
                 drives.append(letter)
         return drives
     except Exception:
-        return ["D", "E"]
+        return ["C", "D", "E"] if include_system else ["D", "E"]
+
+
+def _get_non_system_drive_letters() -> list[str]:
+    """Return uppercase drive letters to auto-scan, excluding C:."""
+    return _get_drive_letters(include_system=False)
 
 
 def _get_custom_auto_scan_candidates() -> tuple[Path, ...]:
@@ -89,6 +94,31 @@ def _get_custom_auto_scan_candidates() -> tuple[Path, ...]:
     for letter in _get_non_system_drive_letters():
         for folder_name in _CUSTOM_SCAN_FOLDER_NAMES:
             candidates.append(Path(f"{letter}:/") / folder_name)
+    return tuple(candidates)
+
+
+def _get_launcher_auto_scan_candidates() -> tuple[Path, ...]:
+    program_files_roots = (
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")),
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
+        Path(r"C:\Program Files"),
+        Path(r"C:\Program Files (x86)"),
+    )
+
+    candidates: list[Path] = []
+    seen_roots: set[str] = set()
+    for root in program_files_roots:
+        normalized_root = str(root).lower()
+        if normalized_root in seen_roots:
+            continue
+        seen_roots.add(normalized_root)
+        candidates.append(root / "GOG Galaxy" / "Games")
+        candidates.append(root / "Epic Games")
+
+    for letter in _get_drive_letters(include_system=True):
+        candidates.append(Path(f"{letter}:/") / "GOG Games")
+        candidates.append(Path(f"{letter}:/") / "XboxGames")
+
     return tuple(candidates)
 
 
@@ -138,6 +168,9 @@ def get_auto_scan_paths(logger=None) -> list[str]:
     seen: set[str] = set()
 
     for candidate in _get_custom_auto_scan_candidates():
+        _append_existing_unique_path(paths, seen, candidate)
+
+    for candidate in _get_launcher_auto_scan_candidates():
         _append_existing_unique_path(paths, seen, candidate)
 
     steam_paths = _get_detected_steam_common_paths(logger=logger)
