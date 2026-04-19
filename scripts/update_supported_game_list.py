@@ -18,8 +18,8 @@ NATIVE_XEFG_TEXT = "Native XeFG Support"
 NEW_GAMES_HEADING = "## 신규 지원 게임 추가 / Newly Supported Games"
 NEW_GAMES_METADATA_START = "<!-- newly-supported-games"
 NEW_GAMES_METADATA_END = "-->"
-NEW_GAMES_TABLE_HEADER = "| Korean Title | English Title |"
-NEW_GAMES_TABLE_SEPARATOR = "|---|---|"
+NEW_GAMES_TABLE_HEADER = "| Korean Title | English Title | Intel | AMD | NVIDIA |"
+NEW_GAMES_TABLE_SEPARATOR = "|---|---|---|---|---|"
 NEW_GAMES_HEADING_ALIASES = {
     NEW_GAMES_HEADING,
     "## 신규 지원 게임 추가 / Newly Added Supported Games",
@@ -595,6 +595,9 @@ def make_new_game_record(game: dict[str, str], detected_on: str) -> dict[str, st
     return {
         "game_name_kr": normalize_text(game.get("game_name_kr")),
         "game_name_en": normalize_text(game.get("game_name_en")),
+        "Intel": normalize_text(game.get("Intel")),
+        "AMD": normalize_text(game.get("AMD")),
+        "NVIDIA": normalize_text(game.get("NVIDIA")),
         "detected_on": normalize_text(detected_on),
     }
 
@@ -669,6 +672,9 @@ def extract_new_games_table_records(block_text: str, fallback_detected_on: str) 
             {
                 "game_name_kr": cells[0],
                 "game_name_en": cells[1],
+                "Intel": cells[2] if len(cells) > 2 else "",
+                "AMD": cells[3] if len(cells) > 3 else "",
+                "NVIDIA": cells[4] if len(cells) > 4 else "",
                 "detected_on": fallback_detected_on,
             },
             fallback_detected_on,
@@ -711,6 +717,9 @@ def build_new_games_block(new_game_records: list[dict[str, str]]) -> str:
         {
             "game_name_kr": record["game_name_kr"],
             "game_name_en": record["game_name_en"],
+            "Intel": record["Intel"],
+            "AMD": record["AMD"],
+            "NVIDIA": record["NVIDIA"],
             "detected_on": record["detected_on"],
         }
         for record in new_game_records
@@ -728,7 +737,13 @@ def build_new_games_block(new_game_records: list[dict[str, str]]) -> str:
     ]
 
     for game in new_game_records:
-        lines.append(f"| {escape_md(game['game_name_kr'])} | {escape_md(game['game_name_en'])} |")
+        lines.append(
+            f"| {escape_md(game['game_name_kr'])} | "
+            f"{escape_md(game['game_name_en'])} | "
+            f"{escape_md(game['Intel'])} | "
+            f"{escape_md(game['AMD'])} | "
+            f"{escape_md(game['NVIDIA'])} |"
+        )
 
     return "\n".join(lines)
 
