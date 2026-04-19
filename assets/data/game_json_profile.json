@@ -98,5 +98,15 @@
     "value_type": "int",
     "create_if_missing": false,
     "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_bDLSSLegacyModel",
+    "op": "set",
+    "value": true,
+    "value_type": "Boolean",
+    "create_if_missing": false,
+    "memo": ""
   }
 ]
