@@ -58,5 +58,45 @@
     "value_type": "int",
     "create_if_missing": false,
     "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_eWindowMode",
+    "op": "set",
+    "value": 1,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_eMotionBlur",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_eDLSSQuality",
+    "op": "set",
+    "value": 1,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_bLensDistortion",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
   }
 ]
