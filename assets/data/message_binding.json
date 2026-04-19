@@ -1,11 +1,41 @@
 [
   {
-    "binding_id": "bind.global.startup.all",
+    "binding_id": "bind.global.startup.all.1",
     "game_id": "*",
     "gpu_vendor": "all",
     "stage": "startup",
-    "message_id": "global.startup_warning",
+    "message_id": "global.startup_warning1",
     "priority": 100,
+    "enabled": true,
+    "memo": "앱 시작 공지"
+  },
+  {
+    "binding_id": "bind.global.startup.all.2",
+    "game_id": "*",
+    "gpu_vendor": "all",
+    "stage": "startup",
+    "message_id": "global.startup_warning2",
+    "priority": 200,
+    "enabled": true,
+    "memo": "앱 시작 공지"
+  },
+  {
+    "binding_id": "bind.global.startup.all.3",
+    "game_id": "*",
+    "gpu_vendor": "all",
+    "stage": "startup",
+    "message_id": "global.startup_warning3",
+    "priority": 300,
+    "enabled": true,
+    "memo": "앱 시작 공지"
+  },
+  {
+    "binding_id": "bind.global.startup.all.4",
+    "game_id": "*",
+    "gpu_vendor": "all",
+    "stage": "startup",
+    "message_id": "global.startup_warning4",
+    "priority": 400,
     "enabled": true,
     "memo": "앱 시작 공지"
   },
