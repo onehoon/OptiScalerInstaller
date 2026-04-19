@@ -298,12 +298,19 @@ def build_sheet_index(rows: list[dict[str, str]]) -> tuple[dict[str, dict[str, l
 
 
 def build_intel_label(tokens: list[str]) -> str:
-    recognized = False
+    arc_found = False
+    models = []
     for token in tokens:
         upper = token.upper()
-        if "*ARC*" in upper or upper in {"*130V*", "*140V*", "*130T*", "*140T*"}:
-            recognized = True
-    return "Intel Arc" if recognized else ""
+        if "ARC" in upper:
+            arc_found = True
+        elif upper in {"130V", "140V", "130T", "140T"}:
+            models.append(upper)
+    if arc_found:
+        return "Intel Arc"
+    if models:
+        return "Intel Arc " + "/".join(models)
+    return ""
 
 
 def build_amd_label(tokens: list[str]) -> str:
