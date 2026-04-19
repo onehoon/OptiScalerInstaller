@@ -22,7 +22,6 @@ logs/
 
 # Tests and local test artifacts
 tests/*
-!tests/test_scan_hints.py
 tests_runtime/
 .pytest_cache/
 .pytest_tmp/
