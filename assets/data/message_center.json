@@ -1,11 +1,44 @@
 [
   {
-    "message_id": "global.startup_warning",
+    "message_id": "global.startup_warning1",
     "msg_group": "global",
     "variant": "startup_warning",
     "category": "popup",
-    "ko": "[RED]설치 전 게임을 경계없는 전체창모드(보더리스)로 설정하세요. (크래쉬, 블랙스크린 방지)[p]MOD 사용 시 정상적으로 동작하지 않을 수 있습니다.[END][p]MOD 사용 시 직접 수동 설치를 권장합니다.[P]설치 전 팝업 및 가이드 내용을 꼭 확인하세요[p]MOD 없는 순정 게임 기준으로 제작되었습니다.",
-    "en": "[RED]Before installain, set the game to borderless mode. (Prevents crashes and black screens)[p]May not compatible with some MOD[END][p]Manual installation recommended if you use MOD[P]Please ensure you review information provided[p]This installer is designed for vanilla game",
+    "ko": "[RED]설치 전 게임을 경계없는 전체창모드(보더리스)로 설정하세요. (크래쉬, 블랙스크린 방지)[END]",
+    "en": "[RED]Before installain, set the game to borderless mode. (Prevents crashes and black screens)[END]",
+    "url": "",
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "message_id": "global.startup_warning2",
+    "msg_group": "global",
+    "variant": "startup_warning",
+    "category": "popup",
+    "ko": "[RED]MOD 사용 시 정상적으로 동작하지 않을 수 있습니다. MOD 사용 시 직접 수동 설치를 권장합니다.[END]",
+    "en": "[RED]May not compatible with some MOD. Manual installation recommended if you use MOD.[END]",
+    "url": "",
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "message_id": "global.startup_warning3",
+    "msg_group": "global",
+    "variant": "startup_warning",
+    "category": "popup",
+    "ko": "[RED]설치 전 팝업 및 가이드 내용을 꼭 확인하세요.[END]",
+    "en": "[RED]Please ensure you review information provided.[END]",
+    "url": "",
+    "enabled": true,
+    "memo": ""
+  },
+  {
+    "message_id": "global.startup_warning4",
+    "msg_group": "global",
+    "variant": "startup_warning",
+    "category": "popup",
+    "ko": "[RED]MOD 없는 순정 게임 기준으로 제작되었습니다.[END]",
+    "en": "[RED]This installer is designed for vanilla game.[END]",
     "url": "",
     "enabled": true,
     "memo": ""
