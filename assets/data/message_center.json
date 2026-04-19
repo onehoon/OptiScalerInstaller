@@ -126,5 +126,61 @@
     "en": "[red]If the game version is lower than 1.9.0.0, it may not work properly after installation.[br][dot]Please make sure to check the game version before installing.[end]",
     "url": "",
     "memo": "피의 거짓"
+  },
+  {
+    "message_id": "",
+    "category": "라오툼",
+    "ko": "설치 전 인게임 그래픽 Directx12를 반드시 켜주세요\n설지 전 디스플레이 옵션을 반드시 전체화면으로 변경해주세요\n(전체 화면 독점 지원안됨)",
+    "en": "Change option bdfore install\nGraphics API: Switch to DirectX 12\nDisplay Mode: Set to Fullscreen\nNote: \"Exclusive Fullscreen\" is not supported with XeFG",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "검은사막",
+    "ko": "하이퍼바이저 크랙 버젼에서 동작하지 않습니다.",
+    "en": "Not work with HV crack ver",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "위쳐3",
+    "ko": "- 다이렉트X12로 실행해야합니다.\n- 화면 옵션에서 전체창을 선택해야합니다.\n- ReShade, SpeciaK, 각종 MOD와 충돌이 발생할 수 있습니다.",
+    "en": "- Must be launched in DirectX 12 mode.\n- Set the Display Mode to 'Borderless Window' in the graphics options.\n- Conflicts may occur with ReShade, SpecialK, other MODs",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "MHS3",
+    "ko": "MOD 사용자 설치하지마세요\n설치 전 인게임 그래픽 FSR로 설정하세요\n리프레임워크 동작하지 않아서 MOD사용불가",
+    "en": "If you use MOD, DO NOT INSTALL\nBefore install set in-game setting to FSR\nreframework not working (NO MOD)",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "MHW",
+    "ko": "[RED]테스트 중입니다. 설치하지 마세요[END][P][red][DOT]XeFG 적용으로 reframework 동작하지 않음[p][dot]따라서, MOD 사용 불가함[p][dot]MOD 사용자는 설치하지 마세요[end]",
+    "en": "[RED]Testing. DO NOT INSTALL[END][P][red][DOT]reframework NOT working due to XeFG[p][dot]You can't use MOD[p][dot]Do not install if you need MOD[end]",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "MHW",
+    "ko": "[red]인게임 업스켕일 및 프레임생성 옵션 변경하지 마세요[p][indent]업스케일링 : XeSS 고정[br][indent]프레임생성 : DLSS 2X 고정[end]",
+    "en": "[red]Do not change in-game upscaling and frame generation options[p][indent]Upscaling: XeSS (fixed)[br][indent]Frame Generation: DLSS 2X (fixed)[end]",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "",
+    "category": "RDR2",
+    "ko": "[red]배틀아이 안티치트는 꺼주시기 바랍니다.[p]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
+    "en": "[red]Please disable BattlEye Anti-Cheat.[p]Any issues arising from installation are the sole responsibility of the user.[end]",
+    "url": "",
+    "memo": ""
   }
 ]
