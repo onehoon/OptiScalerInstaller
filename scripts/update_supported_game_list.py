@@ -220,6 +220,15 @@ def is_test_sheet_row(row: dict[str, str]) -> bool:
     return any("test" in target.lower() for target in targets if target)
 
 
+def is_test_game_title(*titles: Any) -> bool:
+    keywords = ("test", "테스트")
+    for title in titles:
+        text = normalize_text(title).lower()
+        if text and any(keyword in text for keyword in keywords):
+            return True
+    return False
+
+
 def normalize_vendor(value: Any) -> str:
     text = normalize_text(value).upper()
     if text in {"INTEL", "AMD", "NVIDIA", "ALL"}:
@@ -246,6 +255,8 @@ def load_game_master() -> dict[str, dict[str, Any]]:
             continue
         game_id = normalize_text(raw_game.get("game_id"))
         if not game_id:
+            continue
+        if is_test_game_title(raw_game.get("game_name_kr"), raw_game.get("game_name_en")):
             continue
         games[game_id] = dict(raw_game)
     return games
