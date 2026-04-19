@@ -19,26 +19,5 @@
     "section": "/Script/GameNoce.NoceLocalGameUserSettings",
     "key": "PreferredFullscreenMode",
     "value": 1
-  },
-  {
-    "profile_id": "AW2_ALL",
-    "path": "",
-    "section": "",
-    "key": "",
-    "value": ""
-  },
-  {
-    "profile_id": "AW2_ALL",
-    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
-    "section": "\"m_bFilmGrain\": 0|\"m_bVignette\": 0|\"m_bHDR\": 0|\"m_bLensDistortion\": 0",
-    "key": "",
-    "value": ""
-  },
-  {
-    "profile_id": "Control_ALL",
-    "path": "renderer.ini",
-    "section": "\"m_bFilmGrain\": false|\"m_bVignette\": false",
-    "key": "",
-    "value": ""
   }
 ]
