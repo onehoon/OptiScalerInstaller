@@ -302,10 +302,11 @@ def build_intel_label(tokens: list[str]) -> str:
     models = []
     for token in tokens:
         upper = token.upper()
+        stripped = upper.strip('*')
         if "ARC" in upper:
             arc_found = True
-        elif upper in {"130V", "140V", "130T", "140T"}:
-            models.append(upper)
+        elif stripped in {"130V", "140V", "130T", "140T"}:
+            models.append(stripped)
     if arc_found:
         return "Intel Arc"
     if models:
