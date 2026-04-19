@@ -383,10 +383,6 @@ def build_label_from_tokens(vendor: str, token_groups: list[str]) -> str:
     return "Supported"
 
 
-def support_value_for_vendor(game: dict[str, Any], vendor: str) -> Any:
-    return game.get(f"support_{vendor.lower()}")
-
-
 def build_vendor_display(
     game: dict[str, Any],
     sheet_vendor_rules: list[str],
@@ -394,21 +390,21 @@ def build_vendor_display(
     vendor: str,
     all_supported: bool,
 ) -> str:
-    support_value = support_value_for_vendor(game, vendor)
-    support_text = normalize_text(support_value)
-
+    support_text = normalize_text(game.get(f"support_{vendor.lower()}"))
     if vendor == "intel" and support_text.lower() == "native xefg":
         return NATIVE_XEFG_TEXT
 
     vendor_key = vendor.upper()
     label = build_label_from_tokens(vendor_key, sheet_vendor_rules)
+    has_install_profile_support = bool(all_supported or sheet_vendor_rules)
+
+    if not has_install_profile_support:
+        return "Not Supported"
+
     if label:
         return label
 
     if all_supported:
-        return "Supported"
-
-    if parse_bool(support_value, default=False):
         return "Supported"
 
     return "Not Supported"
