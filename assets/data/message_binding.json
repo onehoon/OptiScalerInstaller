@@ -1,172 +1,162 @@
 [
   {
-    "binding_id": "bind.global.startup.all.1",
     "game_id": "*",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "startup",
     "message_id": "global.startup_warning1",
     "priority": 100,
-    "enabled": true,
     "memo": "앱 시작 공지"
   },
   {
-    "binding_id": "bind.global.startup.all.2",
     "game_id": "*",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "startup",
     "message_id": "global.startup_warning2",
     "priority": 200,
-    "enabled": true,
     "memo": "앱 시작 공지"
   },
   {
-    "binding_id": "bind.global.startup.all.3",
     "game_id": "*",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "startup",
     "message_id": "global.startup_warning3",
     "priority": 300,
-    "enabled": true,
     "memo": "앱 시작 공지"
   },
   {
-    "binding_id": "bind.global.startup.all.4",
     "game_id": "*",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "startup",
     "message_id": "global.startup_warning4",
     "priority": 400,
-    "enabled": true,
     "memo": "앱 시작 공지"
   },
   {
-    "binding_id": "bind.kcd2.all.pre.hdr_conflict",
     "game_id": "KCD2",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.hdr_conflict",
     "priority": 100,
-    "enabled": true,
     "memo": "HDR 충돌 안내"
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
     "game_id": "HFW",
-    "gpu_vendor": "INTEL",
+    "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
-    "game_id": "HFW",
-    "gpu_vendor": "AMD",
-    "stage": "install_pre",
-    "message_id": "install_pre.borderless_fsr3_required",
-    "priority": 100,
-    "enabled": true,
-    "memo": ""
-  },
-  {
-    "binding_id": "install_post.dlss_relaunch",
     "game_id": "HFW",
     "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
-    "priority": 100,
-    "enabled": true,
+    "priority": 90,
     "memo": ""
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
     "game_id": "DWORIGINS",
-    "gpu_vendor": "INTEL",
+    "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
-    "game_id": "DWORIGINS",
-    "gpu_vendor": "AMD",
-    "stage": "install_pre",
-    "message_id": "install_pre.borderless_fsr3_required",
-    "priority": 100,
-    "enabled": true,
-    "memo": ""
-  },
-  {
-    "binding_id": "install_post.dlss_relaunch",
     "game_id": "DWORIGINS",
     "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
-    "priority": 100,
-    "enabled": true,
+    "priority": 90,
     "memo": ""
   },
   {
-    "binding_id": "install_post.dlss_relaunch",
     "game_id": "CP2077",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_post.dlss_relaunch",
     "game_id": "FF7R",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_post.DLSS_upscaling",
     "game_id": "SHF",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.DLSS_upscaling",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
     "game_id": "FFXVI",
-    "gpu_vendor": "INTEL",
+    "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
-    "enabled": true,
     "memo": ""
   },
   {
-    "binding_id": "install_pre.borderless_fsr3_required",
-    "game_id": "FFXVI",
-    "gpu_vendor": "AMD",
-    "stage": "install_pre",
-    "message_id": "install_pre.borderless_fsr3_required",
-    "priority": 100,
-    "enabled": true,
-    "memo": ""
-  },
-  {
-    "binding_id": "install_post.dlss_relaunch",
     "game_id": "FFXVI",
     "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "FH5",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.gamepass_overlay_unsupported",
     "priority": 100,
-    "enabled": true,
+    "memo": ""
+  },
+  {
+    "game_id": "FH5",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 200,
+    "memo": ""
+  },
+  {
+    "game_id": "LOP",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_LOP_version",
+    "priority": 90,
+    "memo": ""
+  },
+  {
+    "game_id": "LOP",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "PAL",
+    "gpu_vendor": "all",
+    "stage": "install_pre",
+    "message_id": "install_pre.steam_dx12_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "PAL",
+    "gpu_vendor": "all",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
     "memo": ""
   }
 ]
