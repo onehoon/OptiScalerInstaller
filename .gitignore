@@ -2,6 +2,7 @@
 build.py
 .env
 .env.*
+.venv-build/
 installer/_generated_build_config.py
 .vscode/
 docs/getSupportedGameBundle.gs
