@@ -382,7 +382,7 @@ def apply_optional_json_settings(target_path: str, game_data: dict[str, Any], lo
         def _apply_json() -> None:
             changed = json_utils.apply_json_settings(file_path, rows, logger=logger)
             if changed:
-                logger.info("Applied game_json_profile settings to %s", file_path)
+                logger.info("Applied game_json_profile settings to %s", Path(file_path).name)
 
         _apply_existing_file_settings(
             file_path,
