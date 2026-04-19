@@ -3,6 +3,11 @@ name: Prewarm GPU Bundle Cache
 on:
   workflow_dispatch:
     inputs:
+      force:                                      
+        description: "Force cache overwrite (force=1)"
+        required: false
+        type: boolean
+        default: true       
       debug:
         description: "Pass debug=1 to the Apps Script endpoint"
         required: false
@@ -12,7 +17,7 @@ on:
         description: "Delay between requests in seconds"
         required: false
         type: string
-        default: "0.2"
+        default: "1"
   schedule:
     - cron: "10 */4 * * *"
 
@@ -58,4 +63,4 @@ jobs:
             args+=(--debug)
           fi
 
-          python scripts/prewarm_gpu_bundle_cache.py "${args[@]}"
+          python scripts/prewarm_gpu_bundle_cache.py --force --debug "${args[@]}"
