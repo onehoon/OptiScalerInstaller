@@ -312,7 +312,7 @@ def build_intel_label(tokens: list[str]) -> str:
         return "Intel Arc Series"
     if models:
         if len(models) == 1:
-            return f"Intel {models[0]}"
+            return f"Intel Arc {models[0]}"
         else:
             return "Intel Arc " + "/".join(models)
     return ""
