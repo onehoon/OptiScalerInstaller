@@ -13,25 +13,20 @@ _file_session = get_shared_retry_session()
 @dataclass(frozen=True)
 class MessageTemplate:
     message_id: str
-    msg_group: str
-    variant: str
     category: str
     ko: str
     en: str
     url: str
-    enabled: bool
     memo: str = ""
 
 
 @dataclass(frozen=True)
 class MessageBinding:
-    binding_id: str
     game_id: str
     gpu_vendor: str
     stage: str
     message_id: str
     priority: int
-    enabled: bool
     memo: str = ""
 
 
@@ -51,19 +46,6 @@ def _normalize_key(value: object) -> str:
 
 def _normalize_lang(lang: str) -> str:
     return "ko" if str(lang or "").lower().startswith("ko") else "en"
-
-
-def _parse_bool(value: object, default: bool = False) -> bool:
-    if isinstance(value, bool):
-        return value
-    text = _normalize_text(value).lower()
-    if not text:
-        return default
-    if text in {"1", "true", "yes", "y", "on"}:
-        return True
-    if text in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
 
 
 def _parse_priority(value: object, default: int = 100) -> int:
@@ -92,13 +74,10 @@ def _parse_message_center_rows(rows: list[dict[str, Any]]) -> dict[str, MessageT
             continue
         result[message_id] = MessageTemplate(
             message_id=message_id,
-            msg_group=_normalize_text(row.get("msg_group")),
-            variant=_normalize_text(row.get("variant")),
             category=_normalize_text(row.get("category")).casefold(),
             ko=_normalize_text(row.get("ko")),
             en=_normalize_text(row.get("en")),
             url=_normalize_text(row.get("url")),
-            enabled=_parse_bool(row.get("enabled"), True),
             memo=_normalize_text(row.get("memo")),
         )
     return result
@@ -109,20 +88,17 @@ def _parse_message_binding_rows(rows: list[dict[str, Any]]) -> tuple[MessageBind
     for row in rows:
         if not isinstance(row, dict):
             continue
-        binding_id = _normalize_text(row.get("binding_id"))
         message_id = _normalize_text(row.get("message_id"))
         stage = _normalize_text(row.get("stage"))
-        if not binding_id or not message_id or not stage:
+        if not message_id or not stage:
             continue
         result.append(
             MessageBinding(
-                binding_id=binding_id,
                 game_id=_normalize_text(row.get("game_id")) or "*",
                 gpu_vendor=_normalize_text(row.get("gpu_vendor")) or "all",
                 stage=stage.casefold(),
                 message_id=message_id,
                 priority=_parse_priority(row.get("priority"), 100),
-                enabled=_parse_bool(row.get("enabled"), True),
                 memo=_normalize_text(row.get("memo")),
             )
         )
@@ -157,8 +133,6 @@ def build_message_repository(
 
 
 def _binding_matches(binding: MessageBinding, *, stage: str, game_id: str, gpu_vendor: str) -> bool:
-    if not binding.enabled:
-        return False
     if _normalize_key(binding.stage) != _normalize_key(stage):
         return False
 
@@ -174,15 +148,13 @@ def _binding_matches(binding: MessageBinding, *, stage: str, game_id: str, gpu_v
     return True
 
 
-def _binding_sort_key(binding: MessageBinding, *, game_id: str, gpu_vendor: str) -> tuple[int, int, int, str]:
+def _binding_sort_key(binding: MessageBinding, *, game_id: str, gpu_vendor: str) -> tuple[int, int, int]:
     game_exact_rank = 0 if _normalize_key(binding.game_id) == _normalize_key(game_id) else 1
     vendor_exact_rank = 0 if _normalize_key(binding.gpu_vendor) == _normalize_key(gpu_vendor) else 1
-    return (game_exact_rank, vendor_exact_rank, int(binding.priority), binding.binding_id)
+    return (game_exact_rank, vendor_exact_rank, int(binding.priority))
 
 
 def _resolve_template_text(template: MessageTemplate, *, lang: str) -> str:
-    if not template.enabled:
-        return ""
     normalized_lang = _normalize_lang(lang)
     return template.ko if normalized_lang == "ko" else template.en
 
@@ -225,7 +197,7 @@ def resolve_stage_guide_url(repo: MessageRepository, *, game_id: str, gpu_vendor
     matches.sort(key=lambda item: _binding_sort_key(item, game_id=game_id, gpu_vendor=gpu_vendor))
     for binding in matches:
         template = repo.templates.get(binding.message_id)
-        if template is None or template.category != "guide_url" or not template.enabled:
+        if template is None or template.category != "guide_url":
             continue
         url = template.url.strip()
         if url:
