@@ -19,5 +19,40 @@
     "section": "/Script/GameNoce.NoceLocalGameUserSettings",
     "key": "PreferredFullscreenMode",
     "value": 1
+  },
+  {
+    "profile_id": "MHW_ALL",
+    "path": "config.ini",
+    "section": "Graphics",
+    "key": "Algorithm",
+    "value": "XESS"
+  },
+  {
+    "profile_id": "MHW_ALL",
+    "path": "config.ini",
+    "section": "Graphics",
+    "key": "AlgorithmFG",
+    "value": "DLSS"
+  },
+  {
+    "profile_id": "MHW_ALL",
+    "path": "config.ini",
+    "section": "Graphics/DLSS_FG",
+    "key": "FrameGenerationMode",
+    "value": "On"
+  },
+  {
+    "profile_id": "MHW_ALL",
+    "path": "config.ini",
+    "section": "Graphics/DLSS_FG",
+    "key": "GenerateFramesCount",
+    "value": 1
+  },
+  {
+    "profile_id": "MHW_ALL",
+    "path": "config.ini",
+    "section": "Graphics/Reflex",
+    "key": "LatencyMode",
+    "value": "On"
   }
 ]
