@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..i18n import Lang
+from .scan_hints import load_manual_scan_hint_paths
 
 if os.name == "nt":
     import winreg
@@ -166,6 +167,9 @@ def get_auto_scan_paths(logger=None) -> list[str]:
     """Return existing directories to scan automatically on startup."""
     paths: list[str] = []
     seen: set[str] = set()
+
+    for candidate in load_manual_scan_hint_paths(logger=logger):
+        _append_existing_unique_path(paths, seen, Path(candidate))
 
     for candidate in _get_custom_auto_scan_candidates():
         _append_existing_unique_path(paths, seen, candidate)

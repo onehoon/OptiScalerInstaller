@@ -8,6 +8,7 @@ import threading
 from typing import Any
 
 from ..games import scanner as game_scanner
+from ..games.scan_hints import save_manual_scan_hint
 from ..i18n import Lang
 from ..common import schedule_safely
 
@@ -98,6 +99,7 @@ class ScanController:
         normalized_path = str(folder_path or "").strip()
         if not normalized_path or self._scan_in_progress:
             return False
+        save_manual_scan_hint(normalized_path, logger=self._logger)
         return self.start_scan([normalized_path], is_auto=False)
 
     def start_scan(self, scan_paths: Iterable[str], *, is_auto: bool) -> bool:
