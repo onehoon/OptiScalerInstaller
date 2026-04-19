@@ -452,8 +452,8 @@
     "cover_filename": "Monster Hunter Stories 3 Twisted Reflection.webp",
     "enabled": true,
     "support_intel": true,
-    "support_amd": true,
-    "support_nvidia": true
+    "support_amd": false,
+    "support_nvidia": false
   },
   {
     "game_id": "MHW",
@@ -501,7 +501,7 @@
     "enabled": true,
     "support_intel": true,
     "support_amd": true,
-    "support_nvidia": true
+    "support_nvidia": false
   },
   {
     "game_id": "Avatar",
