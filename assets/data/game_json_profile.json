@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_bFilmGrain",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_bVignette",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_bHDR",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "AW2_ALL",
+    "path": "%LOCALAPPDATA%\\Remedy\\AlanWake2\\renderer.ini",
+    "json_path": "/m_bLensDistortion",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_bFilmGrain",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  },
+  {
+    "profile_id": "Control_ALL",
+    "path": "renderer.ini",
+    "json_path": "/m_bVignette",
+    "op": "set",
+    "value": 0,
+    "value_type": "int",
+    "create_if_missing": false,
+    "memo": ""
+  }
+]
