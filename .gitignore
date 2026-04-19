@@ -1,6 +1,5 @@
 # Local configuration and scripts
 build.py
-game_wiki.py
 .env
 .env.*
 installer/_generated_build_config.py

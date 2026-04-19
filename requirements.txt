@@ -1,4 +1,5 @@
 requests
+google-auth
 customtkinter
 Pillow
 py7zr
