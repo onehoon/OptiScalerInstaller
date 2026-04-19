@@ -32,6 +32,14 @@
     "memo": ""
   },
   {
+    "message_id": "guide.avowed_wiki",
+    "category": "guide_url",
+    "ko": "",
+    "en": "",
+    "url": "https://github.com/optiscaler/OptiScaler/wiki/Avowed",
+    "memo": "Avowed 가이드"
+  },
+  {
     "message_id": "install_pre.borderless_fsr3_required",
     "category": "popup",
     "ko": "[red]설치 전 전체 창모드, FSR3/FSRFG로 설정하고 오세요[end]",
@@ -88,6 +96,78 @@
     "memo": "Palworld"
   },
   {
+    "message_id": "install_pre_LOP_version",
+    "category": "popup",
+    "ko": "[red]1.9.0.0 버전 이상이 아닐 경우 정상적으로 동작하지 않을 수 있습니다.[br][dot]설치 전에 반드시 게임 버전을 확인해 주시기 바랍니다.[end]",
+    "en": "[red]If the game version is lower than 1.9.0.0, it may not work properly after installation.[br][dot]Please make sure to check the game version before installing.[end]",
+    "url": "",
+    "memo": "피의 거짓"
+  },
+  {
+    "message_id": "install_pre_ROTTR",
+    "category": "popup",
+    "ko": "[RED]설치 전 인게임 그래픽 Directx12를 반드시 켜주세요[BR]설지 전 디스플레이 옵션을 반드시 전체화면으로 변경해주세요[END][BR](전체 화면 독점 지원안됨)",
+    "en": "[RED]Before install change option[end][br][dot]Graphics API: Switch to DirectX 12[br][dot]Display Mode: Set to Fullscreen[br]Note: \"Exclusive Fullscreen\" is not supported with XeFG",
+    "url": "",
+    "memo": "라오툼"
+  },
+  {
+    "message_id": "install_pre_TW3",
+    "category": "popup",
+    "ko": "- 다이렉트X12로 실행해야합니다.\n- 화면 옵션에서 전체창을 선택해야합니다.\n- ReShade, SpeciaK, 각종 MOD와 충돌이 발생할 수 있습니다.",
+    "en": "- Must be launched in DirectX 12 mode.\n- Set the Display Mode to 'Borderless Window' in the graphics options.\n- Conflicts may occur with ReShade, SpecialK, other MODs",
+    "url": "",
+    "memo": "위쳐3"
+  },
+  {
+    "message_id": "install_pre_CD",
+    "category": "popup",
+    "ko": "[red]하이퍼바이저 크랙 버젼에서 동작하지 않습니다.[end]",
+    "en": "[red]Not compatible with HV crack ver.[end]",
+    "url": "",
+    "memo": "붉은사막"
+  },
+  {
+    "message_id": "install_pre_RDR2",
+    "category": "popup",
+    "ko": "[red]배틀아이 안티치트는 꺼주세요.[p]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
+    "en": "[red]Please disable BattlEye Anti-Cheat.[p]Any issues arising from installation are the sole responsibility of the user.[end]",
+    "url": "",
+    "memo": "RDR2"
+  },
+  {
+    "message_id": "install_pre_MHS3",
+    "category": "popup",
+    "ko": "MOD 사용자 설치하지마세요\n설치 전 인게임 그래픽 FSR로 설정하세요\n리프레임워크 동작하지 않아서 MOD사용불가",
+    "en": "If you use MOD, DO NOT INSTALL\nBefore install set in-game setting to FSR\nreframework not working (NO MOD)",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "install_pre_MHW",
+    "category": "popup",
+    "ko": "[red]인텔 XeFG 적용으로 reframework 동작하지 않아서 MOD 사용 불가합니다.[br]MOD 사용자는 설치하지 마세요[end][p]인게임 업스켕일 및 프레임생성 옵션 변경하지 마세요[br][indent][dot]업스케일링 : XeSS 고정[br][indent][dot]프레임생성 : DLSS 2X 고정",
+    "en": "[red]Reframework NOT working due to XeFG[br]You can't use MOD. Do not install if you need MOD[end][p]Do not change in-game upscaling and frame generation options[br][indent][dot]Upscaling: XeSS (fixed)[br][indent][dot]Frame Generation: DLSS 2X (fixed)",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "install_pre_FSR3_Upscalier",
+    "category": "popup",
+    "ko": "[red]설치 전 전체 창모드, FSR3 업스케일링으로 설정하세요[end]",
+    "en": "[red]Before install, set Borderless, FSR3 in-game[end]",
+    "url": "",
+    "memo": ""
+  },
+  {
+    "message_id": "install_pre_XeSS_Upscaler",
+    "category": "popup",
+    "ko": "[red]설치 전 전체 창모드, XeSS 업스케일링으로 설정하세요[end]",
+    "en": "[red]Before install, set Borderless, XeSS in-game[end]",
+    "url": "",
+    "memo": ""
+  },
+  {
     "message_id": "install_post.dlss_relaunch",
     "category": "popup",
     "ko": "[RED]설치 후 인게임 설정을 보더리스, DLSS, DLSS프레임생성으로 맞추고 게임 재실행[END]",
@@ -96,9 +176,9 @@
     "memo": ""
   },
   {
-    "message_id": "install_post.launch_twice_after_install",
+    "message_id": "install_post.dlss.launch_twice",
     "category": "popup",
-    "ko": "[RED]설치 후 DLSS, DLSS프레임생성으로 설정하고 게임을 두 번 실행하세요[END]",
+    "ko": "[RED]설치 후 DLSS, DLSS프레임생성으로 설정하고 게임을 두 번 재실행하세요[END]",
     "en": "[RED]After install, change ingame upscaler & FG setting to DLSS[br]and launch game twice[END]",
     "url": "",
     "memo": "Stellar Blade Intel"
@@ -112,82 +192,10 @@
     "memo": "DLSS업스케일러 Only"
   },
   {
-    "message_id": "guide.avowed_wiki",
-    "category": "guide_url",
-    "ko": "",
-    "en": "",
-    "url": "https://github.com/optiscaler/OptiScaler/wiki/Avowed",
-    "memo": "Avowed 가이드"
-  },
-  {
-    "message_id": "install_post.DLSS_upscaling",
+    "message_id": "install_post_XeSS_Upscaler",
     "category": "popup",
-    "ko": "[RED]설치 후 인게임 설정을 전체창모드 DLSS로 맞추고 게임 재실행[END]",
-    "en": "[RED]Change ingame upscaler to DLSS, borderless and relaunch[END]",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "install_pre_LOP_version",
-    "category": "popup",
-    "ko": "[red]1.9.0.0 버전 이상이 아닐 경우 정상적으로 동작하지 않을 수 있습니다.[br][dot]설치 전에 반드시 게임 버전을 확인해 주시기 바랍니다.[end]",
-    "en": "[red]If the game version is lower than 1.9.0.0, it may not work properly after installation.[br][dot]Please make sure to check the game version before installing.[end]",
-    "url": "",
-    "memo": "피의 거짓"
-  },
-  {
-    "message_id": "",
-    "category": "라오툼",
-    "ko": "설치 전 인게임 그래픽 Directx12를 반드시 켜주세요\n설지 전 디스플레이 옵션을 반드시 전체화면으로 변경해주세요\n(전체 화면 독점 지원안됨)",
-    "en": "Change option bdfore install\nGraphics API: Switch to DirectX 12\nDisplay Mode: Set to Fullscreen\nNote: \"Exclusive Fullscreen\" is not supported with XeFG",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "검은사막",
-    "ko": "하이퍼바이저 크랙 버젼에서 동작하지 않습니다.",
-    "en": "Not work with HV crack ver",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "위쳐3",
-    "ko": "- 다이렉트X12로 실행해야합니다.\n- 화면 옵션에서 전체창을 선택해야합니다.\n- ReShade, SpeciaK, 각종 MOD와 충돌이 발생할 수 있습니다.",
-    "en": "- Must be launched in DirectX 12 mode.\n- Set the Display Mode to 'Borderless Window' in the graphics options.\n- Conflicts may occur with ReShade, SpecialK, other MODs",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "MHS3",
-    "ko": "MOD 사용자 설치하지마세요\n설치 전 인게임 그래픽 FSR로 설정하세요\n리프레임워크 동작하지 않아서 MOD사용불가",
-    "en": "If you use MOD, DO NOT INSTALL\nBefore install set in-game setting to FSR\nreframework not working (NO MOD)",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "MHW",
-    "ko": "[RED]테스트 중입니다. 설치하지 마세요[END][P][red][DOT]XeFG 적용으로 reframework 동작하지 않음[p][dot]따라서, MOD 사용 불가함[p][dot]MOD 사용자는 설치하지 마세요[end]",
-    "en": "[RED]Testing. DO NOT INSTALL[END][P][red][DOT]reframework NOT working due to XeFG[p][dot]You can't use MOD[p][dot]Do not install if you need MOD[end]",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "MHW",
-    "ko": "[red]인게임 업스켕일 및 프레임생성 옵션 변경하지 마세요[p][indent]업스케일링 : XeSS 고정[br][indent]프레임생성 : DLSS 2X 고정[end]",
-    "en": "[red]Do not change in-game upscaling and frame generation options[p][indent]Upscaling: XeSS (fixed)[br][indent]Frame Generation: DLSS 2X (fixed)[end]",
-    "url": "",
-    "memo": ""
-  },
-  {
-    "message_id": "",
-    "category": "RDR2",
-    "ko": "[red]배틀아이 안티치트는 꺼주시기 바랍니다.[p]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
-    "en": "[red]Please disable BattlEye Anti-Cheat.[p]Any issues arising from installation are the sole responsibility of the user.[end]",
+    "ko": "[red]설치 후 XeSS 업스케일링으로 설정하세요[end]",
+    "en": "[red]After install, set Borderless, XeSS in-game[end]",
     "url": "",
     "memo": ""
   }
