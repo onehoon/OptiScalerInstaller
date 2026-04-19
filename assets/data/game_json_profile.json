@@ -92,20 +92,10 @@
   {
     "profile_id": "Control_ALL",
     "path": "renderer.ini",
-    "json_path": "/m_bLensDistortion",
-    "op": "set",
-    "value": 0,
-    "value_type": "int",
-    "create_if_missing": false,
-    "memo": ""
-  },
-  {
-    "profile_id": "Control_ALL",
-    "path": "renderer.ini",
     "json_path": "/m_bDLSSLegacyModel",
     "op": "set",
     "value": true,
-    "value_type": "Boolean",
+    "value_type": "boolean",
     "create_if_missing": false,
     "memo": ""
   }
