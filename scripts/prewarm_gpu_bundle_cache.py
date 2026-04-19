@@ -131,7 +131,7 @@ def _iter_requests(models_by_vendor: Mapping[str, Iterable[str]]) -> list[tuple[
     return requests_to_make
 
 
-def _build_request_url(base_url: str, *, vendor: str, gpu_model: str, debug: bool) -> str:
+def _build_request_url(base_url: str, *, vendor: str, gpu_model: str, debug: bool, force: bool = False) -> str:
     params = {
         "action": "getSupportedGameBundle",
         "vendor": vendor,
@@ -139,6 +139,8 @@ def _build_request_url(base_url: str, *, vendor: str, gpu_model: str, debug: boo
     }
     if debug:
         params["debug"] = "1"
+    if force:
+        params["force"] = "1"
     return f"{base_url}?{urlencode(params)}"
 
 
@@ -159,7 +161,7 @@ def _request_bundle(
     timeout_seconds: float,
     debug: bool,
 ) -> tuple[bool, float, str]:
-    request_url = _build_request_url(base_url, vendor=vendor, gpu_model=gpu_model, debug=debug)
+    request_url = _build_request_url(base_url, vendor=vendor, gpu_model=gpu_model, debug=debug, force=getattr(_request_bundle, "force", False))
     started = time.perf_counter()
     response = session.get(request_url, timeout=timeout_seconds)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -184,6 +186,11 @@ def _request_bundle(
 
 
 def main() -> int:
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force cache overwrite (force=1 param to Apps Script)",
+        )
     parser = argparse.ArgumentParser(
         description="Prewarm OptiScaler Apps Script GPU bundle cache using an editable model list."
     )
@@ -225,6 +232,8 @@ def main() -> int:
 
     models_source_description = ""
     try:
+        # Patch _request_bundle to pass force argument
+        setattr(_request_bundle, "force", args.force)
         base_url = _normalize_base_url(args.base_url or os.environ.get("OPTISCALER_GPU_BUNDLE_URL", ""))
         inline_models_json = str(args.models_json or os.environ.get("OPTISCALER_GPU_CACHE_MODELS_JSON", "")).strip()
         if inline_models_json:
