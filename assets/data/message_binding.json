@@ -145,7 +145,7 @@
   },
   {
     "game_id": "PAL",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre.steam_dx12_required",
     "priority": 100,
@@ -153,7 +153,7 @@
   },
   {
     "game_id": "PAL",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
@@ -161,7 +161,15 @@
   },
   {
     "game_id": "Control",
-    "gpu_vendor": "all",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Control",
+    "gpu_vendor": "ALL",
     "stage": "install_post",
     "message_id": "install_post.dlss_only",
     "priority": 100,
