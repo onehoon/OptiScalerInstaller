@@ -4,11 +4,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import logging
 from queue import Empty, SimpleQueue
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from typing import Any
 
 from installer.data import gpu_bundle_loader, message_loader, sheet_loader
-from installer.i18n import build_install_information_text, pick_bound_message
+from installer.i18n import build_install_information_text, build_install_selection_popup_text
 from installer.install import services as installer_services
 from installer.system import gpu_service
 
@@ -407,16 +407,10 @@ def _build_scan_controller(
 def _build_scan_entry_controller(app: Any) -> ScanEntryController:
     return ScanEntryController(
         callbacks=ScanEntryCallbacks(
-            show_info=messagebox.showinfo,
-            show_error=messagebox.showerror,
             ask_directory=filedialog.askdirectory,
             set_selected_folder=app._set_game_folder,
             start_manual_scan=app._start_manual_scan_from_folder,
         ),
-        game_db_loading_title=app.txt.dialogs.game_db_loading_title,
-        game_db_loading_body=app.txt.dialogs.game_db_loading_body,
-        game_db_error_title=app.txt.dialogs.game_db_error_title,
-        game_db_error_body=app.txt.dialogs.game_db_error_body,
     )
 
 
@@ -425,6 +419,24 @@ def _build_install_flow_controller(app: Any, config: AppControllerFactoryConfig)
         app,
         create_prefixed_logger=config.create_prefixed_logger,
     )
+
+
+def _build_selection_popup_message(app: Any, game: Mapping[str, Any]) -> str:
+    rtss_notice = _resolve_rtss_game_overlay_notice(app, game)
+
+    return build_install_selection_popup_text(
+        game,
+        lang=app.lang,
+        rtss_game_overlay_notice=rtss_notice,
+    )
+
+
+def _resolve_rtss_game_overlay_notice(app: Any, game: Mapping[str, Any]) -> str:
+    if bool((game or {}).get("rtss_overlay")) and bool(getattr(app.install_state, "rtss_installed", False)) and bool(
+        getattr(app.install_state, "rtss_profiles_global_exists", False)
+    ):
+        return str(getattr(app.txt.dialogs, "rtss_game_overlay_notice", "") or "")
+    return ""
 
 
 def _build_install_selection_controller(app: Any, install_flow: InstallFlowController) -> InstallSelectionController:
@@ -437,11 +449,12 @@ def _build_install_selection_controller(app: Any, install_flow: InstallFlowContr
                 game,
                 lang=app.lang,
                 stage="install_pre",
+                rtss_game_overlay_notice=_resolve_rtss_game_overlay_notice(app, game),
             ),
             apply_ui_state=app._apply_install_selection_state,
             update_install_button_state=app._update_install_button_state,
             run_precheck=install_flow.run_install_precheck,
-            get_selection_popup_message=lambda game: pick_bound_message(game, "install_pre", app.lang),
+            get_selection_popup_message=lambda game: _build_selection_popup_message(app, game),
             show_selection_popup=app._show_game_selection_popup,
             show_precheck_popup=app._show_precheck_popup,
         ),

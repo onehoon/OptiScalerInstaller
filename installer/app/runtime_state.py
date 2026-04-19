@@ -70,6 +70,10 @@ class InstallRuntimeState:
     precheck_error: str = ""
     precheck_dll_name: str = ""
     precheck_ual_detected_names: tuple[str, ...] = ()
+    rtss_scan_ok: bool = False
+    rtss_installed: bool = False
+    rtss_profiles_global_exists: bool = False
+    rtss_global_fix_needed: bool = False
 
 
 @dataclass
@@ -148,6 +152,10 @@ _RUNTIME_STATE_FIELD_MAP = {
     "install_precheck_ok": ("_install_state", "precheck_ok", InstallRuntimeState),
     "install_precheck_error": ("_install_state", "precheck_error", InstallRuntimeState),
     "install_precheck_dll_name": ("_install_state", "precheck_dll_name", InstallRuntimeState),
+    "rtss_scan_ok": ("_install_state", "rtss_scan_ok", InstallRuntimeState),
+    "rtss_installed": ("_install_state", "rtss_installed", InstallRuntimeState),
+    "rtss_profiles_global_exists": ("_install_state", "rtss_profiles_global_exists", InstallRuntimeState),
+    "rtss_global_fix_needed": ("_install_state", "rtss_global_fix_needed", InstallRuntimeState),
     "selected_game_index": ("_card_ui_state", "selected_game_index", CardUiRuntimeState),
     "_hovered_card_index": ("_card_ui_state", "hovered_card_index", CardUiRuntimeState),
 }

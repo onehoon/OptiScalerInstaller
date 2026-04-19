@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from . import rtss_notice
 from .archive_controller import ArchivePreparationController, ArchivePreparationState
 from .game_db_controller import GameDbLoadResult
 from .gpu_flow_controller import GpuFlowState
@@ -132,6 +133,7 @@ class StartupRuntimeCoordinator:
     def on_game_db_loaded(self, result: GameDbLoadResult) -> None:
         sheet_state = self._sheet_state
         gpu_state = self._gpu_state
+        install_state = self._install_state
         sheet_state.loading = False
         sheet_state.active_gid = int(result.game_db_gid)
         sheet_state.active_vendor = str(result.game_db_vendor or "default")
@@ -139,6 +141,11 @@ class StartupRuntimeCoordinator:
         sheet_state.module_download_links = result.module_download_links if result.ok else {}
         sheet_state.startup_warning_text = str(getattr(result, "startup_warning_text", "") or "")
         sheet_state.status = result.ok
+        rtss_state = rtss_notice.probe_rtss_startup_state(logger=self._logger)
+        install_state.rtss_scan_ok = bool(rtss_state.scan_ok)
+        install_state.rtss_installed = bool(rtss_state.installed)
+        install_state.rtss_profiles_global_exists = bool(rtss_state.profiles_global_exists)
+        install_state.rtss_global_fix_needed = bool(rtss_state.global_fix_needed)
 
         if result.ok:
             self._logger.info(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
@@ -42,6 +43,14 @@ _RTSS_GAME_PROFILE_KEYS: dict[str, tuple[tuple[str, str], ...]] = {
         ("ReflexSetLatencyMarker", "0"),
     ),
 }
+
+
+@dataclass(frozen=True)
+class RtssStartupState:
+    scan_ok: bool
+    installed: bool
+    profiles_global_exists: bool
+    global_fix_needed: bool
 
 
 def _get_rtss_install_path() -> Path:
@@ -285,6 +294,55 @@ def _restart_rtss_if_running_silent(logger: Any = None) -> None:
         _log_info_if_logger(logger, "[RTSS] Restarted RTSS silently")
     except Exception as exc:
         _log_warning(logger, "[RTSS] Failed to restart RTSS silently: %s", exc)
+
+
+def probe_rtss_startup_state(logger: Any = None) -> RtssStartupState:
+    try:
+        install_path = _get_rtss_install_path()
+        rtss_exe_path = install_path / "RTSS.exe"
+        installed = bool(rtss_exe_path.exists())
+        if not installed:
+            _log_info_if_logger(logger, "[RTSS] RTSS not installed; startup probe complete")
+            return RtssStartupState(
+                scan_ok=True,
+                installed=False,
+                profiles_global_exists=False,
+                global_fix_needed=False,
+            )
+
+        global_path = install_path / "Profiles" / "Global"
+        if not global_path.exists():
+            _log_info_if_logger(logger, "[RTSS] Global profile not found during startup probe: %s", global_path)
+            return RtssStartupState(
+                scan_ok=True,
+                installed=True,
+                profiles_global_exists=False,
+                global_fix_needed=False,
+            )
+
+        ref_val, detours_val = _read_rtss_global_settings(global_path)
+        global_fix_needed = not _is_rtss_config_ok(ref_val, detours_val)
+        _log_info_if_logger(
+            logger,
+            "[RTSS] Startup probe complete: installed=%s, global_exists=%s, global_fix_needed=%s",
+            installed,
+            True,
+            global_fix_needed,
+        )
+        return RtssStartupState(
+            scan_ok=True,
+            installed=True,
+            profiles_global_exists=True,
+            global_fix_needed=global_fix_needed,
+        )
+    except Exception as exc:
+        _log_warning(logger, "[RTSS] Startup probe failed: %s", exc)
+        return RtssStartupState(
+            scan_ok=False,
+            installed=False,
+            profiles_global_exists=False,
+            global_fix_needed=False,
+        )
 
 
 def apply_rtss_game_profile_overlay_if_needed(game_data: dict[str, Any], logger: Any = None) -> None:

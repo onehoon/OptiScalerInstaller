@@ -58,15 +58,10 @@ class DialogStrings:
     installer_notice_title: str
     wiki_not_configured_detail: str
     wiki_open_failed_detail: str
+    rtss_game_overlay_notice: str
     close_while_installing_body: str
     installation_completed: str
     installation_completed_with_name_template: str
-    game_db_loading_title: str
-    game_db_loading_body: str
-    game_db_error_title: str
-    game_db_error_body: str
-    installing_title: str
-    installing_body: str
     select_game_card_body: str
     preparing_archive_title: str
     preparing_archive_body: str
@@ -163,18 +158,13 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             installer_notice_title="설치 안내",
             wiki_not_configured_detail="지원 게임 위키 주소가 설정되지 않았습니다.",
             wiki_open_failed_detail="지원 게임 위키를 열지 못했습니다.",
-            close_while_installing_body="설치가 진행 중입니다. 완료 후 종료해 주세요.",
+            rtss_game_overlay_notice="[RED]RTSS 오버레이 사용 시 문제가 있을 수 있습니다.[br]설치 시 해당 게임의 RTSS 오버레이는 Off됩니다.[END]",
+            close_while_installing_body="??? ?? ????. ?? ? ??? ???.",
             installation_completed="설치가 완료되었습니다.",
             installation_completed_with_name_template=(
                 "[RED]OptiScaler가 설치되었습니다.\n"
-                "삭제하시려면 OptiScaler 파일 ({name})을 삭제하거나 다른 이름으로 바꾸세요[END]"
+                "삭제하려면 OptiScaler 파일 ({name})을 삭제하거나 다른 이름으로 바꾸세요[END]"
             ),
-            game_db_loading_title="게임 DB 로딩 중",
-            game_db_loading_body="게임 DB를 불러오는 중입니다. 잠시만 기다려 주세요.",
-            game_db_error_title="게임 DB 오류",
-            game_db_error_body="게임 DB에 연결하지 못했습니다.\n인스톨러를 재실행 해주세요.",
-            installing_title="설치 진행 중",
-            installing_body="설치가 이미 진행 중입니다. 잠시만 기다려 주세요.",
             select_game_card_body="설치할 게임을 선택해 주세요.",
             preparing_archive_title="아카이브 준비 중",
             preparing_archive_body="OptiScaler 다운로드가 아직 진행 중입니다. 잠시만 기다려 주세요.",
@@ -262,18 +252,13 @@ _STRINGS_BY_LANG: dict[Lang, AppStrings] = {
             installer_notice_title="Notice",
             wiki_not_configured_detail="Supported games wiki URL is not configured.",
             wiki_open_failed_detail="Failed to open the supported games wiki.",
+            rtss_game_overlay_notice="[RED]RTSS overlay may cause issues with this game.[br]It will be turned off for this game during installation.[END]",
             close_while_installing_body="Installation is in progress. Please wait.",
             installation_completed="Installation completed.",
             installation_completed_with_name_template=(
                 "[RED]OptiScaler has been installed.\n"
                 "To remove it, delete or rename the OptiScaler file ({name}).[END]"
             ),
-            game_db_loading_title="Game DB Loading",
-            game_db_loading_body="Game DB is still loading. Please wait a moment.",
-            game_db_error_title="Game DB Error",
-            game_db_error_body="Failed to connect to Game DB.\nPlease check network or restart Installer.",
-            installing_title="Installing",
-            installing_body="Installation is already in progress. Please wait.",
             select_game_card_body="Please select a game card to install.",
             preparing_archive_title="Preparing Archive",
             preparing_archive_body="OptiScaler archive download is still in progress. Please wait.",
@@ -389,17 +374,32 @@ def build_install_information_text(
     *,
     lang: Lang,
     stage: str = "install_pre",
+    rtss_game_overlay_notice: str = "",
 ) -> str:
     _ = str(stage or "").strip().lower()  # Keep signature stable for existing call sites.
     pre_text = pick_bound_message(source, "install_pre", lang)
     post_text = pick_bound_message(source, "install_post", lang)
+    rtss_notice = str(rtss_game_overlay_notice or "").strip()
 
-    if pre_text and post_text:
-        return "[P]".join((pre_text, post_text))
-    if pre_text:
-        return pre_text
-    if post_text:
-        return post_text
+    parts = [part for part in (pre_text, rtss_notice, post_text) if part]
+    return "[P]".join(parts)
+
+
+def build_install_selection_popup_text(
+    source: Mapping[str, object],
+    *,
+    lang: Lang,
+    rtss_game_overlay_notice: str = "",
+) -> str:
+    popup_text = pick_bound_message(source, "install_pre", lang)
+    rtss_notice = str(rtss_game_overlay_notice or "").strip()
+
+    if popup_text and rtss_notice:
+        return "[P]".join((popup_text, rtss_notice))
+    if popup_text:
+        return popup_text
+    if rtss_notice:
+        return rtss_notice
     return ""
 
 
@@ -452,6 +452,7 @@ __all__ = [
     "AppStrings",
     "Lang",
     "UI_LANGUAGE_ENV",
+    "build_install_selection_popup_text",
     "build_mod_conflict_finding_text",
     "build_mod_conflict_notice_text",
     "detect_ui_language",

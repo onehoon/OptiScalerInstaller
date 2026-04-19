@@ -168,11 +168,7 @@ class InstallFlowController:
         )
 
     def show_install_entry_rejection(self, decision: InstallEntryDecision) -> None:
-        if decision.code in {"multi_gpu_blocked", "install_precheck_running"}:
-            return
-
-        if decision.code == "install_in_progress":
-            self._callbacks.show_info(self._txt.dialogs.installing_title, self._txt.dialogs.installing_body)
+        if decision.code in {"multi_gpu_blocked", "install_precheck_running", "install_in_progress"}:
             return
 
         if decision.code == "predownload_in_progress":
