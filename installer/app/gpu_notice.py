@@ -53,11 +53,6 @@ NVIDIA_BUTTON_THEME = GpuVendorButtonTheme(
     text_color="#111111",
 )
 
-
-def get_unsupported_gpu_title(strings: AppStrings) -> str:
-    return strings.gpu.unsupported_title
-
-
 def get_unsupported_gpu_message(strings: AppStrings) -> str:
     return strings.gpu.unsupported_message
 
