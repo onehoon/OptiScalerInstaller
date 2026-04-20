@@ -26,22 +26,22 @@ class ScanEntryController:
     ) -> None:
         self._callbacks = callbacks
 
-    def select_game_folder(self, state: ScanEntryState) -> bool:
+    def select_game_folder(self, state: ScanEntryState) -> None:
         if state.multi_gpu_blocked:
-            return False
+            return
 
         if state.sheet_loading:
-            return False
+            return
 
         if not state.sheet_ready:
-            return False
+            return
 
         selected_folder = str(self._callbacks.ask_directory() or "")
         if not selected_folder:
-            return False
+            return
 
         self._callbacks.set_selected_folder(selected_folder)
-        return bool(self._callbacks.start_manual_scan(selected_folder))
+        self._callbacks.start_manual_scan(selected_folder)
 
 
 __all__ = [

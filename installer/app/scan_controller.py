@@ -37,6 +37,7 @@ def _group_paths_by_drive(paths: list[str], max_groups: int) -> list[list[str]]:
 
 
 LangProvider = Callable[[], Lang]
+GameDbProvider = Callable[[], dict[str, dict[str, Any]]]
 GameSupportPredicate = Callable[[dict[str, Any]], bool]
 SchedulerCallback = Callable[[Callable[[], None]], Any]
 
@@ -84,6 +85,12 @@ class ScanController:
     def is_scan_in_progress(self) -> bool:
         return self._scan_in_progress
 
+    def _normalize_scan_paths(self, scan_paths: Iterable[str]) -> list[str]:
+        return [str(path or "").strip() for path in scan_paths if str(path or "").strip()]
+
+    def _can_start_scan(self, normalized_paths: list[str]) -> bool:
+        return bool(normalized_paths) and not self._scan_in_progress
+
     def start_auto_scan(self) -> bool:
         if self._scan_in_progress:
             return False
@@ -96,15 +103,16 @@ class ScanController:
         return self.start_scan(scan_paths, is_auto=True)
 
     def start_manual_scan(self, folder_path: str) -> bool:
-        normalized_path = str(folder_path or "").strip()
-        if not normalized_path or self._scan_in_progress:
+        normalized_paths = self._normalize_scan_paths((folder_path,))
+        if not self._can_start_scan(normalized_paths):
             return False
+        normalized_path = normalized_paths[0]
         save_manual_scan_hint(normalized_path, logger=self._logger)
-        return self.start_scan([normalized_path], is_auto=False)
+        return self.start_scan(normalized_paths, is_auto=False)
 
     def start_scan(self, scan_paths: Iterable[str], *, is_auto: bool) -> bool:
-        normalized_paths = [str(path or "").strip() for path in scan_paths if str(path or "").strip()]
-        if not normalized_paths or self._scan_in_progress:
+        normalized_paths = self._normalize_scan_paths(scan_paths)
+        if not self._can_start_scan(normalized_paths):
             return False
 
         self._scan_generation += 1
@@ -119,9 +127,7 @@ class ScanController:
         path_groups = _group_paths_by_drive(normalized_paths, _SCAN_MAX_WORKERS)
         game_db = dict(self._get_game_db() or {})
         lang = self._get_lang()
-
-        with self._pending_lock:
-            self._pending_workers = len(path_groups)
+        submitted_workers = 0
 
         try:
             for group in path_groups:
@@ -132,13 +138,20 @@ class ScanController:
                     game_db,
                     lang,
                 )
+                submitted_workers += 1
         except Exception:
             self._logger.exception("Failed to submit scan worker")
+            self._scan_generation += 1
             self._scan_in_progress = False
             self._auto_scan_active = False
+            with self._pending_lock:
+                self._pending_workers = submitted_workers
             self._callbacks.finish_scan_ui()
             self._callbacks.pump_poster_queue()
             return False
+
+        with self._pending_lock:
+            self._pending_workers = submitted_workers
 
         return True
 

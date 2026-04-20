@@ -396,7 +396,6 @@ def _build_scan_feedback_controller(app: Any, config: AppControllerFactoryConfig
         select_game_hint_text=app.txt.main.select_game_hint,
         root_width_fallback=config.root_width_fallback,
         root_height_fallback=config.root_height_fallback,
-        logger=logging.getLogger(),
     )
 
 

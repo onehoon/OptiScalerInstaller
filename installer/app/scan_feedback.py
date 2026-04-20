@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-import logging
 from typing import Any
 
 from . import message_popup
@@ -32,7 +31,6 @@ class ScanFeedbackController:
         select_game_hint_text: str,
         root_width_fallback: int,
         root_height_fallback: int,
-        logger=None,
     ) -> None:
         self._root = root
         self._callbacks = callbacks
@@ -45,7 +43,6 @@ class ScanFeedbackController:
         self._select_game_hint_text = str(select_game_hint_text or "")
         self._root_width_fallback = int(root_width_fallback)
         self._root_height_fallback = int(root_height_fallback)
-        self._logger = logger or logging.getLogger()
 
         self._initial_auto_scan_empty_popup_shown = False
 

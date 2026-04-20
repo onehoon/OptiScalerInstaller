@@ -1,12 +1,8 @@
 ﻿import os
-import shutil
 import tempfile
-import tkinter as tk
 import time
 from concurrent.futures import ThreadPoolExecutor
-from tkinter import messagebox
 import logging
-import logging.handlers
 import sys
 import importlib
 from pathlib import Path
@@ -27,7 +23,6 @@ from installer.app.controller_factory import (
 )
 from installer.app.game_db_controller import GameDbLoadController, GameDbLoadResult
 from installer.app.gpu_flow_controller import GpuFlowController, GpuFlowState
-from installer.app.install_entry import InstallEntryDecision, InstallEntryState
 from installer.app.install_flow import InstallFlowController
 from installer.app.install_selection_controller import (
     InstallSelectionController,
@@ -66,8 +61,6 @@ from installer.app.ui_controller_factory import (
     UiControllerFactoryConfig,
     bind_ui_controllers,
     build_ui_controllers,
-    create_card_ui_controller,
-    create_card_viewport_bundle,
 )
 from installer.app.ui_shell import AppUiShell, create_ui_shell
 from installer.app.ui_presenters import BottomPanelPresenter, HeaderStatusPresenter
@@ -78,9 +71,6 @@ from installer.i18n import (
     get_app_strings,
     is_korean,
     pick_module_message,
-)
-from installer.install import (
-    services as installer_services,
 )
 from installer.system import gpu_service
 
@@ -237,8 +227,6 @@ def _init_file_logger() -> Optional[Path]:
         try:
             directory.mkdir(parents=True, exist_ok=True)
             log_path = directory / f"installer_{time.strftime('%Y-%m-%d_%H-%M-%S')}.log"
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write("")
 
             for h in list(root_logger.handlers):
                 if isinstance(h, logging.FileHandler):
@@ -340,7 +328,15 @@ IMAGE_RETRY_DELAY_MS = _get_int_env("OPTISCALER_IMAGE_RETRY_DELAY_MS", 1500)
 DEFAULT_POSTER_SCALE = 1.5
 INFO_TEXT_OFFSET_PX = 10
 POSTER_CACHE_VERSION = 2
-ENABLE_POSTER_CACHE = _get_runtime_config_value("OPTISCALER_ENABLE_POSTER_CACHE", "1").strip().lower() in {"1", "true", "yes", "on"}
+_ENABLE_POSTER_CACHE_TEXT = str(
+    _get_runtime_config_value("OPTISCALER_ENABLE_POSTER_CACHE", "")
+).strip().lower()
+if not _ENABLE_POSTER_CACHE_TEXT:
+    ENABLE_POSTER_CACHE = _get_bool_env("OPTISCALER_ENABLE_POSTER_CACHE", True)
+elif _ENABLE_POSTER_CACHE_TEXT in {"1", "true", "yes", "on", "0", "false", "no", "n", "off"}:
+    ENABLE_POSTER_CACHE = _get_bool_env("OPTISCALER_ENABLE_POSTER_CACHE", False)
+else:
+    ENABLE_POSTER_CACHE = False
 IMAGE_CACHE_MAX = _get_int_env("OPTISCALER_IMAGE_CACHE_MAX", 100)
 
 
@@ -851,12 +847,6 @@ class OptiManagerApp:
             return
         return coordinator.start_optiscaler_archive_prepare()
 
-    def _start_fsr4_archive_prepare(self):
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.start_fsr4_archive_prepare()
-
     def check_app_update(self) -> bool:
         controller = getattr(self, "_app_actions_controller", None)
         if controller is None:
@@ -891,18 +881,6 @@ class OptiManagerApp:
         if coordinator is None:
             return
         return coordinator.handle_unsupported_gpu_block(scan_status_message, info_text)
-
-    def _apply_optiscaler_archive_state(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.apply_optiscaler_archive_state(state)
-
-    def _apply_fsr4_archive_state(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.apply_fsr4_archive_state(state)
 
     def _on_optiscaler_archive_state_changed(self, state: ArchivePreparationState) -> None:
         coordinator = getattr(self, "_startup_runtime_coordinator", None)
@@ -939,16 +917,6 @@ class OptiManagerApp:
         if coordinator is None:
             return
         return coordinator.on_unreal5_archive_state_changed(state)
-
-    def _create_card_viewport_controller(self) -> None:
-        runtime, controller = create_card_viewport_bundle(self, UI_CONTROLLER_FACTORY_CONFIG)
-        self._card_viewport_runtime = runtime
-        self._card_viewport_controller = controller
-
-    def _create_card_ui_controller(self) -> None:
-        if getattr(self, "_card_ui_controller", None) is not None:
-            return
-        self._card_ui_controller = create_card_ui_controller(self, UI_CONTROLLER_FACTORY_CONFIG)
 
     def _create_startup_runtime_coordinator(self) -> None:
         if getattr(self, "_startup_runtime_coordinator", None) is not None:
@@ -1218,18 +1186,6 @@ class OptiManagerApp:
     # ------------------------------------------------------------------
     # Install
     # ------------------------------------------------------------------
-
-    def _build_install_entry_state(self) -> InstallEntryState:
-        controller = self._get_install_flow_controller()
-        if controller is None:
-            raise RuntimeError("Install flow controller is not available")
-        return controller.build_install_entry_state()
-
-    def _show_install_entry_rejection(self, decision: InstallEntryDecision) -> None:
-        controller = self._get_install_flow_controller()
-        if controller is None:
-            return
-        return controller.show_install_entry_rejection(decision)
 
     def apply_optiscaler(self):
         controller = self._get_install_flow_controller()
