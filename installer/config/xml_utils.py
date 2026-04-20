@@ -32,12 +32,20 @@ class _XmlAttributeSpan:
     value_start: int
     value_end: int
     quote: str
+    value: str = ""
+
+
+@dataclass(frozen=True)
+class _XmlPathPart:
+    tag: str
+    attribute_filters: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass
 class _XmlElementSpan:
     tag: str
     path: tuple[str, ...]
+    parent_index: int | None
     start_tag_start: int
     start_tag_end: int
     start_close_start: int
@@ -50,7 +58,36 @@ class _XmlElementSpan:
     attributes: dict[str, _XmlAttributeSpan] = field(default_factory=dict)
 
 
-def _normalize_xml_setting_target(target) -> tuple[tuple[str, ...], str | None]:
+def _parse_xml_path_part(path_part: str) -> _XmlPathPart | None:
+    raw_text = str(path_part or "").strip()
+    if not raw_text:
+        return None
+
+    segments = [segment.strip() for segment in raw_text.split("@")]
+    tag = segments[0]
+    if not tag:
+        return None
+
+    attribute_filters: list[tuple[str, str]] = []
+    for selector in segments[1:]:
+        if not selector:
+            continue
+        if "=" not in selector:
+            tag = f"{tag}@{selector}"
+            continue
+        attribute_name, expected_value = selector.split("=", 1)
+        attribute_name = str(attribute_name or "").strip()
+        if not attribute_name:
+            continue
+        attribute_filters.append((attribute_name, str(expected_value or "").strip()))
+
+    return _XmlPathPart(
+        tag=tag,
+        attribute_filters=tuple(attribute_filters),
+    )
+
+
+def _normalize_xml_setting_target(target) -> tuple[tuple[_XmlPathPart, ...], str | None]:
     if isinstance(target, (list, tuple)):
         raw_parts = [str(part or "").strip() for part in target]
         path_text = "/".join(part for part in raw_parts if part)
@@ -70,8 +107,24 @@ def _normalize_xml_setting_target(target) -> tuple[tuple[str, ...], str | None]:
         normalized_path = normalized_path.strip("/")
         attribute_name = str(attribute_name or "").strip() or None
 
-    path_parts = tuple(part.strip() for part in normalized_path.split("/") if part.strip())
+    parsed_parts: list[_XmlPathPart] = []
+    for raw_part in (part.strip() for part in normalized_path.split("/") if part.strip()):
+        parsed_part = _parse_xml_path_part(raw_part)
+        if parsed_part is not None:
+            parsed_parts.append(parsed_part)
+    path_parts = tuple(parsed_parts)
     return path_parts, attribute_name
+
+
+def _format_xml_path_parts(path_parts: tuple[_XmlPathPart, ...]) -> str:
+    formatted_parts: list[str] = []
+    for part in path_parts:
+        selector_suffix = "".join(
+            f"@{attribute_name}={expected_value}"
+            for attribute_name, expected_value in part.attribute_filters
+        )
+        formatted_parts.append(f"{part.tag}{selector_suffix}")
+    return "/".join(formatted_parts)
 
 
 def _iter_xml_fallback_encodings():
@@ -266,6 +319,7 @@ def _parse_start_tag(text: str, start_index: int, tag_end: int) -> tuple[str, di
                 value_start=value_start,
                 value_end=cursor,
                 quote='"',
+                value=_unescape_xml_value(text[value_start:cursor]),
             )
             continue
 
@@ -281,6 +335,7 @@ def _parse_start_tag(text: str, start_index: int, tag_end: int) -> tuple[str, di
             value_start=value_start,
             value_end=value_end,
             quote=quote,
+            value=_unescape_xml_value(text[value_start:value_end]),
         )
         cursor = value_end + 1
 
@@ -347,6 +402,7 @@ def _parse_xml_elements(text: str) -> list[_XmlElementSpan]:
 
         tag_name, attributes, start_close_start, attribute_insert_at, self_closing = _parse_start_tag(text, start_index, tag_end)
         path = (tag_name,)
+        parent_index = stack[-1] if stack else None
         if stack:
             parent = elements[stack[-1]]
             parent.children += 1
@@ -355,6 +411,7 @@ def _parse_xml_elements(text: str) -> list[_XmlElementSpan]:
         element = _XmlElementSpan(
             tag=tag_name,
             path=path,
+            parent_index=parent_index,
             start_tag_start=start_index,
             start_tag_end=tag_end,
             start_close_start=start_close_start,
@@ -381,21 +438,54 @@ def _parse_xml_elements(text: str) -> list[_XmlElementSpan]:
     return elements
 
 
-def _find_matching_element(elements: list[_XmlElementSpan], path_parts: tuple[str, ...]) -> _XmlElementSpan | None:
+def _element_matches_path_part(element: _XmlElementSpan, path_part: _XmlPathPart) -> bool:
+    if element.tag != path_part.tag:
+        return False
+
+    for attribute_name, expected_value in path_part.attribute_filters:
+        attribute = element.attributes.get(attribute_name)
+        if attribute is None or attribute.value != expected_value:
+            return False
+    return True
+
+
+def _element_lineage(elements: list[_XmlElementSpan], element_index: int) -> tuple[_XmlElementSpan, ...]:
+    lineage: list[_XmlElementSpan] = []
+    current_index: int | None = element_index
+    while current_index is not None:
+        element = elements[current_index]
+        lineage.append(element)
+        current_index = element.parent_index
+    lineage.reverse()
+    return tuple(lineage)
+
+
+def _lineage_matches_path_parts(
+    lineage: tuple[_XmlElementSpan, ...],
+    path_parts: tuple[_XmlPathPart, ...],
+) -> bool:
+    if len(lineage) != len(path_parts):
+        return False
+    return all(
+        _element_matches_path_part(element, path_part)
+        for element, path_part in zip(lineage, path_parts)
+    )
+
+
+def _find_matching_element(elements: list[_XmlElementSpan], path_parts: tuple[_XmlPathPart, ...]) -> _XmlElementSpan | None:
     if not elements:
         return None
 
     root_tag = elements[0].tag
-    normalized_parts = path_parts
-    if normalized_parts and normalized_parts[0] == root_tag:
-        normalized_parts = normalized_parts[1:]
-        if not normalized_parts:
-            return elements[0]
-
-    for element in elements:
-        candidate_path = element.path[1:] if element.path and element.path[0] == root_tag else element.path
-        if candidate_path == normalized_parts:
+    for element_index, element in enumerate(elements):
+        full_lineage = _element_lineage(elements, element_index)
+        if _lineage_matches_path_parts(full_lineage, path_parts):
             return element
+
+        if full_lineage and full_lineage[0].tag == root_tag:
+            rootless_lineage = full_lineage[1:]
+            if rootless_lineage and _lineage_matches_path_parts(rootless_lineage, path_parts):
+                return element
     return None
 
 
@@ -459,7 +549,7 @@ def _apply_xml_settings_to_text(text: str, settings, logger=None, log_label: str
 
         elements = _parse_xml_elements(updated_text)
         element = _find_matching_element(elements, path_parts)
-        joined_path = "/".join(path_parts)
+        joined_path = _format_xml_path_parts(path_parts)
         if element is None:
             _log_xml_message(logger, "warning", "%s skip missing XML path %s", label, joined_path)
             continue

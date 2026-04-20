@@ -224,8 +224,7 @@ def _apply_existing_file_settings(
     if not file_path.exists():
         return
 
-    original_mode = file_path.stat().st_mode
-    original_readonly = not (original_mode & stat.S_IWRITE)
+    original_readonly = not (file_path.stat().st_mode & stat.S_IWRITE)
     try:
         if original_readonly:
             ini_utils._ensure_file_writable(file_path)

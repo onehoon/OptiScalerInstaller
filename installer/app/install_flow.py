@@ -66,7 +66,6 @@ class InstallFlowController:
         self._card_ui_state = card_ui_state
         self._callbacks = callbacks
         self._create_prefixed_logger = create_prefixed_logger
-        self._logger = logger or logging.getLogger()
 
     def run_install_precheck(self, game_data: Mapping[str, Any]) -> InstallSelectionPrecheckOutcome:
         logger_name = str(game_data.get("game_name_en", "") or game_data.get("display", "unknown")).strip() or "unknown"
