@@ -135,10 +135,7 @@ _RUNTIME_STATE_FIELD_MAP = {
     "gpu_count": ("_gpu_state", "gpu_count", GpuRuntimeState),
     "is_multi_gpu": ("_gpu_state", "is_multi_gpu", GpuRuntimeState),
     "multi_gpu_blocked": ("_gpu_state", "multi_gpu_blocked", GpuRuntimeState),
-    "_gpu_selection_pending": ("_gpu_state", "gpu_selection_pending", GpuRuntimeState),
     "gpu_info": ("_gpu_state", "gpu_info", GpuRuntimeState),
-    "_gpu_context": ("_gpu_state", "gpu_context", GpuRuntimeState),
-    "_selected_gpu_adapter": ("_gpu_state", "selected_adapter", GpuRuntimeState),
     "sheet_status": ("_sheet_state", "status", SheetRuntimeState),
     "sheet_loading": ("_sheet_state", "loading", SheetRuntimeState),
     "active_game_db_vendor": ("_sheet_state", "active_vendor", SheetRuntimeState),
@@ -147,7 +144,6 @@ _RUNTIME_STATE_FIELD_MAP = {
     "module_download_links": ("_sheet_state", "module_download_links", SheetRuntimeState),
     "startup_warning_text": ("_sheet_state", "startup_warning_text", SheetRuntimeState),
     "install_in_progress": ("_install_state", "in_progress", InstallRuntimeState),
-    "_game_popup_confirmed": ("_install_state", "popup_confirmed", InstallRuntimeState),
     "install_precheck_running": ("_install_state", "precheck_running", InstallRuntimeState),
     "install_precheck_ok": ("_install_state", "precheck_ok", InstallRuntimeState),
     "install_precheck_error": ("_install_state", "precheck_error", InstallRuntimeState),
@@ -157,7 +153,6 @@ _RUNTIME_STATE_FIELD_MAP = {
     "rtss_profiles_global_exists": ("_install_state", "rtss_profiles_global_exists", InstallRuntimeState),
     "rtss_global_fix_needed": ("_install_state", "rtss_global_fix_needed", InstallRuntimeState),
     "selected_game_index": ("_card_ui_state", "selected_game_index", CardUiRuntimeState),
-    "_hovered_card_index": ("_card_ui_state", "hovered_card_index", CardUiRuntimeState),
 }
 
 
