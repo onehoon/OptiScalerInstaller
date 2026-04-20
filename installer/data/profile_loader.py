@@ -15,6 +15,7 @@ _PROFILE_SESSION = get_shared_retry_session()
 @dataclass(frozen=True)
 class ProfileCatalogs:
     game_ini_profile: dict[str, tuple[dict[str, Any], ...]]
+    game_unreal_ini_profile: dict[str, tuple[dict[str, Any], ...]]
     engine_ini_profile: dict[str, tuple[dict[str, Any], ...]]
     game_xml_profile: dict[str, tuple[dict[str, Any], ...]]
     registry_profile: dict[str, tuple[dict[str, Any], ...]]
@@ -86,6 +87,7 @@ def load_profile_catalogs(
     game_xml_profile_url: str,
     registry_profile_url: str,
     game_json_profile_url: str = "",
+    game_unreal_ini_profile_url: str = "",
     *,
     timeout_seconds: float = 10.0,
 ) -> ProfileCatalogs:
@@ -95,11 +97,14 @@ def load_profile_catalogs(
         ("game_xml_profile", game_xml_profile_url, "game_xml_profile.json"),
         ("registry_profile", registry_profile_url, "registry_profile.json"),
     ]
+    if str(game_unreal_ini_profile_url or "").strip():
+        fetch_specs.append(("game_unreal_ini_profile", game_unreal_ini_profile_url, "game_unreal_ini_profile.json"))
     if str(game_json_profile_url or "").strip():
         fetch_specs.append(("game_json_profile", game_json_profile_url, "game_json_profile.json"))
 
     loaded_rows: dict[str, list[dict[str, Any]]] = {
         "game_ini_profile": [],
+        "game_unreal_ini_profile": [],
         "engine_ini_profile": [],
         "game_xml_profile": [],
         "registry_profile": [],
@@ -120,6 +125,7 @@ def load_profile_catalogs(
 
     return ProfileCatalogs(
         game_ini_profile=_build_profile_index(loaded_rows["game_ini_profile"]),
+        game_unreal_ini_profile=_build_profile_index(loaded_rows["game_unreal_ini_profile"]),
         engine_ini_profile=_build_profile_index(loaded_rows["engine_ini_profile"]),
         game_xml_profile=_build_profile_index(loaded_rows["game_xml_profile"]),
         registry_profile=_build_profile_index(loaded_rows["registry_profile"]),
@@ -136,6 +142,7 @@ def attach_profile_catalogs_to_game_db(
         game_entry = dict(raw_game_entry)
         profile_id = _normalize_profile_id(game_entry.get("__gpu_profile_id__"))
         game_entry["game_ini_profile"] = _get_profile_rows(catalogs.game_ini_profile, profile_id)
+        game_entry["game_unreal_ini_profile"] = _get_profile_rows(catalogs.game_unreal_ini_profile, profile_id)
         game_entry["engine_ini_profile"] = _get_profile_rows(catalogs.engine_ini_profile, profile_id)
         game_entry["game_xml_profile"] = _get_profile_rows(catalogs.game_xml_profile, profile_id)
         game_entry["registry_profile"] = _get_profile_rows(catalogs.registry_profile, profile_id)

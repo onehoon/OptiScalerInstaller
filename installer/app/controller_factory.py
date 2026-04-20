@@ -44,6 +44,7 @@ class AppControllerFactoryConfig:
     root_width_fallback: int
     supported_games_wiki_url: str
     game_ini_profile_url: str = ""
+    game_unreal_ini_profile_url: str = ""
     engine_ini_profile_url: str = ""
     game_xml_profile_url: str = ""
     registry_profile_url: str = ""
@@ -290,6 +291,7 @@ def _build_game_db_controller(
     message_center_url = _require_remote_json_url("message_center_url", config.message_center_url)
     message_binding_url = _require_remote_json_url("message_binding_url", config.message_binding_url)
     game_ini_profile_url = _require_remote_json_url("game_ini_profile_url", config.game_ini_profile_url)
+    game_unreal_ini_profile_url = str(config.game_unreal_ini_profile_url or "").strip()
     engine_ini_profile_url = _require_remote_json_url("engine_ini_profile_url", config.engine_ini_profile_url)
     game_xml_profile_url = _require_remote_json_url("game_xml_profile_url", config.game_xml_profile_url)
     registry_profile_url = _require_remote_json_url("registry_profile_url", config.registry_profile_url)
@@ -322,6 +324,7 @@ def _build_game_db_controller(
         load_gpu_bundle=load_gpu_bundle,
         merge_gpu_bundle=gpu_bundle_loader.merge_gpu_bundle_into_game_db,
         game_ini_profile_url=game_ini_profile_url,
+        game_unreal_ini_profile_url=game_unreal_ini_profile_url,
         engine_ini_profile_url=engine_ini_profile_url,
         game_xml_profile_url=game_xml_profile_url,
         registry_profile_url=registry_profile_url,

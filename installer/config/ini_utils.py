@@ -82,6 +82,170 @@ def _get_line_ending(line: str, default: str = "") -> str:
     return default
 
 
+def _split_ini_value_and_comment(rest: str) -> tuple[str, str, str]:
+    leading_ws_len = len(rest) - len(rest.lstrip())
+    leading_ws = rest[:leading_ws_len]
+    body = rest[leading_ws_len:]
+    comment_positions = [i for i, ch in enumerate(body) if ch in {";", "#"}]
+    if not comment_positions:
+        return leading_ws, body, ""
+
+    comment_start = min(comment_positions)
+    return leading_ws, body[:comment_start].rstrip(), body[comment_start:]
+
+
+def _split_top_level_comma_parts(text: str) -> list[str]:
+    if not text:
+        return [""]
+
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    quote_char = ""
+    escaping = False
+
+    for index, char in enumerate(text):
+        if quote_char:
+            if escaping:
+                escaping = False
+                continue
+            if char == "\\":
+                escaping = True
+                continue
+            if char == quote_char:
+                quote_char = ""
+            continue
+
+        if char in {'"', "'"}:
+            quote_char = char
+            continue
+        if char == "(":
+            depth += 1
+            continue
+        if char == ")":
+            depth -= 1
+            continue
+        if char == "," and depth == 0:
+            parts.append(text[start:index])
+            start = index + 1
+
+    parts.append(text[start:])
+    return parts
+
+
+def _unwrap_parenthesized_value(text: str) -> tuple[str, str, str] | None:
+    stripped = text.strip()
+    if len(stripped) < 2 or not stripped.startswith("(") or not stripped.endswith(")"):
+        return None
+
+    leading_len = len(text) - len(text.lstrip())
+    trailing_len = len(text) - len(text.rstrip())
+    leading_ws = text[:leading_len]
+    trailing_ws = text[len(text) - trailing_len:] if trailing_len else ""
+    return leading_ws, stripped[1:-1], trailing_ws
+
+
+def _replace_unreal_struct_field(value_text: str, field_name: str, new_value: str) -> str | None:
+    unwrapped = _unwrap_parenthesized_value(value_text)
+    if unwrapped is None:
+        return None
+
+    leading_ws, body, trailing_ws = unwrapped
+    parts = _split_top_level_comma_parts(body)
+    field_pattern = re.compile(
+        r"^(?P<prefix>\s*)(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?P<separator>\s*=\s*)(?P<value>.*?)(?P<suffix>\s*)$",
+        re.DOTALL,
+    )
+
+    for index, part in enumerate(parts):
+        match = field_pattern.match(part)
+        if not match or match.group("name") != field_name:
+            continue
+        parts[index] = (
+            f"{match.group('prefix')}{match.group('name')}"
+            f"{match.group('separator')}{new_value}{match.group('suffix')}"
+        )
+        return f"{leading_ws}({','.join(parts)}){trailing_ws}"
+
+    return None
+
+
+def _replace_unreal_tuple_map_value(
+    value_text: str,
+    tuple_field: str,
+    entry_name: str,
+    new_value: str,
+) -> str | None:
+    outer = _unwrap_parenthesized_value(value_text)
+    if outer is None:
+        return None
+    leading_ws, body, trailing_ws = outer
+    top_level_parts = _split_top_level_comma_parts(body)
+    field_pattern = re.compile(
+        r"^(?P<prefix>\s*)(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?P<separator>\s*=\s*)(?P<value>.*?)(?P<suffix>\s*)$",
+        re.DOTALL,
+    )
+    tuple_entry_pattern = re.compile(
+        r"^(?P<prefix>\s*\(\s*)(?P<quote>[\"'])(?P<name>.*?)(?P=quote)"
+        r"(?P<separator>\s*,\s*)(?P<value>.*?)(?P<suffix>\s*\)\s*)$",
+        re.DOTALL,
+    )
+
+    for index, part in enumerate(top_level_parts):
+        field_match = field_pattern.match(part)
+        if not field_match or field_match.group("name") != tuple_field:
+            continue
+
+        tuple_value = field_match.group("value")
+        tuple_unwrapped = _unwrap_parenthesized_value(tuple_value)
+        if tuple_unwrapped is None:
+            return None
+
+        tuple_leading_ws, tuple_body, tuple_trailing_ws = tuple_unwrapped
+        tuple_parts = _split_top_level_comma_parts(tuple_body)
+        for tuple_index, tuple_part in enumerate(tuple_parts):
+            tuple_match = tuple_entry_pattern.match(tuple_part)
+            if not tuple_match or tuple_match.group("name") != entry_name:
+                continue
+            tuple_parts[tuple_index] = (
+                f"{tuple_match.group('prefix')}{tuple_match.group('quote')}{tuple_match.group('name')}"
+                f"{tuple_match.group('quote')}{tuple_match.group('separator')}{new_value}{tuple_match.group('suffix')}"
+            )
+            rebuilt_tuple_value = f"{tuple_leading_ws}({','.join(tuple_parts)}){tuple_trailing_ws}"
+            top_level_parts[index] = (
+                f"{field_match.group('prefix')}{field_match.group('name')}"
+                f"{field_match.group('separator')}{rebuilt_tuple_value}{field_match.group('suffix')}"
+            )
+            return f"{leading_ws}({','.join(top_level_parts)}){trailing_ws}"
+        return None
+
+    return None
+
+
+def _apply_unreal_value_path(value_text: str, value_path: str, new_value: str) -> str | None:
+    normalized_path = str(value_path or "").strip()
+    if not normalized_path:
+        return None
+
+    tuple_selector_match = re.fullmatch(
+        r'(?P<field>[A-Za-z_][A-Za-z0-9_]*)\[(?P<quote>[\"\'])(?P<entry>.*?)(?P=quote)\]',
+        normalized_path,
+        re.DOTALL,
+    )
+    if tuple_selector_match:
+        return _replace_unreal_tuple_map_value(
+            value_text,
+            tuple_selector_match.group("field"),
+            tuple_selector_match.group("entry"),
+            new_value,
+        )
+
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", normalized_path):
+        return _replace_unreal_struct_field(value_text, normalized_path, new_value)
+
+    return None
+
+
 def apply_ini_settings(ini_path, settings, logger=None):
     if not settings:
         return
@@ -137,16 +301,6 @@ def apply_ini_settings(ini_path, settings, logger=None):
             return line[:-1], "\r"
         return line, ""
 
-    def _split_value_and_comment(rest):
-        leading_ws_len = len(rest) - len(rest.lstrip())
-        leading_ws = rest[:leading_ws_len]
-        body = rest[leading_ws_len:]
-        comment_positions = [i for i, ch in enumerate(body) if ch in {";", "#"}]
-        if not comment_positions:
-            return leading_ws, ""
-        comment_start = min(comment_positions)
-        return leading_ws, body[comment_start:]
-
     updated_lines = []
     applied = []
     current_section = None
@@ -192,7 +346,7 @@ def apply_ini_settings(ini_path, settings, logger=None):
             continue
 
         if delimiter == "=":
-            leading_ws, comment = _split_value_and_comment(old_rest)
+            leading_ws, _old_value, comment = _split_ini_value_and_comment(old_rest)
             rebuilt_rest = f"{leading_ws}{new_value}"
             if comment:
                 rebuilt_rest += f" {comment}"
@@ -229,6 +383,135 @@ def apply_ini_settings(ini_path, settings, logger=None):
             logger.exception("Failed to write updated INI file")
         else:
             logging.exception("Failed to write updated INI file")
+        return
+
+
+def apply_unreal_ini_settings(ini_path, settings, logger=None):
+    if not settings:
+        return
+
+    p = Path(ini_path)
+    if not p.exists():
+        return
+
+    def _norm(s):
+        if s is None:
+            return s
+        return "".join(str(s).split()).lower()
+
+    grouped_targets: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for target, value in settings.items():
+        if not isinstance(target, (list, tuple)) or len(target) != 3:
+            continue
+        section, key, value_path = target
+        normalized_target = (_norm(section), _norm(key))
+        grouped_targets.setdefault(normalized_target, []).append((str(value_path or "").strip(), str(value)))
+
+    if not grouped_targets:
+        return
+
+    try:
+        ini_text, ini_encoding = _read_ini_text_with_fallback(p, logger=logger)
+        lines = ini_text.splitlines(keepends=True)
+    except Exception:
+        if logger:
+            logger.exception("Failed to read Unreal INI for in-place update")
+        else:
+            logging.exception("Failed to read Unreal INI for in-place update")
+        return
+
+    section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$")
+    key_value_pattern = re.compile(r"^(\s*)([^=;#\r\n]+?)(\s*)=(.*)$")
+    key_colon_pattern = re.compile(r"^(\s*)([^:\r\n]+?)(\s*):(.*)$")
+
+    def _split_line_ending(line):
+        if line.endswith("\r\n"):
+            return line[:-2], "\r\n"
+        if line.endswith("\n"):
+            return line[:-1], "\n"
+        if line.endswith("\r"):
+            return line[:-1], "\r"
+        return line, ""
+
+    updated_lines = []
+    applied = []
+    current_section = None
+
+    for original_line in lines:
+        line_body, line_ending = _split_line_ending(original_line)
+        stripped = line_body.strip()
+
+        if not stripped or stripped.startswith(";") or stripped.startswith("#"):
+            updated_lines.append(original_line)
+            continue
+
+        section_match = section_pattern.match(line_body)
+        if section_match:
+            current_section = _norm(section_match.group(1))
+            updated_lines.append(original_line)
+            continue
+
+        kv_match = key_value_pattern.match(line_body)
+        delimiter = "="
+        if not kv_match:
+            kv_match = key_colon_pattern.match(line_body)
+            delimiter = ":"
+        if not kv_match:
+            updated_lines.append(original_line)
+            continue
+
+        prefix, key_text, key_space_before_delim, old_rest = kv_match.groups()
+        normalized_target = (current_section, _norm(key_text))
+        value_path_updates = grouped_targets.get(normalized_target)
+        if not current_section or not value_path_updates or delimiter != "=":
+            updated_lines.append(original_line)
+            continue
+
+        leading_ws, old_value, comment = _split_ini_value_and_comment(old_rest)
+        rebuilt_value = old_value
+        changed = False
+
+        for value_path, new_value in value_path_updates:
+            updated_value = _apply_unreal_value_path(rebuilt_value, value_path, new_value)
+            if updated_value is None:
+                if logger:
+                    logger.warning(
+                        "%s skip missing Unreal INI path %s in %s:%s",
+                        p.name or "INI",
+                        value_path,
+                        current_section,
+                        _norm(key_text),
+                    )
+                continue
+
+            rebuilt_value = updated_value
+            changed = True
+            applied_key = f"{current_section}:{_norm(key_text)}:{value_path}"
+            applied.append(applied_key)
+            if logger:
+                logger.info("%s edit %s -> %s", p.name or "INI", applied_key, new_value)
+
+        if not changed:
+            updated_lines.append(original_line)
+            continue
+
+        rebuilt_rest = f"{leading_ws}{rebuilt_value}"
+        if comment:
+            rebuilt_rest += f" {comment}"
+        updated_lines.append(
+            f"{prefix}{key_text}{key_space_before_delim}{delimiter}{rebuilt_rest}{line_ending}"
+        )
+
+    if not applied:
+        return
+
+    try:
+        _write_ini_text_with_encoding(p, "".join(updated_lines), ini_encoding)
+    except Exception:
+        if logger:
+            logger.exception("Failed to write updated Unreal INI file")
+        else:
+            logging.exception("Failed to write updated Unreal INI file")
         return
 
 
