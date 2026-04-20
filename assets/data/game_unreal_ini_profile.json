@@ -1,0 +1,18 @@
+[
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"VSync\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "FrameGen",
+    "value": "Off"
+  }
+]
