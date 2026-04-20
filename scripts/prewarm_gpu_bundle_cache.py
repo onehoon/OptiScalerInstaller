@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - optional during ad-hoc use
 
 _SCRIPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{20,}$")
 _DEFAULT_TIMEOUT_SECONDS = 30.0
-_DEFAULT_DELAY_SECONDS = 0.2
+_DEFAULT_DELAY_SECONDS = 3
 _SUPPORTED_VENDORS = ("amd", "nvidia", "intel")
 
 
