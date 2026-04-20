@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from .. import services as installer_services
+from ._link_utils import extract_module_url
 
 
 def install_optipatcher(
@@ -15,11 +16,7 @@ def install_optipatcher(
     if not bool(game_data.get("optipatcher")):
         return {}
 
-    opti_link_entry = module_download_links.get("optipatcher")
-    opti_url = ""
-    if isinstance(opti_link_entry, dict):
-        opti_url = str(opti_link_entry.get("url", "") or "").strip()
-
+    opti_url = extract_module_url(module_download_links, "optipatcher")
     if not (opti_url or cached_archive_path):
         return {}
 

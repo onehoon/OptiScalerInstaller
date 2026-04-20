@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from .. import services as installer_services
+from ._link_utils import extract_module_url
 
 
 def install_unreal5_patch(
@@ -16,11 +17,7 @@ def install_unreal5_patch(
     if not bool(game_data.get("unreal5")):
         return False
 
-    unreal_link_entry = module_download_links.get("unreal5")
-    unreal_url = ""
-    if isinstance(unreal_link_entry, dict) and unreal_link_entry.get("url"):
-        unreal_url = str(unreal_link_entry["url"]).strip()
-
+    unreal_url = extract_module_url(module_download_links, "unreal5")
     if not (unreal_url or cached_archive_path):
         return False
 

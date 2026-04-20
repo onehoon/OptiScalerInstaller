@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -8,18 +7,12 @@ from typing import Mapping
 from urllib.parse import urlparse
 
 from .. import services as installer_services
+from ._link_utils import extract_module_url
 
 
 OPTISCALER_ASI_NAME = "OptiScaler.asi"
 ULTIMATE_ASI_LOADER_DLL_NAME = "dinput8.dll"
 _ULTIMATE_ASI_LOADER_SIGNATURE = "ultimate asi loader"
-
-
-def _ensure_writable(file_path: Path) -> None:
-    try:
-        os.chmod(file_path, 0o666)
-    except OSError:
-        pass
 
 
 def is_ultimate_asi_loader_dinput8(file_path: Path) -> bool:
@@ -71,10 +64,7 @@ def install_ultimate_asi_loader(
     if not isinstance(links, Mapping):
         links = {}
 
-    link_entry = links.get("ultimateasiloader")
-    url = ""
-    if isinstance(link_entry, dict):
-        url = str(link_entry.get("url", "") or "").strip()
+    url = extract_module_url(links, "ultimateasiloader")
 
     cached = Path(str(cached_archive_path or "").strip()) if cached_archive_path else None
     use_cache = cached is not None and cached.is_file()
@@ -117,7 +107,7 @@ def install_ultimate_asi_loader(
             for detected_name in ual_detected_names:
                 old_path = target_dir / detected_name
                 if old_path.exists() and old_path.is_file():
-                    _ensure_writable(old_path)
+                    installer_services._ensure_writable(old_path)
                     old_path.unlink()
                     if logger:
                         logger.info("Removed existing UAL file: %s", detected_name)
@@ -142,7 +132,7 @@ def install_ultimate_asi_loader(
                 "Existing dinput8.dll does not appear to be Ultimate ASI Loader. "
                 "Installation was stopped to avoid overwriting another mod or loader."
             )
-        _ensure_writable(existing_dinput8)
+        installer_services._ensure_writable(existing_dinput8)
 
     if not url and not use_cache:
         raise FileNotFoundError("Ultimate ASI Loader download link is not configured")
@@ -171,7 +161,7 @@ def install_ultimate_asi_loader(
 
         destination_path = target_dir / ULTIMATE_ASI_LOADER_DLL_NAME
         if destination_path.exists():
-            _ensure_writable(destination_path)
+            installer_services._ensure_writable(destination_path)
         shutil.copy2(dll_candidates[0], destination_path)
 
     if logger:

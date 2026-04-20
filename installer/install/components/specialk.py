@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from .. import services as installer_services
+from ._link_utils import extract_module_url
 
 
 def install_specialk(
@@ -12,18 +13,14 @@ def install_specialk(
     logger=None,
     cached_archive_path: str = "",
 ) -> None:
-    link_entry = module_download_links.get("specialk")
-    url = ""
-    if isinstance(link_entry, dict):
-        url = str(link_entry.get("url", "") or "").strip()
-
-    installed = installer_services.install_specialk(
+    url = extract_module_url(module_download_links, "specialk")
+    installer_services.install_specialk(
         target_path,
         final_dll_name,
         url=url,
         logger=logger,
         cached_archive_path=cached_archive_path,
     )
-    if logger and installed:
+    if logger:
         source = cached_archive_path or url
         logger.info("Installed Special K from %s to %s", source, target_path)
