@@ -213,11 +213,9 @@ class BottomPanelPresenter:
 
         links = module_download_links if isinstance(module_download_links, dict) else resource_master
         entry = links.get("optiscaler", {}) if isinstance(links, dict) else {}
-        archive_name = ""
         version = ""
 
         if isinstance(entry, dict):
-            archive_name = str(entry.get("filename", "") or entry.get("version", "")).strip()
             raw_display_version = str(entry.get("display_version", "") or entry.get("version", "")).replace("\r", " ").replace("\n", " ").strip()
             version = re.sub(r"\s+", " ", raw_display_version)
 

@@ -104,7 +104,7 @@ def _build_thread_safe_ui_scheduler(root: Any, *, logger: Any = None, poll_ms: i
 def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppControllers:
     ui_schedule = _build_thread_safe_ui_scheduler(app.root, logger=logging.getLogger())
     app_notice = _build_app_notice_controller(app, config)
-    app_actions = _build_app_actions_controller(app, config)
+    app_actions = _build_app_actions_controller(app)
     app_shutdown = _build_app_shutdown_controller(app)
     archive = _build_archive_controller(app, ui_schedule)
     game_db = _build_game_db_controller(app, config, ui_schedule)
@@ -166,7 +166,7 @@ def _build_app_notice_controller(app: Any, config: AppControllerFactoryConfig) -
     )
 
 
-def _build_app_actions_controller(app: Any, config: AppControllerFactoryConfig) -> AppActionsController:
+def _build_app_actions_controller(app: Any) -> AppActionsController:
     return AppActionsController(
         callbacks=AppActionCallbacks(
             show_close_while_installing_warning=lambda: messagebox.showwarning(
