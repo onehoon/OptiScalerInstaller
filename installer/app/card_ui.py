@@ -174,27 +174,11 @@ class GameCardUiController:
             on_activate=self._callbacks.activate_game,
             on_hover_enter=self.handle_card_hover_enter,
             on_hover_leave=self.handle_card_hover_leave,
-            set_card_placeholder=self.set_card_placeholder,
             queue_poster=self._queue_poster,
         )
         self._card_items.append(result.card_item)
         self.refresh_card_visual(index)
         return result.card
-
-    def set_card_placeholder(self, index: int, label: Any, _title: str) -> None:
-        placeholder_factory = getattr(self._poster_loader, "make_placeholder_image", None)
-        if not callable(placeholder_factory):
-            return
-
-        # The card item is initialized with a placeholder image and rendered
-        # immediately after it is appended. Avoid scheduling a delayed
-        # placeholder update here because it can race with a cached poster load
-        # and overwrite the real cover after it has already been applied.
-        if index < 0 or index >= len(self._card_items):
-            return
-
-        pil_img = placeholder_factory()
-        self.set_card_base_image(index, label, pil_img)
 
     def visible_game_indices(self) -> set[int]:
         total = len(tuple(self._callbacks.get_found_games() or ()))

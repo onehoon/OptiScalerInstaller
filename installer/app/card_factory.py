@@ -8,7 +8,6 @@ import customtkinter as ctk
 
 
 CardIndexCallback = Callable[[int], None]
-CardPlaceholderCallback = Callable[[int, Any, str], None]
 PosterQueueCallback = Callable[[int, Any, str, str, str], None]
 PlaceholderImageFactory = Callable[[], Any]
 
@@ -43,7 +42,6 @@ def create_game_card(
     on_activate: CardIndexCallback,
     on_hover_enter: CardIndexCallback,
     on_hover_leave: CardIndexCallback,
-    set_card_placeholder: CardPlaceholderCallback,
     queue_poster: PosterQueueCallback,
 ) -> GameCardBuildResult:
     display_name = str(game["display"])
@@ -93,7 +91,6 @@ def create_game_card(
         widget.bind("<Enter>", _handle_hover_enter)
         widget.bind("<Leave>", _handle_hover_leave)
 
-    set_card_placeholder(index, img_label, display_name)
     queue_poster(
         index,
         img_label,
