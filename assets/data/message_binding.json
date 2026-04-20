@@ -272,6 +272,14 @@
     "memo": ""
   },
   {
+    "game_id": "SH2",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "intall_post_SH2_crash",
+    "priority": 90,
+    "memo": ""
+  },
+  {
     "game_id": "TLOU2",
     "gpu_vendor": "ALL",
     "stage": "install_pre",
