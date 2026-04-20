@@ -520,6 +520,7 @@ class OptiManagerApp:
         )
         self._task_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="general-task")
         self._scan_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scan-worker")
+        self._optiscaler_prepare_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="optiscaler-prepare")
         self._download_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="archive-download")
         self._app_update_manager = app_update.InstallerUpdateManager(
             self.root,

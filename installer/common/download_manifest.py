@@ -15,10 +15,12 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+import threading
 
 
 _MANIFEST_FILENAME = "cache_manifest.json"
 _logger = logging.getLogger(__name__)
+_MANIFEST_WRITE_LOCK = threading.Lock()
 
 
 def _manifest_path(cache_root: Path) -> Path:
@@ -41,18 +43,23 @@ def read_manifest(cache_root: Path) -> dict[str, dict]:
         return {}
 
 
-def write_manifest_entry(cache_root: Path, key: str, version: str) -> None:
+def write_manifest_entry(cache_root: Path, key: str, version: str, **extra_fields: object) -> None:
     """Upsert one entry in the manifest.  Silently ignores write errors."""
     path = _manifest_path(cache_root)
     try:
-        manifest = read_manifest(cache_root)
-        manifest[key] = {
-            "version": str(version or ""),
-            "cached_at": datetime.now(tz=timezone.utc).isoformat(),
-        }
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(manifest, f, indent=2, ensure_ascii=False)
+        with _MANIFEST_WRITE_LOCK:
+            manifest = read_manifest(cache_root)
+            entry = {
+                "version": str(version or ""),
+                "cached_at": datetime.now(tz=timezone.utc).isoformat(),
+            }
+            entry.update(extra_fields)
+            manifest[key] = entry
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = path.with_name(f"{path.name}.tmp")
+            with tmp_path.open("w", encoding="utf-8") as f:
+                json.dump(manifest, f, indent=2, ensure_ascii=False)
+            tmp_path.replace(path)
     except Exception as exc:
         _logger.debug("Failed to write manifest entry %r at %s: %s", key, path, exc)
 

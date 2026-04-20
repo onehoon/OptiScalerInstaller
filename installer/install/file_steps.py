@@ -14,6 +14,7 @@ from typing import Any
 from ..common.windows_paths import iter_documents_dir_candidates, normalize_candidate_path
 from ..config import ini_utils, json_utils, xml_utils
 from . import services as installer_services
+from .payload_utils import resolve_payload_source_dir, validate_optiscaler_payload_dir
 from .workflow import InstallWorkflowCallbacks
 
 import winreg
@@ -483,16 +484,27 @@ def install_fsr4_dll(target_path: str, fsr4_source_archive: str, logger) -> Path
         return destination_dll
 
 
-def resolve_payload_source_dir(extract_root: str) -> str:
-    contents = os.listdir(extract_root)
-    if len(contents) == 1:
-        single_entry_path = os.path.join(extract_root, contents[0])
-        if os.path.isdir(single_entry_path):
-            return single_entry_path
-    return extract_root
+def install_base_payload_from_folder(
+    source_folder: str,
+    target_path: str,
+    final_dll_name: str,
+    exclude_patterns: list[str],
+    logger,
+) -> None:
+    source_path = validate_optiscaler_payload_dir(source_folder)
+    installer_services.backup_existing_optiscaler_dlls(target_path, logger=logger)
+    installer_services.remove_legacy_optiscaler_files(target_path, logger=logger)
+    installer_services.install_from_source_folder(
+        str(source_path),
+        target_path,
+        dll_name=final_dll_name,
+        exclude_patterns=exclude_patterns,
+        logger=logger,
+    )
+    logger.info("Installed OptiScaler files from prepared payload folder")
 
 
-def install_base_payload(
+def install_base_payload_from_archive(
     source_archive: str,
     target_path: str,
     final_dll_name: str,
@@ -502,16 +514,40 @@ def install_base_payload(
     with tempfile_module.TemporaryDirectory() as tmpdir:
         installer_services.extract_archive(source_archive, tmpdir, logger=logger)
         actual_source = resolve_payload_source_dir(tmpdir)
-        installer_services.backup_existing_optiscaler_dlls(target_path, logger=logger)
-        installer_services.remove_legacy_optiscaler_files(target_path, logger=logger)
-        installer_services.install_from_source_folder(
-            actual_source,
+        install_base_payload_from_folder(
+            str(actual_source),
             target_path,
-            dll_name=final_dll_name,
-            exclude_patterns=exclude_patterns,
-            logger=logger,
+            final_dll_name,
+            exclude_patterns,
+            logger,
         )
-        logger.info("Extracted and installed OptiScaler files")
+        logger.info("Extracted and installed OptiScaler files from archive")
+
+
+def install_base_payload(
+    source_archive: str,
+    target_path: str,
+    final_dll_name: str,
+    exclude_patterns: list[str],
+    logger,
+) -> None:
+    source_path = Path(str(source_archive or "").strip())
+    if source_path.is_dir():
+        install_base_payload_from_folder(
+            str(source_path),
+            target_path,
+            final_dll_name,
+            exclude_patterns,
+            logger,
+        )
+        return
+    install_base_payload_from_archive(
+        str(source_path),
+        target_path,
+        final_dll_name,
+        exclude_patterns,
+        logger,
+    )
 
 
 def create_install_workflow_callbacks() -> InstallWorkflowCallbacks:
@@ -532,6 +568,8 @@ __all__ = [
     "apply_optional_registry_settings",
     "create_install_workflow_callbacks",
     "install_base_payload",
+    "install_base_payload_from_archive",
+    "install_base_payload_from_folder",
     "install_fsr4_dll",
     "resolve_ingame_ini_path",
     "resolve_payload_source_dir",

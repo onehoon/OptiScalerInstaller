@@ -222,6 +222,15 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                     ),
                 ),
                 AppShutdownStep(
+                    "shutdown optiscaler prepare executor",
+                    lambda: app._call_optional_method(
+                        "_optiscaler_prepare_executor",
+                        "shutdown",
+                        wait=False,
+                        cancel_futures=True,
+                    ),
+                ),
+                AppShutdownStep(
                     "shutdown download executor",
                     lambda: app._call_optional_method(
                         "_download_executor",
@@ -248,6 +257,7 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
 def _build_archive_controller(app: Any, schedule_ui: Callable[[Callable[[], None]], None]) -> ArchivePreparationController:
     return ArchivePreparationController(
         executor=app._download_executor,
+        optiscaler_executor=getattr(app, "_optiscaler_prepare_executor", None),
         schedule=schedule_ui,
         callbacks=ArchivePreparationCallbacks(
             on_optiscaler_state_changed=app._on_optiscaler_archive_state_changed,

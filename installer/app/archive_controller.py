@@ -10,6 +10,12 @@ from urllib.parse import urlparse
 import zipfile
 
 from ..common.download_manifest import is_update_needed, write_manifest_entry
+from .optiscaler_payload_cache import (
+    is_valid_optiscaler_payload_cache,
+    prepare_optiscaler_payload_cache,
+    resolve_optiscaler_cache_version,
+    resolve_optiscaler_payload_cache_dir,
+)
 
 
 SchedulerCallback = Callable[[Callable[[], None]], Any]
@@ -43,6 +49,7 @@ class ArchivePreparationController:
         self,
         *,
         executor: Executor,
+        optiscaler_executor: Executor | None = None,
         schedule: SchedulerCallback,
         callbacks: ArchivePreparationCallbacks,
         download_to_file: DownloadToFile,
@@ -50,6 +57,7 @@ class ArchivePreparationController:
         logger=None,
     ) -> None:
         self._executor = executor
+        self._optiscaler_executor = optiscaler_executor or executor
         self._schedule = schedule
         self._callbacks = callbacks
         self._download_to_file = download_to_file
@@ -60,10 +68,12 @@ class ArchivePreparationController:
         normalized_entry = self._normalize_entry(entry)
         url = str(normalized_entry.get("url", "")).strip()
         filename = self._resolve_archive_filename(normalized_entry)
+        cache_version = resolve_optiscaler_cache_version(normalized_entry)
+        payload_cache_dir = resolve_optiscaler_payload_cache_dir(cache_dir, normalized_entry)
 
         if not url or not filename:
             self._logger.warning(
-                "[APP] OptiScaler archive preparation skipped: missing metadata (url=%r, filename=%r, entry=%r)",
+                "[APP] OptiScaler payload cache preparation skipped: missing metadata (url=%r, filename=%r, entry=%r)",
                 url,
                 filename,
                 normalized_entry,
@@ -76,41 +86,33 @@ class ArchivePreparationController:
                 error_message="Missing archive metadata in sheet.",
             )
 
-        cache_path = cache_dir / filename
-        if cache_path.exists():
-            if cache_path.suffix.lower() == ".zip" and not zipfile.is_zipfile(cache_path):
-                self._logger.warning("[APP] Cached OptiScaler file is invalid, removing and downloading again: %s", cache_path)
-                try:
-                    cache_path.unlink()
-                except OSError as exc:
-                    return ArchivePreparationState(
-                        filename=filename,
-                        archive_path="",
-                        ready=False,
-                        downloading=False,
-                        error_message=f"Failed to remove invalid OptiScaler cache: {exc}",
-                    )
-            else:
-                self._logger.info("[APP] OptiScaler archive already cached")
-                self._cleanup_stale_archives(cache_dir, filename, label="OptiScaler archive cache")
-                return ArchivePreparationState(
-                    filename=filename,
-                    archive_path=str(cache_path),
-                    ready=True,
-                    downloading=False,
-                    error_message="",
-                )
+        update_needed = (
+            is_update_needed(self._manifest_root, "optiscaler", cache_version)
+            if self._manifest_root and cache_version
+            else False
+        )
+        if is_valid_optiscaler_payload_cache(payload_cache_dir, logger=self._logger) and not update_needed:
+            self._logger.info("[APP] OptiScaler archive already cached")
+            self._cleanup_stale_optiscaler_entries(cache_dir, payload_cache_dir.parent.name)
+            return ArchivePreparationState(
+                filename=filename,
+                archive_path=str(payload_cache_dir),
+                ready=True,
+                downloading=False,
+                error_message="",
+            )
 
-        self._logger.info("[APP] Starting OptiScaler archive download: %s", filename)
-        return self._start_download(
-            asset_key="optiscaler",
-            asset_label="OptiScaler archive",
-            url=url,
+        if payload_cache_dir.exists():
+            self._logger.warning("[APP] OptiScaler payload cache is invalid or outdated, rebuilding: %s", payload_cache_dir)
+        else:
+            self._logger.info("[APP] OptiScaler payload cache not found, preparing: %s", payload_cache_dir)
+
+        return self._start_optiscaler_prepare(
+            entry=normalized_entry,
+            asset_label="OptiScaler payload cache",
             cache_dir=cache_dir,
-            cache_path=cache_path,
+            payload_cache_dir=payload_cache_dir,
             filename=filename,
-            validate_zip=True,
-            cleanup_stale=True,
         )
 
     def prepare_fsr4(
@@ -378,6 +380,40 @@ class ArchivePreparationController:
             error_message="",
         )
 
+    def _start_optiscaler_prepare(
+        self,
+        *,
+        entry: Mapping[str, object],
+        asset_label: str,
+        cache_dir: Path,
+        payload_cache_dir: Path,
+        filename: str,
+    ) -> ArchivePreparationState:
+        try:
+            self._optiscaler_executor.submit(
+                self._run_optiscaler_prepare_worker,
+                entry,
+                cache_dir,
+                filename,
+            )
+        except Exception as exc:
+            self._logger.exception("Failed to submit %s worker", asset_label)
+            return ArchivePreparationState(
+                filename=filename,
+                archive_path="",
+                ready=False,
+                downloading=False,
+                error_message=str(exc),
+            )
+
+        return ArchivePreparationState(
+            filename=filename,
+            archive_path=str(payload_cache_dir),
+            ready=False,
+            downloading=True,
+            error_message="",
+        )
+
     def _run_download_worker(
         self,
         asset_key: str,
@@ -423,6 +459,39 @@ class ArchivePreparationController:
             )
 
         self._schedule_state_change(asset_key, state, description=f"{asset_label} completion callback")
+
+    def _run_optiscaler_prepare_worker(
+        self,
+        entry: Mapping[str, object],
+        cache_dir: Path,
+        filename: str,
+    ) -> None:
+        try:
+            payload_dir = prepare_optiscaler_payload_cache(
+                entry,
+                cache_dir,
+                download_to_file=self._download_to_file,
+                manifest_root=self._manifest_root,
+                logger=self._logger,
+            )
+            state = ArchivePreparationState(
+                filename=filename,
+                archive_path=str(payload_dir),
+                ready=True,
+                downloading=False,
+                error_message="",
+            )
+        except Exception as exc:
+            self._logger.error("[APP] OptiScaler payload cache preparation failed: %s", exc)
+            state = ArchivePreparationState(
+                filename=filename,
+                archive_path="",
+                ready=False,
+                downloading=False,
+                error_message=str(exc),
+            )
+
+        self._schedule_state_change("optiscaler", state, description="OptiScaler payload cache completion callback")
 
     def _schedule_state_change(self, asset_key: str, state: ArchivePreparationState, *, description: str) -> None:
         try:
@@ -479,6 +548,29 @@ class ArchivePreparationController:
                 continue
             stale_paths.append(cache_path)
         return sorted(stale_paths)
+
+    def _cleanup_stale_optiscaler_entries(self, cache_dir: Path, keep_entry_name: str) -> None:
+        if not cache_dir.exists():
+            return
+
+        keep_name = str(keep_entry_name or "").strip().casefold()
+        for cache_path in sorted(cache_dir.iterdir(), key=lambda path: path.name.casefold()):
+            if keep_name and cache_path.name.casefold() == keep_name:
+                continue
+            if cache_path.name == "cache_manifest.json":
+                continue
+            if not cache_path.is_dir() and cache_path.suffix.lower() not in _ARCHIVE_SUFFIXES:
+                continue
+            try:
+                if cache_path.is_dir():
+                    import shutil
+
+                    shutil.rmtree(cache_path, ignore_errors=False)
+                else:
+                    cache_path.unlink()
+                self._logger.info("[APP] Removed stale OptiScaler cache entry: %s", cache_path)
+            except OSError:
+                self._logger.warning("[APP] Failed to remove stale OptiScaler cache entry: %s", cache_path, exc_info=True)
 
     def _resolve_archive_filename(self, entry: Mapping[str, object]) -> str:
         filename = str(entry.get("filename", "") or entry.get("version", "")).strip()
