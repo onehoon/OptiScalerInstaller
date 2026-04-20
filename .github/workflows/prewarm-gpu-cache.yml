@@ -17,7 +17,7 @@ on:
         description: "Delay between requests in seconds"
         required: false
         type: string
-        default: "1"
+        default: "3"
   schedule:
     - cron: "10 */4 * * *"
 
