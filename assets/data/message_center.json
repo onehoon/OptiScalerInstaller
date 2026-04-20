@@ -128,12 +128,20 @@
     "memo": "붉은사막"
   },
   {
-    "message_id": "install_pre_RDR2",
+    "message_id": "install_pre_RDR2_1",
     "category": "popup",
     "ko": "[red]배틀아이 안티치트는 꺼주세요.[p]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
     "en": "[red]Please disable BattlEye Anti-Cheat.[p]Any issues arising from installation are the sole responsibility of the user.[end]",
     "url": "",
     "memo": "RDR2"
+  },
+  {
+    "message_id": "install_pre_RDR2_2",
+    "category": "popup",
+    "ko": "[red]설치 전 경계없는 창모드, 고급그래픽설정 DX12로 설정하세요[end]",
+    "en": "[red]Before install, set Borderless, DX12 in advanced graphic option[end]",
+    "url": "",
+    "memo": ""
   },
   {
     "message_id": "install_pre_MHS3",
