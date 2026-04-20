@@ -24,6 +24,14 @@
     "value": 3
   },
   {
+    "profile_id": "HFW_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 1
+  },
+  {
     "profile_id": "HFW_NVIDIA",
     "hive": "HKCU",
     "key_path": "Software\\Guerrilla Games\\Horizon Forbidden West Complete Edition\\Graphics",
@@ -38,5 +46,45 @@
     "value_name": "UpscaleMethod",
     "value_type": "REG_DWORD",
     "value": 2
+  },
+  {
+    "profile_id": "SMR_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Insomniac Games\\Marvel's Spider-Man Remastered\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 1
+  },
+  {
+    "profile_id": "RiftApart_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Insomniac Games\\Ratchet & Clank - Rift Apart\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 1
+  },
+  {
+    "profile_id": "TLOU2_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Naughty Dog\\The Last of Us Part II\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 0
+  },
+  {
+    "profile_id": "GOT_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Sucker Punch Productions\\Ghost of Tsushima DIRECTOR'S CUT\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 1
+  },
+  {
+    "profile_id": "SM2_ALL",
+    "hive": "HKCU",
+    "key_path": "Software\\Insomniac Games\\Marvel's Spider-Man 2\\Graphics",
+    "value_name": "MotionBlurScale",
+    "value_type": "REG_DWORD",
+    "value": 0
   }
 ]
