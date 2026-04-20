@@ -21,6 +21,27 @@
     "value": 1
   },
   {
+    "profile_id": "SHF_ALL",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/GameNoce.NoceLocalGameUserSettings",
+    "key": "AASuperSampling",
+    "value": "NVIDIA_DLSS"
+  },
+  {
+    "profile_id": "SHF_ALL",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/GameNoce.NoceLocalGameUserSettings",
+    "key": "FullscreenMode",
+    "value": 1
+  },
+  {
+    "profile_id": "SHF_ALL",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/GameNoce.NoceLocalGameUserSettings",
+    "key": "PreferredFullscreenMode",
+    "value": 1
+  },
+  {
     "profile_id": "MHW_ALL",
     "path": "config.ini",
     "section": "Graphics",
