@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import logging
 from queue import Empty, SimpleQueue
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from typing import Any
 
 from installer.data import gpu_bundle_loader, message_loader, sheet_loader

@@ -442,6 +442,11 @@ class OptiManagerApp:
         self._poster_target_height = startup_layout.poster_target_height
         self._poster_target_scale = startup_layout.poster_target_scale
 
+    def _ensure_cache_dir(self, path: Path) -> Path:
+        cache_dir = Path(path)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
     def _initialize_runtime_state(self) -> None:
         self.game_folder = ""
         runtime_state_bundle = build_runtime_state_bundle(
@@ -453,18 +458,12 @@ class OptiManagerApp:
         self.sheet_state = runtime_state_bundle.sheet_state
         self.install_state = runtime_state_bundle.install_state
         self.card_ui_state = runtime_state_bundle.card_ui_state
-        self.optiscaler_cache_dir = OPTISCALER_CACHE_DIR
-        self.optiscaler_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.fsr4_cache_dir = FSR4_CACHE_DIR
-        self.fsr4_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.optipatcher_cache_dir = OPTIPATCHER_CACHE_DIR
-        self.optipatcher_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.specialk_cache_dir = SPECIALK_CACHE_DIR
-        self.specialk_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.ual_cache_dir = UAL_CACHE_DIR
-        self.ual_cache_dir.mkdir(parents=True, exist_ok=True)
-        self.unreal5_cache_dir = UNREAL5_CACHE_DIR
-        self.unreal5_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.optiscaler_cache_dir = self._ensure_cache_dir(OPTISCALER_CACHE_DIR)
+        self.fsr4_cache_dir = self._ensure_cache_dir(FSR4_CACHE_DIR)
+        self.optipatcher_cache_dir = self._ensure_cache_dir(OPTIPATCHER_CACHE_DIR)
+        self.specialk_cache_dir = self._ensure_cache_dir(SPECIALK_CACHE_DIR)
+        self.ual_cache_dir = self._ensure_cache_dir(UAL_CACHE_DIR)
+        self.unreal5_cache_dir = self._ensure_cache_dir(UNREAL5_CACHE_DIR)
         self.manifest_root = APP_CACHE_DIR
         self.found_exe_list = []
         self.card_frames: list = []
