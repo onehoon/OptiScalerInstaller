@@ -499,15 +499,7 @@
     "game_id": "RDR2",
     "gpu_vendor": "ALL",
     "stage": "install_pre",
-    "message_id": "install_pre_RDR2_1",
-    "priority": 90,
-    "memo": ""
-  },
-  {
-    "game_id": "RDR2",
-    "gpu_vendor": "ALL",
-    "stage": "install_pre",
-    "message_id": "install_pre_RDR2_2",
+    "message_id": "install_pre_RDR2",
     "priority": 100,
     "memo": ""
   },
