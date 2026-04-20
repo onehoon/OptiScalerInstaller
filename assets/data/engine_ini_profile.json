@@ -12,5 +12,19 @@
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
     "value": 0
+  },
+  {
+    "profile_id": "SHF_ALL",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\WinGDK\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.NGX.DLSS.DilateMotionVectors",
+    "value": 0
+  },
+  {
+    "profile_id": "SHF_ALL",
+    "path": "%LOCALAPPDATA%\\SHf\\Saved\\Config\\WinGDK\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.Streamline.DilateMotionVectors",
+    "value": 0
   }
 ]
