@@ -130,8 +130,8 @@
   {
     "message_id": "install_pre_RDR2_1",
     "category": "popup",
-    "ko": "[red]배틀아이 안티치트는 꺼주세요.[p]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
-    "en": "[red]Please disable BattlEye Anti-Cheat.[p]Any issues arising from installation are the sole responsibility of the user.[end]",
+    "ko": "[red]배틀아이 안티치트는 꺼주세요.[br]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[end]",
+    "en": "[red]Please disable BattlEye Anti-Cheat.[br]Any issues arising from installation are the sole responsibility of the user.[end]",
     "url": "",
     "memo": "RDR2"
   },
