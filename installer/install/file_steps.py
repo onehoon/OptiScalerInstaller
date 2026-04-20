@@ -333,13 +333,15 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
         )
         if engine_path is None:
             continue
+        if not engine_path.parent.is_dir():
+            logger.info("Skipped engine_ini_profile because target directory was not found: %s", engine_path.parent)
+            continue
 
         section_map = engine_targets.setdefault(engine_path, {})
         section_map.setdefault(section, {})[key] = _normalize_profile_scalar(row.get("value"))
 
     for engine_path, section_map in engine_targets.items():
         try:
-            engine_path.parent.mkdir(parents=True, exist_ok=True)
             if not engine_path.exists():
                 engine_path.write_text("", encoding="utf-8")
             ini_utils._ensure_file_writable(engine_path)
