@@ -206,5 +206,13 @@
     "en": "[red]After install, set Borderless, XeSS in-game[end]",
     "url": "",
     "memo": ""
+  },
+  {
+    "message_id": "intall_post_SH2_crash",
+    "category": "popup",
+    "ko": "[RED]설치 후 첫 실행 시 크래쉬 발생하면 다시 실행하세요.[END]",
+    "en": "[RED]If crash after the first launch, Relaunch game.[END]",
+    "url": "",
+    "memo": ""
   }
 ]
