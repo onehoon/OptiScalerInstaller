@@ -294,7 +294,7 @@ def _build_game_db_controller(
     game_xml_profile_url = _require_remote_json_url("game_xml_profile_url", config.game_xml_profile_url)
     registry_profile_url = _require_remote_json_url("registry_profile_url", config.registry_profile_url)
     game_json_profile_url = str(config.game_json_profile_url or "").strip()
-    load_game_db = lambda gid: sheet_loader.load_game_db_from_remote_json(game_master_url, gid)
+    load_game_db = lambda _gid: sheet_loader.load_game_db_from_remote_json(game_master_url)
     load_module_download_links = lambda: sheet_loader.load_module_download_links_from_remote_json(resource_master_url)
     load_gpu_bundle = lambda base_url, vendor, gpu_model: gpu_bundle_loader.load_supported_game_bundle(
         base_url,

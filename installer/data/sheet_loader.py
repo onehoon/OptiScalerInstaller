@@ -1,8 +1,6 @@
 import json
 import logging
 import re
-import unicodedata
-from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 from ..common.cover_utils import normalize_cover_filename
@@ -31,7 +29,7 @@ def _pick_match_anchor(match_files: list[str]) -> str:
     return match_files[0] if match_files else ""
 
 
-def load_game_db_from_remote_json(source_url: str, _gid=0, *, timeout_seconds: float = 10.0):
+def load_game_db_from_remote_json(source_url: str, *, timeout_seconds: float = 10.0):
     normalized = str(source_url or "").strip()
     if not normalized:
         raise ValueError("Game master URL is empty")
@@ -162,10 +160,6 @@ def _is_enabled_flag(value: object) -> bool:
     return _is_truthy_support_flag(value)
 
 
-def _is_true_value(value):
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
 def _normalize_optional_url(value):
     raw = str(value).strip()
     if not raw:
@@ -208,52 +202,3 @@ def _normalize_download_url(value):
         logging.debug("Failed to normalize download URL: %s", normalized, exc_info=True)
 
     return normalized
-
-
-def _norm_key(s: Optional[str]) -> str:
-    if s is None:
-        return ""
-    t = str(s).strip()
-    t = unicodedata.normalize("NFKC", t)
-    t = t.replace("\u00A0", " ").replace("\uFEFF", "")
-    return t.lower()
-
-
-def _parse_pipe_ini_settings(raw_value):
-    text = str(raw_value or "").strip()
-    if not text:
-        return {}
-
-    parsed = {}
-    for token in text.split("|"):
-        token = token.strip()
-        if not token:
-            continue
-        if "=" in token:
-            key, value = token.split("=", 1)
-        elif ":" in token:
-            key, value = token.split(":", 1)
-        else:
-            logging.warning("Skipping invalid #ingame_setting token (missing '=' or ':'): %s", token)
-            continue
-
-        key = key.strip()
-        value = value.strip().rstrip(",")
-        if not key:
-            continue
-
-        if len(key) >= 2 and key[0] == key[-1] and key[0] in {'"', "'"}:
-            key = key[1:-1].strip()
-
-        if ":" in key:
-            section, section_key = key.split(":", 1)
-            section = section.strip()
-            section_key = section_key.strip()
-            if section and section_key:
-                parsed[(section, section_key)] = value
-            else:
-                logging.warning("Skipping invalid #ingame_setting token (invalid section:key): %s", token)
-        else:
-            parsed[key] = value
-
-    return parsed

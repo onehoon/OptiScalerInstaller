@@ -263,7 +263,6 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             ini_utils.apply_ini_settings(
                 str(file_path),
                 settings,
-                force_frame_generation=False,
                 logger=logger,
             )
             logger.info("Applied game_ini_profile settings to %s", file_path)
