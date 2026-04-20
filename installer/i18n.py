@@ -376,7 +376,6 @@ def build_install_information_text(
     stage: str = "install_pre",
     rtss_game_overlay_notice: str = "",
 ) -> str:
-    _ = str(stage or "").strip().lower()  # Keep signature stable for existing call sites.
     pre_text = pick_bound_message(source, "install_pre", lang)
     post_text = pick_bound_message(source, "install_post", lang)
     rtss_notice = str(rtss_game_overlay_notice or "").strip()
