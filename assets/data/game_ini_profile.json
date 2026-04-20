@@ -75,5 +75,40 @@
     "section": "Graphics/Reflex",
     "key": "LatencyMode",
     "value": "On"
+  },
+  {
+    "profile_id": "GOWR_ALL",
+    "path": "settings.ini",
+    "section": "Settings",
+    "key": "ScalerMethod",
+    "value": "NVIDA_DLSS"
+  },
+  {
+    "profile_id": "GOWR_ALL",
+    "path": "settings.ini",
+    "section": "Settings",
+    "key": "ScalerQuality",
+    "value": "Balanced"
+  },
+  {
+    "profile_id": "GOWR_ALL",
+    "path": "settings.ini",
+    "section": "Settings",
+    "key": "DynamicScalingMode",
+    "value": "Off"
+  },
+  {
+    "profile_id": "GOWR_ALL",
+    "path": "settings.ini",
+    "section": "Settings",
+    "key": "LatencyReductionMode",
+    "value": "reflex"
+  },
+  {
+    "profile_id": "GOWR_ALL",
+    "path": "settings.ini",
+    "section": "Settings",
+    "key": "FrameGen",
+    "value": "NV_DLSS_FG"
   }
 ]
