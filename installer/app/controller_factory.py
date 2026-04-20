@@ -326,7 +326,6 @@ def _build_game_db_controller(
         game_xml_profile_url=game_xml_profile_url,
         registry_profile_url=registry_profile_url,
         game_json_profile_url=game_json_profile_url,
-        message_lang=app.lang,
         logger=logging.getLogger(),
     )
 

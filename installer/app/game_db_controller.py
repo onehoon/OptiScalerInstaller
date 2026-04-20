@@ -70,7 +70,6 @@ class GameDbLoadController:
         game_json_profile_url: str = "",
         load_profile_catalogs: ProfileCatalogLoader = profile_loader.load_profile_catalogs,
         attach_profile_catalogs: ProfileCatalogAttacher = profile_loader.attach_profile_catalogs_to_game_db,
-        message_lang: str = "en",
         logger=None,
     ) -> None:
         self._executor = executor
@@ -94,7 +93,6 @@ class GameDbLoadController:
         self._game_json_profile_url = str(game_json_profile_url or "").strip()
         self._load_profile_catalogs = load_profile_catalogs
         self._attach_profile_catalogs = attach_profile_catalogs
-        self._message_lang = str(message_lang or "en").strip() or "en"
         self._logger = logger or logging.getLogger()
 
         self._load_started = False

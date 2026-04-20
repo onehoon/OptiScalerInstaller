@@ -29,6 +29,7 @@ from installer.app.install_selection_controller import (
     InstallSelectionPrecheckOutcome,
     InstallSelectionUiState,
 )
+from installer.app.game_support_policy import parse_support_flag
 from installer.app.install_state import build_install_button_state_inputs, build_selected_game_snapshot
 from installer.app.install_ui_state import InstallButtonStateInputs, compute_install_button_state
 from installer.app.notice_controller import AppNoticeController
@@ -627,17 +628,6 @@ class OptiManagerApp:
     def _is_multi_gpu_block_active(self) -> bool:
         return self.gpu_state.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
-    @staticmethod
-    def _is_truthy_support_flag(value: object) -> bool:
-        if isinstance(value, bool):
-            return value
-        text = str(value or "").strip().lower()
-        if not text:
-            return False
-        if text in {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-", "native xefg"}:
-            return False
-        return True
-
     def _is_vendor_allowed_by_game_flags(self, game_data: dict) -> bool:
         vendor = str(self.sheet_state.active_vendor or "").strip().lower()
         if vendor not in {"intel", "amd", "nvidia"}:
@@ -647,7 +637,7 @@ class OptiManagerApp:
         if support_key not in game_data:
             return True
 
-        return self._is_truthy_support_flag(game_data.get(support_key))
+        return parse_support_flag(game_data.get(support_key), native_xefg_means_false=True)
 
     def _is_game_supported_for_current_gpu(self, game_data: dict) -> bool:
         if not self._is_vendor_allowed_by_game_flags(game_data):
