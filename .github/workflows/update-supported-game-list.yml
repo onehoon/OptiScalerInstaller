@@ -18,7 +18,7 @@ jobs:
       INSTALL_PROFILE_SHEET_URL: ${{ secrets.INSTALL_PROFILE_SHEET_URL }}
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
-      TARGET_WIKI_PAGE_FILE: Supported-Game-List-Test.md
+      TARGET_WIKI_PAGE_FILE: Supported-Game-List.md
       BASELINE_WIKI_PAGE_FILE: Supported-Game-List.md
       NEW_GAMES_RETENTION_DAYS: "30"
 
@@ -36,5 +36,5 @@ jobs:
       - name: Install runtime dependencies
         run: python -m pip install --disable-pip-version-check requests google-auth
 
-      - name: Update wiki test page
+      - name: Update wiki page
         run: python scripts/update_supported_game_list.py

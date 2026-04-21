@@ -49,7 +49,7 @@ RADEON_IGPU_NOTE_BLOCKS = [
 ]
 WIKI_PUSH_TOKEN = str(os.environ.get("WIKI_PUSH_TOKEN", "") or "").strip()
 TARGET_WIKI_PAGE_FILE = str(
-    os.environ.get("TARGET_WIKI_PAGE_FILE", "Supported-Game-List-Test.md") or ""
+    os.environ.get("TARGET_WIKI_PAGE_FILE", "Supported-Game-List.md") or ""
 ).strip()
 BASELINE_WIKI_PAGE_FILE = str(
     os.environ.get("BASELINE_WIKI_PAGE_FILE", "Supported-Game-List.md") or ""
