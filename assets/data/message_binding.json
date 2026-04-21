@@ -41,7 +41,15 @@
   },
   {
     "game_id": "HFW",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "HFW",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -57,7 +65,15 @@
   },
   {
     "game_id": "DWORIGINS",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "DWORIGINS",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -97,7 +113,15 @@
   },
   {
     "game_id": "FFXVI",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "FFXVI",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -177,7 +201,15 @@
   },
   {
     "game_id": "GOT",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "GOT",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -201,7 +233,15 @@
   },
   {
     "game_id": "HZDR",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "HZDR",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -217,7 +257,15 @@
   },
   {
     "game_id": "SMR",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SMR",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -233,7 +281,15 @@
   },
   {
     "game_id": "SM2",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SM2",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -249,7 +305,15 @@
   },
   {
     "game_id": "DSD",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "AMD",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_only",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "DSD",
+    "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_only",
     "priority": 100,
@@ -265,23 +329,39 @@
   },
   {
     "game_id": "SH2",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SH2",
+    "gpu_vendor": "AMD",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "SH2",
+    "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
     "memo": ""
   },
   {
-    "game_id": "SH2",
-    "gpu_vendor": "ALL",
-    "stage": "install_post",
-    "message_id": "intall_post_SH2_crash",
-    "priority": 90,
+    "game_id": "TLOU2",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
     "memo": ""
   },
   {
     "game_id": "TLOU2",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -337,7 +417,15 @@
   },
   {
     "game_id": "RiftApart",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "RiftApart",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
@@ -425,7 +513,15 @@
   },
   {
     "game_id": "CrimsonDesert",
-    "gpu_vendor": "ALL",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "CrimsonDesert",
+    "gpu_vendor": "AMD",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
     "priority": 100,
