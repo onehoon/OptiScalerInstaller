@@ -516,6 +516,18 @@
     "support_nvidia": true
   },
   {
+    "game_id": "Morales",
+    "match_exe": "MilesMorales.exe",
+    "game_name_kr": "마블 스파이더맨: 마일즈 모랄레스",
+    "game_name_en": "Marvel's Spider-Man: Miles Morales",
+    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1817190/library_600x900.jpg?t=1750955016",
+    "cover_filename": "Miles Morales.webp",
+    "enabled": true,
+    "support_intel": true,
+    "support_amd": true,
+    "support_nvidia": true
+  },
+  {
     "game_id": "Windrose",
     "match_exe": "",
     "game_name_kr": "Windrose",
@@ -630,18 +642,6 @@
     "game_name_en": "Little Nightmares III",
     "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1392860/library_600x900_2x.jpg?t=1760138117",
     "cover_filename": "Little Nightmares III.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
-  },
-  {
-    "game_id": "Morales",
-    "match_exe": "",
-    "game_name_kr": "마블 스파이더맨: 마일즈 모랄레스",
-    "game_name_en": "Marvel's Spider-Man: Miles Morales",
-    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1817190/library_600x900.jpg?t=1750955016",
-    "cover_filename": "Miles Morales.webp",
     "enabled": false,
     "support_intel": false,
     "support_amd": false,
