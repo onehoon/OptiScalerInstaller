@@ -26,5 +26,33 @@
     "section": "SystemSettings",
     "key": "r.Streamline.DilateMotionVectors",
     "value": 0
+  },
+  {
+    "profile_id": "Avowed_ALL",
+    "path": "%LOCALAPPDATA%\\Alabama\\Saved\\Config\\Windows\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.FidelityFX.FSR3.UseNativeDX12",
+    "value": 1
+  },
+  {
+    "profile_id": "Avowed_ALL",
+    "path": "%LOCALAPPDATA%\\Alabama\\Saved\\Config\\Windows\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.FidelityFX.FSR3.UseRHI",
+    "value": 0
+  },
+  {
+    "profile_id": "Avowed_ALL",
+    "path": "%LOCALAPPDATA%\\Alabama\\Saved\\Config\\WinGDK\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.FidelityFX.FSR3.UseNativeDX12",
+    "value": 1
+  },
+  {
+    "profile_id": "Avowed_ALL",
+    "path": "%LOCALAPPDATA%\\Alabama\\Saved\\Config\\WinGDK\\Engine.ini",
+    "section": "SystemSettings",
+    "key": "r.FidelityFX.FSR3.UseRHI",
+    "value": 0
   }
 ]
