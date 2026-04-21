@@ -14,5 +14,397 @@
     "key": "GFXSettings",
     "value_path": "FrameGen",
     "value": "Off"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_MotionBlur\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_FSR1Quality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_FSR2Quality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_Supersampling\"]",
+    "value": 4
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_TSRSQuality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_XeSSQuality\"]",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_ShadowQuality\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_TextureQuality\"]",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_EffectsQuality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_ShadersQuality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_ResolutionScalability\"]",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_LensFlares\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_ImageSharpening\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_SSAO\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_SSR\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_SSSQuality\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_SeparateTranslucency\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_AntiAliasing\"]",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_HWOcclusion\"]",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_Quality\"]",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Quality\"]",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"VSync\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"FpsCap\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Raytracing\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"DynamicRes\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"FrameGen\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Panini\"]",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GsaOptions[\"Adv_DLSSQuality\"]",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "GammaValue",
+    "value": 2.4
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "VSync",
+    "value": false
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "ScreenMode",
+    "value": "Borderless"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "MonitorIndex",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "Resolution",
+    "value": "(X=1920,Y=1200)"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDR",
+    "value": false
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRMinLuminance",
+    "value": -9
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRMidLuminance",
+    "value": 50
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRMaxLuminance",
+    "value": 500
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRBrightness",
+    "value": 1.2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRUIBrightness",
+    "value": 350
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "HDRUIContrast",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "Quality",
+    "value": "Advanced"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "AdvQualityIsCustom",
+    "value": true
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "SpecialQuality",
+    "value": "Quality"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "FpsCap",
+    "value": "Unlimited"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "Raytracing",
+    "value": "Off"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "DynRes",
+    "value": "Off"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "FrameGen",
+    "value": "On"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "Panini",
+    "value": "Off"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "GFXSettings",
+    "value_path": "IngameMotionBlur",
+    "value": false
   }
 ]
