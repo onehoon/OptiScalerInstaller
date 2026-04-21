@@ -115,13 +115,6 @@
     "profile_id": "SH2_All",
     "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
     "section": "/Script/GameBase.BGameUserSettings",
-    "key": "bUseDynamicResolution",
-    "value": false
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
     "key": "FullscreenMode",
     "value": 1
   },
@@ -129,21 +122,7 @@
     "profile_id": "SH2_All",
     "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
     "section": "/Script/GameBase.BGameUserSettings",
-    "key": "LastConfirmedFullscreenMode",
-    "value": 2
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
     "key": "PreferredFullscreenMode",
     "value": 1
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
-    "key": "FrameRateLimit",
-    "value": 0
   }
 ]
