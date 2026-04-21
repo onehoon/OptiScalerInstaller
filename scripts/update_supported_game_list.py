@@ -913,7 +913,7 @@ def update_wiki(games: list[dict[str, str]], markdown_text: str, *, retention_da
 
 
 def main() -> None:
-    retention_days = require_int_env_value("NEW_GAMES_RETENTION_DAYS", 30)
+    retention_days = require_int_env_value("NEW_GAMES_RETENTION_DAYS", 0)
     games = build_games()
     markdown = build_markdown(games)
     update_wiki(games, markdown, retention_days=retention_days)
