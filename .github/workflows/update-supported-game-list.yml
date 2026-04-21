@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      TZ: Asia/Seoul
       INSTALL_PROFILE_SHEET_URL: ${{ secrets.INSTALL_PROFILE_SHEET_URL }}
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
