@@ -1,104 +1,104 @@
 [
   {
-    "profile_id": "FH5_All",
+    "profile_id": "RDR2_ALL",
+    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
+    "xml_path": "advancedGraphics/API",
+    "value": "kSettingAPI_DX12"
+  },
+  {
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=UseDynamicOptimization@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=VSync@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=MotionBlurAmount@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=ResolutionScaling@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=DLSSMode@value",
     "value": 4
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=DLSSGMode@value",
     "value": 1
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=FSR2Mode@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=XeSSMode@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=REFLEXMode@value",
     "value": 1
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=NVIDIATech@value",
     "value": 1
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=MSAA@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=FXAA@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=TAA@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=DLAA@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=FSR2AA@value",
     "value": 0
   },
   {
-    "profile_id": "FH5_All",
+    "profile_id": "",
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=XeSSAA@value",
     "value": 0
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "advancedGraphics/API",
-    "value": "kSettingAPI_DX12"
   }
 ]
