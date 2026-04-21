@@ -4,22 +4,6 @@
     "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
     "section": "/Script/GameBase.BGameUserSettings",
     "key": "GFXSettings",
-    "value_path": "GsaOptions[\"VSync\"]",
-    "value": 0
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
-    "key": "GFXSettings",
-    "value_path": "GsaOptions[\"Adv_MotionBlur\"]",
-    "value": 0
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
-    "key": "GFXSettings",
     "value_path": "GsaOptions[\"Adv_Supersampling\"]",
     "value": 4
   },
@@ -36,24 +20,8 @@
     "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
     "section": "/Script/GameBase.BGameUserSettings",
     "key": "GFXSettings",
-    "value_path": "VSync",
-    "value": false
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
-    "key": "GFXSettings",
     "value_path": "ScreenMode",
     "value": "Borderless"
-  },
-  {
-    "profile_id": "SH2_All",
-    "path": "%LOCALAPPDATA%\\SilentHill2\\Saved\\Config\\Windows\\GameUserSettings.ini",
-    "section": "/Script/GameBase.BGameUserSettings",
-    "key": "GFXSettings",
-    "value_path": "Quality",
-    "value": "Advanced"
   },
   {
     "profile_id": "SH2_All",
