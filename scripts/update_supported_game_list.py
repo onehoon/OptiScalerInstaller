@@ -545,7 +545,7 @@ def find_matching_game(games: list[dict[str, str]], candidate: dict[str, str]) -
 
 
 def extract_supported_game_keys_from_markdown(markdown_text: str) -> set[tuple[str, str]]:
-    lines = str(markdown_text or "").splitlines()
+    lines = strip_existing_new_games_block(markdown_text).splitlines()
     header_index = None
 
     for index, line in enumerate(lines):
@@ -605,6 +605,14 @@ def extract_existing_new_games_block(markdown_text: str) -> str:
         end_index -= 1
 
     return "\n".join(lines[start_index:end_index])
+
+
+def strip_existing_new_games_block(markdown_text: str) -> str:
+    text = str(markdown_text or "")
+    block_text = extract_existing_new_games_block(text)
+    if not block_text:
+        return text
+    return text.replace(block_text, "", 1)
 
 
 def parse_iso_date(value: Any) -> date | None:
