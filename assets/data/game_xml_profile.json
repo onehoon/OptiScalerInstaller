@@ -96,8 +96,8 @@
     "value": 0
   },
   {
-    "profile_id": "",
-    "path": "%USERPROFILE%\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\",
+    "profile_id": "RDR2_ALL",
+    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
     "xml_path": "",
     "value": ""
   }
