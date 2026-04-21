@@ -304,6 +304,30 @@
     "memo": ""
   },
   {
+    "game_id": "Morales",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Morales",
+    "gpu_vendor": "AMD",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Morales",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 90,
+    "memo": ""
+  },
+  {
     "game_id": "DSD",
     "gpu_vendor": "AMD",
     "stage": "install_post",
