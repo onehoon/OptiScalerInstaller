@@ -110,5 +110,278 @@
     "section": "Settings",
     "key": "FrameGen",
     "value": "NV_DLSS_FG"
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.ResolutionQuality",
+    "value": 100
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.ViewDistanceQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.AntiAliasingQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.ShadowQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.GlobalIlluminationQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.ReflectionQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.PostProcessQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.TextureQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.EffectsQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.FoliageQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "ScalabilityGroups",
+    "key": "sg.ShadingQuality",
+    "value": 3
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "bUseVSync",
+    "value": false
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "bUseDynamicResolution",
+    "value": false
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "ResolutionSizeX",
+    "value": 1920
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "ResolutionSizeY",
+    "value": 1200
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "MonitorIndex",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastUserConfirmedResolutionSizeX",
+    "value": 1300
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastUserConfirmedResolutionSizeY",
+    "value": 820
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "WindowPosX",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "WindowPosY",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "FullscreenMode",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastConfirmedFullscreenMode",
+    "value": 2
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "PreferredFullscreenMode",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "Version",
+    "value": 7
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "AudioQualityLevel",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastConfirmedAudioQualityLevel",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "FrameRateLimit",
+    "value": 0
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "DesiredScreenWidth",
+    "value": 1280
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "DesiredScreenHeight",
+    "value": 720
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastUserConfirmedDesiredScreenWidth",
+    "value": 1280
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastUserConfirmedDesiredScreenHeight",
+    "value": 720
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastRecommendedScreenWidth",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastRecommendedScreenHeight",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastCPUBenchmarkResult",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastGPUBenchmarkResult",
+    "value": -1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "LastGPUBenchmarkMultiplier",
+    "value": 1
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "bUseHDRDisplayOutput",
+    "value": false
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/GameBase.BGameUserSettings",
+    "key": "HDRDisplayOutputNits",
+    "value": 1000
+  },
+  {
+    "profile_id": "SH2_All",
+    "path": "%LOCALAPPDATA%\\[실제 SH2 GameUserSettings.ini 경로]\\SH2_GameUserSettings.ini",
+    "section": "/Script/Engine.GameUserSettings",
+    "key": "bUseDesiredScreenHeight",
+    "value": false
   }
 ]
