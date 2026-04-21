@@ -531,9 +531,20 @@ def _set_file_readonly(path: Path):
         logging.exception("Failed to set %s readonly", path)
 
 
-def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
+def _upsert_ini_entries(
+    ini_path: Path,
+    section_map: dict,
+    logger=None,
+    *,
+    create_missing_file: bool = True,
+    allow_edit_existing: bool = True,
+    allow_add_key: bool = True,
+    allow_add_section: bool = True,
+) -> bool:
     try:
         if not ini_path.exists():
+            if not create_missing_file:
+                return False
             try:
                 ini_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception:
@@ -549,7 +560,7 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
                     logger.exception("Failed to create missing INI file: %s", ini_path)
                 else:
                     logging.exception("Failed to create missing INI file: %s", ini_path)
-                return
+                return False
 
         try:
             _ensure_file_writable(ini_path)
@@ -563,13 +574,13 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
                 logger.exception("Failed to read INI for upsert: %s", ini_path)
             else:
                 logging.exception("Failed to read INI for upsert: %s", ini_path)
-            return
+            return False
     except Exception:
         if logger:
             logger.exception("Unexpected error preparing INI for upsert: %s", ini_path)
         else:
             logging.exception("Unexpected error preparing INI for upsert: %s", ini_path)
-        return
+        return False
 
     lines = text.splitlines(keepends=True)
     preferred_newline = _get_ini_preferred_newline(text)
@@ -578,19 +589,21 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
     def _norm_section(s):
         return str(s or "").strip().lower()
 
-    sections = {}
-    current = ""
-    start_idx = 0
-    for i, raw in enumerate(lines):
-        m = section_pattern.match(raw)
-        if m:
-            sec = _norm_section(m.group(1))
-            if current != "":
-                sections[current] = (start_idx, i)
-            current = sec
-            start_idx = i
-    if current != "":
-        sections[current] = (start_idx, len(lines))
+    def _collect_sections():
+        sections = {}
+        current = ""
+        start_idx = 0
+        for i, raw in enumerate(lines):
+            m = section_pattern.match(raw)
+            if m:
+                sec = _norm_section(m.group(1))
+                if current != "":
+                    sections[current] = (start_idx, i)
+                current = sec
+                start_idx = i
+        if current != "":
+            sections[current] = (start_idx, len(lines))
+        return sections
 
     modified = False
     ini_label = ini_path.name or "INI"
@@ -614,18 +627,25 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
         return None
 
     for sec, kvs in section_map.items():
+        sections = _collect_sections()
         norm_sec = _norm_section(sec)
         if norm_sec == "":
             insert_pos = 0
             for key, value in kvs.items():
                 found = _find_key_in_range(key, 0, len(lines))
                 if found is not None:
+                    if not allow_edit_existing:
+                        continue
                     ending = _get_line_ending(lines[found], preferred_newline)
                     lines[found] = f"{key}={value}{ending}"
                     modified = True
                     if logger:
                         logger.info("%s edit %s -> %s", ini_label, _format_ini_log_key(sec, key), value)
                 else:
+                    if not allow_add_key:
+                        if logger:
+                            logger.warning("%s skip missing INI key %s", ini_label, key)
+                        continue
                     lines.insert(insert_pos, f"{key}={value}{preferred_newline}")
                     insert_pos += 1
                     modified = True
@@ -639,6 +659,8 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
             for key, value in kvs.items():
                 found = _find_key_in_range(key, start, end)
                 if found is not None:
+                    if not allow_edit_existing:
+                        continue
                     ending = _get_line_ending(lines[found], preferred_newline)
                     prefix = re.match(r"^(\s*)", lines[found]).group(1)
                     lines[found] = f"{prefix}{key}={value}{ending}"
@@ -646,12 +668,20 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
                     if logger:
                         logger.info("%s edit %s -> %s", ini_label, _format_ini_log_key(sec, key), value)
                 else:
+                    if not allow_add_key:
+                        if logger:
+                            logger.warning("%s skip missing INI key %s in [%s]", ini_label, key, sec)
+                        continue
                     lines.insert(insert_at, f"{key}={value}{preferred_newline}")
                     insert_at += 1
                     modified = True
                     if logger:
                         logger.info("%s add %s -> %s", ini_label, _format_ini_log_key(sec, key), value)
         else:
+            if not allow_add_section:
+                if logger:
+                    logger.warning("%s skip missing INI section [%s]", ini_label, sec)
+                continue
             if lines and not _get_line_ending(lines[-1]):
                 lines[-1] = lines[-1] + preferred_newline
             lines.append(f"[{sec}]{preferred_newline}")
@@ -671,5 +701,7 @@ def _upsert_ini_entries(ini_path: Path, section_map: dict, logger=None):
                 logger.exception("Failed to write updated INI: %s", ini_path)
             else:
                 logging.exception("Failed to write updated INI: %s", ini_path)
+            return False
+    return modified
 
 

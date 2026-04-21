@@ -269,7 +269,7 @@ def _collect_unreal_ini_profile_targets(
 
 
 def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
-    ini_targets: dict[Path, dict[tuple[str, str], str]] = {}
+    ini_targets: dict[Path, dict[str, dict[str, str]]] = {}
     for row in list(game_data.get("game_ini_profile") or []):
         if not isinstance(row, Mapping):
             continue
@@ -289,14 +289,29 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             logger.info("Skipped game_ini_profile because target file was not found: %s", profile_path)
             continue
 
-        ini_targets.setdefault(resolved_path, {})[(section, key)] = _normalize_profile_scalar(row.get("value"))
+        section_map = ini_targets.setdefault(resolved_path, {})
+        section_map.setdefault(section, {})[key] = _normalize_profile_scalar(row.get("value"))
 
-    for file_path, settings in ini_targets.items():
+    for file_path, section_map in ini_targets.items():
         def _apply_ini() -> None:
+            settings = {
+                (section_name, key_name): value
+                for section_name, key_values in section_map.items()
+                for key_name, value in key_values.items()
+            }
             ini_utils.apply_ini_settings(
                 str(file_path),
                 settings,
                 logger=logger,
+            )
+            ini_utils._upsert_ini_entries(
+                file_path,
+                section_map,
+                logger=logger,
+                create_missing_file=False,
+                allow_edit_existing=False,
+                allow_add_key=True,
+                allow_add_section=False,
             )
             logger.info("Applied game_ini_profile settings to %s", file_path)
 
