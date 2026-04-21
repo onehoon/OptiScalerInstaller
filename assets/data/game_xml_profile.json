@@ -94,5 +94,11 @@
     "path": "%LOCALAPPDATA%\\ForzaHorizon5\\User_SteamLocalStorageDirectory\\ConnectedStorage\\ForzaUserConfigSelections\\UserConfigSelections",
     "xml_path": "selections/option@id=XeSSAA@value",
     "value": 0
+  },
+  {
+    "profile_id": "",
+    "path": "%USERPROFILE%\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\",
+    "xml_path": "",
+    "value": ""
   }
 ]
