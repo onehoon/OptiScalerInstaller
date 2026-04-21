@@ -100,47 +100,5 @@
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
     "xml_path": "advancedGraphics/API",
     "value": "kSettingAPI_DX12"
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "graphics/dlssIndex@value",
-    "value": 4
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "graphics/dlssQuality@value",
-    "value": 1
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "graphics/dlssSharpen@value",
-    "value": 0.35
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "graphics/fsr2Index@value",
-    "value": 0
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "video/tripleBuffered@value",
-    "value": false
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "video/vSync@value",
-    "value": 0
-  },
-  {
-    "profile_id": "RDR2_ALL",
-    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml",
-    "xml_path": "video/windowed@value",
-    "value": 2
   }
 ]
