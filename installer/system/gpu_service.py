@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import subprocess
-from typing import Mapping
 
 from ..common.process_utils import subprocess_no_window_kwargs
 
@@ -34,7 +33,6 @@ class GpuAdapterChoice:
     vendor: str
     model_name: str
     display_name: str
-    selected_gid: int
 
 
 @dataclass(frozen=True)
@@ -43,7 +41,6 @@ class GpuContext:
     gpu_count: int
     gpu_info: str
     selected_vendor: str
-    selected_gid: int = 0
     adapters: tuple[GpuAdapterChoice, ...] = ()
     selected_model_name: str = ""
 
@@ -161,32 +158,6 @@ def detect_gpu_vendor(gpu_name: str) -> str:
     return ""
 
 
-def detect_gpu_vendors(gpu_info: str) -> list[str]:
-    lowered = str(gpu_info or "").strip().lower()
-    if not lowered:
-        return []
-
-    # Prefer discrete GPUs first when multiple adapters are present.
-    return [
-        vendor
-        for vendor in _VENDOR_PRIORITY
-        if any(keyword in lowered for keyword in _VENDOR_KEYWORD_MAP[vendor])
-    ]
-
-
-def resolve_game_db_target_for_gpu(
-    gpu_info: str,
-    vendor_db_gids: Mapping[str, int],
-    default_gid: int,
-) -> tuple[str, int]:
-    vendors = detect_gpu_vendors(gpu_info)
-    for vendor in vendors:
-        gid = int(vendor_db_gids.get(vendor, default_gid) or default_gid)
-        if gid:
-            return vendor, gid
-    return "default", int(default_gid)
-
-
 def _shorten_gpu_model_name(vendor: str, model_name: str) -> str:
     text = _normalize_text(model_name)
     if not text:
@@ -213,8 +184,6 @@ def _shorten_gpu_model_name(vendor: str, model_name: str) -> str:
 
 def build_gpu_adapter_choices(
     gpu_names: list[str],
-    vendor_db_gids: Mapping[str, int],
-    default_gid: int,
 ) -> tuple[GpuAdapterChoice, ...]:
     adapters: list[GpuAdapterChoice] = []
     for gpu_name in gpu_names:
@@ -223,13 +192,11 @@ def build_gpu_adapter_choices(
             continue
 
         vendor = detect_gpu_vendor(normalized_name)
-        resolved_gid = int(vendor_db_gids.get(vendor, default_gid) or default_gid) if vendor else int(default_gid)
         adapters.append(
             GpuAdapterChoice(
                 vendor=vendor or "default",
                 model_name=normalized_name,
                 display_name=_shorten_gpu_model_name(vendor, normalized_name),
-                selected_gid=resolved_gid,
             )
         )
 
@@ -244,17 +211,16 @@ def _select_preferred_adapter(adapters: tuple[GpuAdapterChoice, ...]) -> GpuAdap
     return adapters[0] if adapters else None
 
 
-def detect_gpu_context(vendor_db_gids: Mapping[str, int], default_gid: int) -> GpuContext:
+def detect_gpu_context() -> GpuContext:
     gpu_names, gpu_count, gpu_info = get_graphics_adapter_snapshot()
-    adapters = build_gpu_adapter_choices(gpu_names, vendor_db_gids, default_gid)
+    adapters = build_gpu_adapter_choices(gpu_names)
 
     selected_adapter = _select_preferred_adapter(adapters)
     if selected_adapter:
         selected_vendor = selected_adapter.vendor
-        selected_gid = int(selected_adapter.selected_gid or default_gid)
         selected_model_name = selected_adapter.model_name
     else:
-        selected_vendor, selected_gid = resolve_game_db_target_for_gpu(gpu_info, vendor_db_gids, default_gid)
+        selected_vendor = "default"
         selected_model_name = ""
 
     return GpuContext(
@@ -262,7 +228,6 @@ def detect_gpu_context(vendor_db_gids: Mapping[str, int], default_gid: int) -> G
         gpu_count=max(0, int(gpu_count or 0)),
         gpu_info=gpu_info,
         selected_vendor=selected_vendor,
-        selected_gid=int(selected_gid or default_gid),
         adapters=adapters,
         selected_model_name=selected_model_name,
     )

@@ -55,7 +55,6 @@ class SheetRuntimeState:
     status: bool = False
     loading: bool = True
     active_vendor: str = "default"
-    active_gid: int = 0
     game_db: dict[str, Any] = field(default_factory=dict)
     module_download_links: dict[str, Any] = field(default_factory=dict)
     startup_warning_text: str = ""
@@ -139,7 +138,6 @@ _RUNTIME_STATE_FIELD_MAP = {
     "sheet_status": ("_sheet_state", "status", SheetRuntimeState),
     "sheet_loading": ("_sheet_state", "loading", SheetRuntimeState),
     "active_game_db_vendor": ("_sheet_state", "active_vendor", SheetRuntimeState),
-    "active_game_db_gid": ("_sheet_state", "active_gid", SheetRuntimeState),
     "game_db": ("_sheet_state", "game_db", SheetRuntimeState),
     "module_download_links": ("_sheet_state", "module_download_links", SheetRuntimeState),
     "startup_warning_text": ("_sheet_state", "startup_warning_text", SheetRuntimeState),
@@ -156,11 +154,11 @@ _RUNTIME_STATE_FIELD_MAP = {
 }
 
 
-def build_runtime_state_bundle(*, checking_gpu_text: str, default_sheet_gid: int = 0) -> RuntimeStateBundle:
+def build_runtime_state_bundle(*, checking_gpu_text: str) -> RuntimeStateBundle:
     return RuntimeStateBundle(
         archive_state=ArchiveRuntimeState(),
         gpu_state=GpuRuntimeState(gpu_info=str(checking_gpu_text or "")),
-        sheet_state=SheetRuntimeState(active_gid=int(default_sheet_gid)),
+        sheet_state=SheetRuntimeState(),
         install_state=InstallRuntimeState(),
         card_ui_state=CardUiRuntimeState(),
     )

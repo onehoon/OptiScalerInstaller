@@ -30,14 +30,12 @@ from .scan_feedback import ScanFeedbackCallbacks, ScanFeedbackController
 @dataclass(frozen=True)
 class AppControllerFactoryConfig:
     create_prefixed_logger: Callable[[str], Any]
-    default_sheet_gid: int
     gpu_bundle_url: str
     game_master_url: str
     resource_master_url: str
     message_binding_url: str
     message_center_url: str
     gpu_notice_theme: Any
-    gpu_vendor_db_gids: Mapping[str, int]
     max_supported_gpu_count: int
     message_popup_theme: Any
     root_height_fallback: int
@@ -103,19 +101,120 @@ def _build_thread_safe_ui_scheduler(root: Any, *, logger: Any = None, poll_ms: i
 
 
 def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppControllers:
+    # `app` is only unpacked at this assembly boundary. Downstream builders
+    # should take explicit dependencies so wiring stays searchable and local.
     ui_schedule = _build_thread_safe_ui_scheduler(app.root, logger=logging.getLogger())
     app_notice = _build_app_notice_controller(app, config)
     app_actions = _build_app_actions_controller(app)
     app_shutdown = _build_app_shutdown_controller(app)
     archive = _build_archive_controller(app, ui_schedule)
-    game_db = _build_game_db_controller(app, config, ui_schedule)
-    gpu_flow = _build_gpu_flow_controller(app, config, ui_schedule)
-    scan_feedback = _build_scan_feedback_controller(app, config)
-    scan = _build_scan_controller(app, scan_feedback, ui_schedule)
-    scan_entry = _build_scan_entry_controller(app)
+    game_db = _build_game_db_controller(
+        executor=app._task_executor,
+        schedule_ui=ui_schedule,
+        callbacks=GameDbControllerCallbacks(
+            on_load_complete=app._on_game_db_loaded,
+        ),
+        config=config,
+    )
+    gpu_flow = _build_gpu_flow_controller(
+        executor=app._task_executor,
+        schedule_ui=ui_schedule,
+        callbacks=GpuFlowCallbacks(
+            apply_state=app._apply_gpu_flow_state,
+            handle_unsupported_gpu=app._handle_unsupported_gpu_block,
+            set_scan_status_message=app._set_scan_status_message,
+            update_sheet_status=app._update_sheet_status,
+            update_install_button_state=app._update_install_button_state,
+            start_game_db_load=app._start_game_db_load_async,
+        ),
+        root=app.root,
+        strings=app.txt,
+        config=config,
+    )
+    scan_feedback = _build_scan_feedback_controller(
+        root=app.root,
+        callbacks=ScanFeedbackCallbacks(
+            set_scan_status_message=app._set_scan_status_message,
+            set_select_folder_enabled=app._set_folder_select_enabled,
+            set_information_text=app._set_information_text,
+            enqueue_startup_popup=app._startup_flow.enqueue_popup,
+            run_next_startup_popup=app._startup_flow.run_next_popup,
+        ),
+        config=config,
+        popup_title=app.txt.main.scan_result_title,
+        popup_confirm_text=app.txt.common.ok,
+        scanning_text=app.txt.main.scanning,
+        manual_scan_no_results_text=app.txt.main.manual_scan_no_results,
+        auto_scan_no_results_text=app.txt.main.auto_scan_no_results,
+        select_game_hint_text=app.txt.main.select_game_hint,
+    )
+    scan = _build_scan_controller(
+        executor=app._scan_executor,
+        schedule_ui=ui_schedule,
+        callbacks=ScanControllerCallbacks(
+            prepare_scan_ui=scan_feedback.prepare_scan_ui,
+            reset_scan_results=app._reset_scan_results_for_new_scan,
+            add_game_card=app._add_game_card_incremental,
+            finish_scan_ui=scan_feedback.finish_scan_ui,
+            pump_poster_queue=app._pump_poster_queue,
+            show_auto_scan_empty_popup=scan_feedback.enqueue_initial_auto_scan_empty_popup,
+            show_manual_scan_empty_popup=scan_feedback.show_manual_scan_empty_popup,
+            show_select_game_hint=scan_feedback.show_select_game_hint,
+        ),
+        get_game_db=lambda: app.sheet_state.game_db,
+        get_lang=lambda: app.lang,
+        is_game_supported=app._is_game_supported_for_current_gpu,
+    )
+    scan_entry = _build_scan_entry_controller(
+        callbacks=ScanEntryCallbacks(
+            ask_directory=filedialog.askdirectory,
+            set_selected_folder=app._set_game_folder,
+            start_manual_scan=app._start_manual_scan_from_folder,
+        ),
+    )
     install_flow = _build_install_flow_controller(app, config)
-    install_selection = _build_install_selection_controller(app, install_flow)
-    card_render = _build_card_render_controller(app, config)
+    install_selection = _build_install_selection_controller(
+        schedule=app.root.after_idle,
+        callbacks=InstallSelectionCallbacks(
+            apply_selected_index=app._apply_selected_game_index,
+            set_information_text=app._set_information_text,
+            build_information_text=lambda game: build_install_information_text(
+                game,
+                lang=app.lang,
+                stage="install_pre",
+                rtss_game_overlay_notice=_resolve_rtss_game_overlay_notice(
+                    game=game,
+                    install_state=app.install_state,
+                    dialogs_strings=app.txt.dialogs,
+                ),
+            ),
+            apply_ui_state=app._apply_install_selection_state,
+            update_install_button_state=app._update_install_button_state,
+            run_precheck=install_flow.run_install_precheck,
+            get_selection_popup_message=lambda game: _build_selection_popup_message(
+                game=game,
+                lang=app.lang,
+                install_state=app.install_state,
+                dialogs_strings=app.txt.dialogs,
+            ),
+            show_selection_popup=app._show_game_selection_popup,
+            show_precheck_popup=app._show_precheck_popup,
+        ),
+    )
+    viewport = app._card_viewport_controller
+    card_render = _build_card_render_controller(
+        callbacks=CardRenderCallbacks(
+            append_found_game=app._append_found_game,
+            clear_cards=app._clear_cards,
+            hide_empty_label=app._hide_empty_label,
+            configure_card_columns=viewport.configure_card_columns,
+            create_and_place_card=app._create_and_place_card,
+            fit_cards_to_visible_width=viewport.fit_cards_to_visible_width,
+            restore_selection=app._restore_rendered_selection,
+            schedule_scrollregion_refresh=viewport.schedule_games_scrollregion_refresh,
+            pump_poster_queue=app._pump_poster_queue,
+        ),
+    )
     return AppControllers(
         app_notice=app_notice,
         app_actions=app_actions,
@@ -282,9 +381,11 @@ def _require_remote_json_url(name: str, value: str) -> str:
 
 
 def _build_game_db_controller(
-    app: Any,
-    config: AppControllerFactoryConfig,
+    *,
+    executor: Any,
     schedule_ui: Callable[[Callable[[], None]], None],
+    callbacks: GameDbControllerCallbacks,
+    config: AppControllerFactoryConfig,
 ) -> GameDbLoadController:
     game_master_url = _require_remote_json_url("game_master_url", config.game_master_url)
     resource_master_url = _require_remote_json_url("resource_master_url", config.resource_master_url)
@@ -296,7 +397,7 @@ def _build_game_db_controller(
     game_xml_profile_url = _require_remote_json_url("game_xml_profile_url", config.game_xml_profile_url)
     registry_profile_url = _require_remote_json_url("registry_profile_url", config.registry_profile_url)
     game_json_profile_url = str(config.game_json_profile_url or "").strip()
-    load_game_db = lambda _gid: sheet_loader.load_game_db_from_remote_json(game_master_url)
+    load_game_db = lambda: sheet_loader.load_game_db_from_remote_json(game_master_url)
     load_module_download_links = lambda: sheet_loader.load_module_download_links_from_remote_json(resource_master_url)
     load_gpu_bundle = lambda base_url, vendor, gpu_model: gpu_bundle_loader.load_supported_game_bundle(
         base_url,
@@ -307,11 +408,9 @@ def _build_game_db_controller(
     )
 
     return GameDbLoadController(
-        executor=app._task_executor,
+        executor=executor,
         schedule=schedule_ui,
-        callbacks=GameDbControllerCallbacks(
-            on_load_complete=app._on_game_db_loaded,
-        ),
+        callbacks=callbacks,
         load_game_db=load_game_db,
         load_module_download_links=load_module_download_links,
         message_center_url=message_center_url,
@@ -334,37 +433,32 @@ def _build_game_db_controller(
 
 
 def _build_gpu_flow_controller(
-    app: Any,
-    config: AppControllerFactoryConfig,
+    *,
+    executor: Any,
     schedule_ui: Callable[[Callable[[], None]], None],
+    callbacks: GpuFlowCallbacks,
+    root: Any,
+    strings: Any,
+    config: AppControllerFactoryConfig,
 ) -> GpuFlowController:
     return GpuFlowController(
-        executor=app._task_executor,
+        executor=executor,
         schedule=schedule_ui,
-        callbacks=GpuFlowCallbacks(
-            apply_state=app._apply_gpu_flow_state,
-            handle_unsupported_gpu=app._handle_unsupported_gpu_block,
-            set_scan_status_message=app._set_scan_status_message,
-            update_sheet_status=app._update_sheet_status,
-            update_install_button_state=app._update_install_button_state,
-            start_game_db_load=app._start_game_db_load_async,
-        ),
-        vendor_db_gids=config.gpu_vendor_db_gids,
-        default_gid=config.default_sheet_gid,
-        unknown_gpu_text=app.txt.main.unknown_gpu,
-        waiting_for_gpu_selection_text=app.txt.main.waiting_for_gpu_selection,
-        unsupported_gpu_message=app.txt.gpu.unsupported_message,
-        unsupported_gpu_info_text=gpu_notice.get_unsupported_gpu_message(app.txt),
+        callbacks=callbacks,
+        unknown_gpu_text=strings.main.unknown_gpu,
+        waiting_for_gpu_selection_text=strings.main.waiting_for_gpu_selection,
+        unsupported_gpu_message=strings.gpu.unsupported_message,
+        unsupported_gpu_info_text=gpu_notice.get_unsupported_gpu_message(strings),
         detect_gpu_context=gpu_service.detect_gpu_context,
         select_dual_gpu_adapter=lambda adapters: gpu_notice.select_dual_gpu_adapter(
-            root=app.root,
+            root=root,
             adapters=adapters,
-            strings=app.txt,
+            strings=strings,
             theme=config.gpu_notice_theme,
         ),
         show_unsupported_gpu_notice=lambda: gpu_notice.show_unsupported_gpu_notice(
-            app.root,
-            app.txt,
+            root,
+            strings,
             config.gpu_notice_theme,
         ),
         max_supported_gpu_count=config.max_supported_gpu_count,
@@ -372,67 +466,56 @@ def _build_gpu_flow_controller(
     )
 
 
-def _build_scan_feedback_controller(app: Any, config: AppControllerFactoryConfig) -> ScanFeedbackController:
+def _build_scan_feedback_controller(
+    *,
+    root: Any,
+    callbacks: ScanFeedbackCallbacks,
+    config: AppControllerFactoryConfig,
+    popup_title: str,
+    popup_confirm_text: str,
+    scanning_text: str,
+    manual_scan_no_results_text: str,
+    auto_scan_no_results_text: str,
+    select_game_hint_text: str,
+) -> ScanFeedbackController:
     return ScanFeedbackController(
-        root=app.root,
-        callbacks=ScanFeedbackCallbacks(
-            set_scan_status_message=app._set_scan_status_message,
-            set_select_folder_enabled=lambda enabled: app.btn_select_folder.configure(
-                state="normal" if enabled else "disabled"
-            ),
-            set_information_text=app._set_information_text,
-            enqueue_startup_popup=lambda popup_id, priority, show_callback, blocking=False: app._startup_flow.enqueue_popup(
-                popup_id,
-                priority=priority,
-                show_callback=show_callback,
-                blocking=blocking,
-            ),
-            run_next_startup_popup=app._startup_flow.run_next_popup,
-        ),
+        root=root,
+        callbacks=callbacks,
         popup_theme=config.message_popup_theme,
-        popup_title=app.txt.main.scan_result_title,
-        popup_confirm_text=app.txt.common.ok,
-        scanning_text=app.txt.main.scanning,
-        manual_scan_no_results_text=app.txt.main.manual_scan_no_results,
-        auto_scan_no_results_text=app.txt.main.auto_scan_no_results,
-        select_game_hint_text=app.txt.main.select_game_hint,
+        popup_title=popup_title,
+        popup_confirm_text=popup_confirm_text,
+        scanning_text=scanning_text,
+        manual_scan_no_results_text=manual_scan_no_results_text,
+        auto_scan_no_results_text=auto_scan_no_results_text,
+        select_game_hint_text=select_game_hint_text,
         root_width_fallback=config.root_width_fallback,
         root_height_fallback=config.root_height_fallback,
     )
 
 
 def _build_scan_controller(
-    app: Any,
-    scan_feedback: ScanFeedbackController,
+    *,
+    executor: Any,
     schedule_ui: Callable[[Callable[[], None]], None],
+    callbacks: ScanControllerCallbacks,
+    get_game_db: Callable[[], dict[str, dict[str, Any]]],
+    get_lang: Callable[[], Any],
+    is_game_supported: Callable[[dict[str, Any]], bool],
 ) -> ScanController:
     return ScanController(
-        executor=app._scan_executor,
+        executor=executor,
         schedule=schedule_ui,
-        callbacks=ScanControllerCallbacks(
-            prepare_scan_ui=scan_feedback.prepare_scan_ui,
-            reset_scan_results=app._reset_scan_results_for_new_scan,
-            add_game_card=app._add_game_card_incremental,
-            finish_scan_ui=scan_feedback.finish_scan_ui,
-            pump_poster_queue=app._pump_poster_queue,
-            show_auto_scan_empty_popup=scan_feedback.enqueue_initial_auto_scan_empty_popup,
-            show_manual_scan_empty_popup=scan_feedback.show_manual_scan_empty_popup,
-            show_select_game_hint=scan_feedback.show_select_game_hint,
-        ),
-        get_game_db=lambda: app.sheet_state.game_db,
-        get_lang=lambda: app.lang,
-        is_game_supported=app._is_game_supported_for_current_gpu,
+        callbacks=callbacks,
+        get_game_db=get_game_db,
+        get_lang=get_lang,
+        is_game_supported=is_game_supported,
         logger=logging.getLogger(),
     )
 
 
-def _build_scan_entry_controller(app: Any) -> ScanEntryController:
+def _build_scan_entry_controller(*, callbacks: ScanEntryCallbacks) -> ScanEntryController:
     return ScanEntryController(
-        callbacks=ScanEntryCallbacks(
-            ask_directory=filedialog.askdirectory,
-            set_selected_folder=app._set_game_folder,
-            start_manual_scan=app._start_manual_scan_from_folder,
-        ),
+        callbacks=callbacks,
     )
 
 
@@ -443,61 +526,54 @@ def _build_install_flow_controller(app: Any, config: AppControllerFactoryConfig)
     )
 
 
-def _build_selection_popup_message(app: Any, game: Mapping[str, Any]) -> str:
-    rtss_notice = _resolve_rtss_game_overlay_notice(app, game)
+def _build_selection_popup_message(
+    *,
+    game: Mapping[str, Any],
+    lang: str,
+    install_state: Any,
+    dialogs_strings: Any,
+) -> str:
+    rtss_notice = _resolve_rtss_game_overlay_notice(
+        game=game,
+        install_state=install_state,
+        dialogs_strings=dialogs_strings,
+    )
 
     return build_install_selection_popup_text(
         game,
-        lang=app.lang,
+        lang=lang,
         rtss_game_overlay_notice=rtss_notice,
     )
 
 
-def _resolve_rtss_game_overlay_notice(app: Any, game: Mapping[str, Any]) -> str:
-    if bool((game or {}).get("rtss_overlay")) and bool(getattr(app.install_state, "rtss_installed", False)) and bool(
-        getattr(app.install_state, "rtss_profiles_global_exists", False)
+def _resolve_rtss_game_overlay_notice(
+    *,
+    game: Mapping[str, Any],
+    install_state: Any,
+    dialogs_strings: Any,
+) -> str:
+    if bool((game or {}).get("rtss_overlay")) and bool(getattr(install_state, "rtss_installed", False)) and bool(
+        getattr(install_state, "rtss_profiles_global_exists", False)
     ):
-        return str(getattr(app.txt.dialogs, "rtss_game_overlay_notice", "") or "")
+        return str(getattr(dialogs_strings, "rtss_game_overlay_notice", "") or "")
     return ""
 
 
-def _build_install_selection_controller(app: Any, install_flow: InstallFlowController) -> InstallSelectionController:
+def _build_install_selection_controller(
+    *,
+    schedule: Callable[[Callable[[], None]], Any],
+    callbacks: InstallSelectionCallbacks,
+) -> InstallSelectionController:
     return InstallSelectionController(
-        schedule=lambda callback: app.root.after_idle(callback),
-        callbacks=InstallSelectionCallbacks(
-            apply_selected_index=app._apply_selected_game_index,
-            set_information_text=app._set_information_text,
-            build_information_text=lambda game: build_install_information_text(
-                game,
-                lang=app.lang,
-                stage="install_pre",
-                rtss_game_overlay_notice=_resolve_rtss_game_overlay_notice(app, game),
-            ),
-            apply_ui_state=app._apply_install_selection_state,
-            update_install_button_state=app._update_install_button_state,
-            run_precheck=install_flow.run_install_precheck,
-            get_selection_popup_message=lambda game: _build_selection_popup_message(app, game),
-            show_selection_popup=app._show_game_selection_popup,
-            show_precheck_popup=app._show_precheck_popup,
-        ),
+        schedule=schedule,
+        callbacks=callbacks,
         logger=logging.getLogger(),
     )
 
 
-def _build_card_render_controller(app: Any, config: AppControllerFactoryConfig) -> CardRenderController:
-    viewport = app._card_viewport_controller
+def _build_card_render_controller(*, callbacks: CardRenderCallbacks) -> CardRenderController:
     return CardRenderController(
-        callbacks=CardRenderCallbacks(
-            append_found_game=app._append_found_game,
-            clear_cards=app._clear_cards,
-            hide_empty_label=app._hide_empty_label,
-            configure_card_columns=viewport.configure_card_columns,
-            create_and_place_card=app._create_and_place_card,
-            fit_cards_to_visible_width=viewport.fit_cards_to_visible_width,
-            restore_selection=app._restore_rendered_selection,
-            schedule_scrollregion_refresh=viewport.schedule_games_scrollregion_refresh,
-            pump_poster_queue=app._pump_poster_queue,
-        )
+        callbacks=callbacks,
     )
 
 

@@ -13,8 +13,8 @@ from installer.app.app_actions_controller import AppActionsController
 from installer.app.app_shutdown_controller import AppShutdownController
 from installer.app.archive_controller import ArchivePreparationController, ArchivePreparationState
 from installer.app.card_render_controller import CardRenderController
-from installer.app.card_ui import GameCardUiController
-from installer.app.card_viewport import CardViewportController, CardViewportRuntime
+from installer.app.card_ui import GameCardUiCallbacks, GameCardUiController
+from installer.app.card_viewport import CardViewportCallbacks, CardViewportController, CardViewportRuntime
 from installer.app.controller_factory import (
     AppControllerFactoryConfig,
     AppControllers,
@@ -48,7 +48,11 @@ from installer.app.scan_controller import ScanController
 from installer.app.scan_entry_controller import ScanEntryController, ScanEntryState
 from installer.app.scan_feedback import ScanFeedbackController
 from installer.app.startup_flow import StartupFlowCallbacks, StartupFlowController
-from installer.app.startup_runtime import StartupRuntimeCoordinator, create_startup_runtime_coordinator
+from installer.app.startup_runtime import (
+    StartupRuntimeCallbacks,
+    StartupRuntimeCoordinatorDeps,
+    create_startup_runtime_coordinator,
+)
 from installer.app.window_focus import has_startup_foreground_request, request_window_foreground
 from installer.app.startup_window import (
     apply_startup_window_layout,
@@ -60,6 +64,7 @@ from installer.app.theme import build_app_theme
 from installer.app.ui_builder import build_main_ui
 from installer.app.ui_controller_factory import (
     UiControllerFactoryConfig,
+    UiControllerFactoryDeps,
     bind_ui_controllers,
     build_ui_controllers,
 )
@@ -175,12 +180,6 @@ def _get_bool_env(name: str, default: bool = False) -> bool:
 # Allow overriding these values via build-time config for frozen builds
 # and via environment variables/.env during source development.
 SUPPORTED_GAMES_WIKI_URL = _get_runtime_config_value("SUPPORTED_GAMES_WIKI_URL", "").strip()
-GPU_VENDOR_DB_GIDS = {
-    "intel": 0,
-    "amd": 0,
-    "nvidia": 0,
-}
-SHEET_GID = 0
 OPTISCALER_GPU_BUNDLE_URL = _get_runtime_config_value("OPTISCALER_GPU_BUNDLE_URL", "").strip()
 OPTISCALER_GPU_BUNDLE_DEBUG = _get_bool_env("OPTISCALER_GPU_BUNDLE_DEBUG", False)
 OPTISCALER_GAME_MASTER_URL = _get_runtime_config_value("OPTISCALER_GAME_MASTER_URL", "").strip()
@@ -380,7 +379,6 @@ UI_CONTROLLER_FACTORY_CONFIG = UiControllerFactoryConfig(
 )
 APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     create_prefixed_logger=get_prefixed_logger,
-    default_sheet_gid=SHEET_GID,
     gpu_bundle_url=OPTISCALER_GPU_BUNDLE_URL,
     gpu_bundle_debug=OPTISCALER_GPU_BUNDLE_DEBUG,
     game_master_url=OPTISCALER_GAME_MASTER_URL,
@@ -388,7 +386,6 @@ APP_CONTROLLER_FACTORY_CONFIG = AppControllerFactoryConfig(
     message_binding_url=OPTISCALER_MESSAGE_BINDING_URL,
     message_center_url=OPTISCALER_MESSAGE_CENTER_URL,
     gpu_notice_theme=APP_THEME.gpu_notice_theme,
-    gpu_vendor_db_gids=GPU_VENDOR_DB_GIDS,
     max_supported_gpu_count=MAX_SUPPORTED_GPU_COUNT,
     message_popup_theme=APP_THEME.message_popup_theme,
     root_width_fallback=WINDOW_W,
@@ -453,7 +450,6 @@ class OptiManagerApp:
         self.game_folder = ""
         runtime_state_bundle = build_runtime_state_bundle(
             checking_gpu_text=self.txt.main.checking_gpu,
-            default_sheet_gid=SHEET_GID,
         )
         self.archive_state = runtime_state_bundle.archive_state
         self.gpu_state = runtime_state_bundle.gpu_state
@@ -550,7 +546,7 @@ class OptiManagerApp:
 
     def _initialize_ui_and_controllers(self) -> None:
         build_main_ui(self, APP_THEME.main_ui_theme)
-        ui_controllers = build_ui_controllers(self, UI_CONTROLLER_FACTORY_CONFIG)
+        ui_controllers = build_ui_controllers(self._build_ui_controller_factory_deps(), UI_CONTROLLER_FACTORY_CONFIG)
         bind_ui_controllers(self, ui_controllers)
         self._bind_viewport_scroll_events()
         self._app_controllers = build_app_controllers(self, APP_CONTROLLER_FACTORY_CONFIG)
@@ -559,6 +555,32 @@ class OptiManagerApp:
         self._configure_card_columns(GRID_COLS)
         self._update_selected_game_header()
         self._create_startup_runtime_coordinator()
+
+    def _build_ui_controller_factory_deps(self) -> UiControllerFactoryDeps:
+        return UiControllerFactoryDeps(
+            root=self.root,
+            games_scroll=self.games_scroll,
+            poster_loader=self._poster_loader,
+            poster_queue=self._poster_queue,
+            card_ui_state=self.card_ui_state,
+            card_items=self.card_items,
+            image_refs=self._ctk_images,
+            card_ui_callbacks=GameCardUiCallbacks(
+                get_found_games=lambda: tuple(self.found_exe_list),
+                get_grid_column_count=self._get_dynamic_column_count,
+                get_dynamic_column_count=self._get_dynamic_column_count,
+                get_card_render_controller=lambda: getattr(self, "_card_render_controller", None),
+                select_game=self._set_selected_game,
+                activate_game=self._set_selected_game,
+            ),
+            card_viewport_callbacks=CardViewportCallbacks(
+                get_card_frames=lambda: tuple(self.card_frames),
+                has_found_games=lambda: bool(self.found_exe_list),
+                render_cards=lambda keep_selection: self._render_cards(keep_selection=keep_selection),
+                get_effective_widget_scale=self._get_effective_widget_scale,
+                set_card_image_updates_suspended=self._set_card_image_updates_suspended,
+            ),
+        )
 
     def _bind_viewport_scroll_events(self) -> None:
         c = self._card_viewport_controller
@@ -605,6 +627,22 @@ class OptiManagerApp:
     def _format_gpu_label_text(self, gpu_info: str) -> str:
         normalized_gpu = str(gpu_info or "").strip() or self.txt.main.unknown_gpu
         return self.txt.main.gpu_label_template.format(gpu=normalized_gpu)
+
+    def _set_gpu_label_text(self, text: str) -> None:
+        widget = getattr(self, "gpu_lbl", None)
+        if widget is None:
+            return
+        if hasattr(widget, "winfo_exists") and callable(widget.winfo_exists) and not widget.winfo_exists():
+            return
+        widget.configure(text=str(text or ""))
+
+    def _set_folder_select_enabled(self, enabled: bool) -> None:
+        widget = getattr(self, "btn_select_folder", None)
+        if widget is None:
+            return
+        if hasattr(widget, "winfo_exists") and callable(widget.winfo_exists) and not widget.winfo_exists():
+            return
+        widget.configure(state="normal" if enabled else "disabled")
 
     def _show_game_selection_popup(
         self,
@@ -814,10 +852,9 @@ class OptiManagerApp:
             return
 
         sheet_state = self.sheet_state
-        game_db_gid = int(sheet_state.active_gid or SHEET_GID)
         game_db_vendor = str(sheet_state.active_vendor or "default")
         gpu_model = str(getattr(self.gpu_state, "gpu_info", "") or "").strip()
-        started = self._game_db_controller.start_load(game_db_gid, game_db_vendor, gpu_model)
+        started = self._game_db_controller.start_load(game_db_vendor, gpu_model)
         if not started:
             return
         logging.info(
@@ -909,12 +946,51 @@ class OptiManagerApp:
             return
         return coordinator.on_unreal5_archive_state_changed(state)
 
+    def _clear_found_games(self) -> None:
+        self.found_exe_list = []
+
+    def _build_startup_runtime_coordinator_deps(self) -> StartupRuntimeCoordinatorDeps:
+        return StartupRuntimeCoordinatorDeps(
+            archive_state=self.archive_state,
+            gpu_state=self.gpu_state,
+            sheet_state=self.sheet_state,
+            install_state=self.install_state,
+            card_ui_state=self.card_ui_state,
+            optiscaler_cache_dir=self.optiscaler_cache_dir,
+            fsr4_cache_dir=self.fsr4_cache_dir,
+            optipatcher_cache_dir=self.optipatcher_cache_dir,
+            specialk_cache_dir=self.specialk_cache_dir,
+            ual_cache_dir=self.ual_cache_dir,
+            unreal5_cache_dir=self.unreal5_cache_dir,
+            manifest_root=self.manifest_root,
+            callbacks=StartupRuntimeCallbacks(
+                format_gpu_label_text=self._format_gpu_label_text,
+                set_gpu_label_text=self._set_gpu_label_text,
+                refresh_archive_info_ui=self._refresh_optiscaler_archive_info_ui,
+                update_install_button_state=self._update_install_button_state,
+                update_sheet_status=self._update_sheet_status,
+                run_post_sheet_startup=self._startup_flow.run_post_sheet_startup,
+                mark_post_sheet_startup_done=self._startup_flow.mark_post_sheet_startup_done,
+                set_scan_status_message=self._set_scan_status_message,
+                clear_cards=self._clear_cards,
+                set_information_text=self._set_information_text,
+                update_selected_game_header=self._update_selected_game_header,
+                apply_install_selection_state=self._apply_install_selection_state,
+                set_folder_select_enabled=self._set_folder_select_enabled,
+                check_app_update=self.check_app_update,
+                should_apply_fsr4_for_game=self._should_apply_fsr4_for_game,
+                get_archive_controller=lambda: getattr(self, "_archive_controller", None),
+                clear_found_games=self._clear_found_games,
+            ),
+            unknown_gpu_text=self.txt.main.unknown_gpu,
+            logger=logging.getLogger(),
+        )
+
     def _create_startup_runtime_coordinator(self) -> None:
         if getattr(self, "_startup_runtime_coordinator", None) is not None:
             return
         self._startup_runtime_coordinator = create_startup_runtime_coordinator(
-            self,
-            default_sheet_gid=SHEET_GID,
+            self._build_startup_runtime_coordinator_deps()
         )
 
     def _create_ui_shell(self) -> None:
@@ -1123,6 +1199,12 @@ class OptiManagerApp:
         if controller is None:
             return
         return controller.set_card_base_image(index, label, pil_img)
+
+    def _set_card_image_updates_suspended(self, suspended: bool) -> None:
+        controller = getattr(self, "_card_ui_controller", None)
+        if controller is None:
+            return
+        controller.set_card_image_updates_suspended(bool(suspended))
 
     def _set_selected_game(self, index: int):
         controller = getattr(self, "_install_selection_controller", None)

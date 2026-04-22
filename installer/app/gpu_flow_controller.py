@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from concurrent.futures import Executor
 from dataclasses import dataclass
 import logging
@@ -11,7 +11,7 @@ from ..common import schedule_safely
 
 
 SchedulerCallback = Callable[[Callable[[], None]], Any]
-GpuContextDetector = Callable[[Mapping[str, int], int], gpu_service.GpuContext]
+GpuContextDetector = Callable[[], gpu_service.GpuContext]
 GpuAdapterSelector = Callable[[tuple[gpu_service.GpuAdapterChoice, ...]], gpu_service.GpuAdapterChoice | None]
 
 
@@ -26,7 +26,6 @@ class GpuFlowState:
     gpu_selection_pending: bool
     selected_adapter: gpu_service.GpuAdapterChoice | None
     game_db_vendor: str | None
-    game_db_gid: int | None = None
 
 
 @dataclass(frozen=True)
@@ -46,8 +45,6 @@ class GpuFlowController:
         executor: Executor,
         schedule: SchedulerCallback,
         callbacks: GpuFlowCallbacks,
-        vendor_db_gids: Mapping[str, int] | None = None,
-        default_gid: int = 0,
         unknown_gpu_text: str,
         waiting_for_gpu_selection_text: str,
         unsupported_gpu_message: str,
@@ -61,8 +58,6 @@ class GpuFlowController:
         self._executor = executor
         self._schedule = schedule
         self._callbacks = callbacks
-        self._vendor_db_gids = dict(vendor_db_gids or {})
-        self._default_gid = int(default_gid)
         self._unknown_gpu_text = str(unknown_gpu_text or "").strip() or "Unknown GPU"
         self._waiting_for_gpu_selection_text = str(waiting_for_gpu_selection_text or "").strip() or self._unknown_gpu_text
         self._unsupported_gpu_message = str(unsupported_gpu_message or "").strip()
@@ -85,7 +80,7 @@ class GpuFlowController:
 
     def _run_detect_worker(self) -> None:
         try:
-            gpu_context = self._detect_gpu_context(self._vendor_db_gids, self._default_gid)
+            gpu_context = self._detect_gpu_context()
         except Exception:
             self._logger.exception("Error fetching GPU info")
             gpu_context = gpu_service.GpuContext(
@@ -93,7 +88,6 @@ class GpuFlowController:
                 gpu_count=0,
                 gpu_info=self._unknown_gpu_text,
                 selected_vendor="default",
-                selected_gid=self._default_gid,
                 adapters=(),
                 selected_model_name="",
             )
@@ -136,7 +130,6 @@ class GpuFlowController:
                 gpu_selection_pending=False,
                 selected_adapter=None,
                 game_db_vendor=None,
-                game_db_gid=None,
             )
 
         if selection_pending:
@@ -150,7 +143,6 @@ class GpuFlowController:
                 gpu_selection_pending=True,
                 selected_adapter=None,
                 game_db_vendor=None,
-                game_db_gid=None,
             )
 
         if selected_adapter is not None:
@@ -158,11 +150,9 @@ class GpuFlowController:
                 selected_adapter.model_name or gpu_context.selected_model_name or gpu_context.gpu_info
             )
             game_db_vendor = str(selected_adapter.vendor or "default")
-            game_db_gid = int(selected_adapter.selected_gid or self._default_gid)
         else:
             gpu_info = self._normalize_gpu_info_text(gpu_context.selected_model_name or gpu_context.gpu_info)
             game_db_vendor = str(gpu_context.selected_vendor or "default")
-            game_db_gid = int(gpu_context.selected_gid or self._default_gid)
 
         return GpuFlowState(
             gpu_context=gpu_context,
@@ -174,7 +164,6 @@ class GpuFlowController:
             gpu_selection_pending=False,
             selected_adapter=selected_adapter,
             game_db_vendor=game_db_vendor,
-            game_db_gid=game_db_gid,
         )
 
     def _apply_selected_state(self, state: GpuFlowState) -> None:

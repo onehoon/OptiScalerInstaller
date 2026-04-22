@@ -41,6 +41,27 @@ class StartupRuntimeCallbacks:
     clear_found_games: Callable[[], None]
 
 
+@dataclass(frozen=True)
+class StartupRuntimeCoordinatorDeps:
+    """Explicit startup-runtime inputs assembled by OptiManagerApp."""
+
+    archive_state: ArchiveRuntimeState
+    gpu_state: GpuRuntimeState
+    sheet_state: SheetRuntimeState
+    install_state: InstallRuntimeState
+    card_ui_state: CardUiRuntimeState
+    optiscaler_cache_dir: Path
+    fsr4_cache_dir: Path
+    optipatcher_cache_dir: Path
+    specialk_cache_dir: Path
+    ual_cache_dir: Path
+    unreal5_cache_dir: Path
+    manifest_root: Path
+    callbacks: StartupRuntimeCallbacks
+    unknown_gpu_text: str = "Unknown GPU"
+    logger: Any = None
+
+
 class StartupRuntimeCoordinator:
     def __init__(
         self,
@@ -57,7 +78,6 @@ class StartupRuntimeCoordinator:
         ual_cache_dir: Path,
         unreal5_cache_dir: Path,
         manifest_root: Path,
-        default_sheet_gid: int = 0,
         unknown_gpu_text: str = "Unknown GPU",
         callbacks: StartupRuntimeCallbacks,
         logger=None,
@@ -74,7 +94,6 @@ class StartupRuntimeCoordinator:
         self._ual_cache_dir = Path(ual_cache_dir)
         self._unreal5_cache_dir = Path(unreal5_cache_dir)
         self._manifest_root = Path(manifest_root)
-        self._default_sheet_gid = int(default_sheet_gid)
         self._unknown_gpu_text = str(unknown_gpu_text or "").strip() or "Unknown GPU"
         self._callbacks = callbacks
         self._logger = logger or logging.getLogger()
@@ -92,8 +111,6 @@ class StartupRuntimeCoordinator:
 
         if state.game_db_vendor is not None:
             sheet_state.active_vendor = str(state.game_db_vendor or "default")
-        if state.game_db_gid is not None:
-            sheet_state.active_gid = int(state.game_db_gid or self._default_sheet_gid)
 
         gpu_state.gpu_info = str(state.gpu_info or self._unknown_gpu_text).strip() or self._unknown_gpu_text
         self._callbacks.set_gpu_label_text(self._callbacks.format_gpu_label_text(gpu_state.gpu_info))
@@ -135,7 +152,6 @@ class StartupRuntimeCoordinator:
         gpu_state = self._gpu_state
         install_state = self._install_state
         sheet_state.loading = False
-        sheet_state.active_gid = int(result.game_db_gid)
         sheet_state.active_vendor = str(result.game_db_vendor or "default")
         sheet_state.game_db = result.game_db if result.ok else {}
         sheet_state.module_download_links = result.module_download_links if result.ok else {}
@@ -302,72 +318,29 @@ class StartupRuntimeCoordinator:
         self._callbacks.update_install_button_state()
 
 
-def _set_widget_text_if_present(widget: Any, text: str) -> None:
-    if widget is None:
-        return
-    if hasattr(widget, "winfo_exists") and callable(widget.winfo_exists) and not widget.winfo_exists():
-        return
-    widget.configure(text=str(text or ""))
-
-
-def _set_widget_enabled_if_present(widget: Any, enabled: bool) -> None:
-    if widget is None:
-        return
-    if hasattr(widget, "winfo_exists") and callable(widget.winfo_exists) and not widget.winfo_exists():
-        return
-    widget.configure(state="normal" if enabled else "disabled")
-
-
-def create_startup_runtime_coordinator(app: Any, *, default_sheet_gid: int) -> StartupRuntimeCoordinator:
+def create_startup_runtime_coordinator(deps: StartupRuntimeCoordinatorDeps) -> StartupRuntimeCoordinator:
     return StartupRuntimeCoordinator(
-        archive_state=app.archive_state,
-        gpu_state=app.gpu_state,
-        sheet_state=app.sheet_state,
-        install_state=app.install_state,
-        card_ui_state=app.card_ui_state,
-        optiscaler_cache_dir=app.optiscaler_cache_dir,
-        fsr4_cache_dir=app.fsr4_cache_dir,
-        optipatcher_cache_dir=app.optipatcher_cache_dir,
-        specialk_cache_dir=app.specialk_cache_dir,
-        ual_cache_dir=app.ual_cache_dir,
-        unreal5_cache_dir=app.unreal5_cache_dir,
-        manifest_root=app.manifest_root,
-        default_sheet_gid=default_sheet_gid,
-        unknown_gpu_text=app.txt.main.unknown_gpu,
-        callbacks=StartupRuntimeCallbacks(
-            format_gpu_label_text=app._format_gpu_label_text,
-            set_gpu_label_text=lambda text: _set_widget_text_if_present(getattr(app, "gpu_lbl", None), text),
-            refresh_archive_info_ui=app._refresh_optiscaler_archive_info_ui,
-            update_install_button_state=app._update_install_button_state,
-            update_sheet_status=app._update_sheet_status,
-            run_post_sheet_startup=lambda ok: getattr(app, "_startup_flow", None).run_post_sheet_startup(ok)
-            if getattr(app, "_startup_flow", None) is not None
-            else None,
-            mark_post_sheet_startup_done=lambda: getattr(app, "_startup_flow", None).mark_post_sheet_startup_done()
-            if getattr(app, "_startup_flow", None) is not None
-            else None,
-            set_scan_status_message=app._set_scan_status_message,
-            clear_cards=app._clear_cards,
-            set_information_text=lambda text: app._set_information_text(text)
-            if getattr(app, "info_text", None)
-            else None,
-            update_selected_game_header=app._update_selected_game_header,
-            apply_install_selection_state=app._apply_install_selection_state,
-            set_folder_select_enabled=lambda enabled: _set_widget_enabled_if_present(
-                getattr(app, "btn_select_folder", None),
-                enabled,
-            ),
-            check_app_update=app.check_app_update,
-            should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
-            get_archive_controller=lambda: getattr(app, "_archive_controller", None),
-            clear_found_games=lambda: setattr(app, "found_exe_list", []),
-        ),
-        logger=logging.getLogger(),
+        archive_state=deps.archive_state,
+        gpu_state=deps.gpu_state,
+        sheet_state=deps.sheet_state,
+        install_state=deps.install_state,
+        card_ui_state=deps.card_ui_state,
+        optiscaler_cache_dir=deps.optiscaler_cache_dir,
+        fsr4_cache_dir=deps.fsr4_cache_dir,
+        optipatcher_cache_dir=deps.optipatcher_cache_dir,
+        specialk_cache_dir=deps.specialk_cache_dir,
+        ual_cache_dir=deps.ual_cache_dir,
+        unreal5_cache_dir=deps.unreal5_cache_dir,
+        manifest_root=deps.manifest_root,
+        unknown_gpu_text=deps.unknown_gpu_text,
+        callbacks=deps.callbacks,
+        logger=deps.logger or logging.getLogger(),
     )
 
 
 __all__ = [
     "StartupRuntimeCallbacks",
     "StartupRuntimeCoordinator",
+    "StartupRuntimeCoordinatorDeps",
     "create_startup_runtime_coordinator",
 ]

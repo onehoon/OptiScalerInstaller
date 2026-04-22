@@ -10,7 +10,7 @@ from ..data import gpu_bundle_loader, message_loader, profile_loader
 
 
 SchedulerCallback = Callable[[Callable[[], None]], Any]
-GameDbLoader = Callable[[int], dict[str, dict[str, Any]]]
+GameDbLoader = Callable[[], dict[str, dict[str, Any]]]
 ModuleLinksLoader = Callable[[], dict[str, Any]]
 MessageCenterLoader = Callable[[str], dict[str, message_loader.MessageTemplate]]
 MessageBindingLoader = Callable[[str], tuple[message_loader.MessageBinding, ...]]
@@ -28,7 +28,6 @@ class GameDbLoadResult:
     ok: bool
     error: Exception | None
     module_download_links: dict[str, Any] = field(default_factory=dict)
-    game_db_gid: int = 0
     game_db_vendor: str = "default"
     # Backward-compatible aliases used by legacy tests/callers
     resource_master: dict[str, Any] = field(default_factory=dict)
@@ -99,17 +98,16 @@ class GameDbLoadController:
 
         self._load_started = False
 
-    def start_load(self, game_db_gid: int, game_db_vendor: str, gpu_model: str = "") -> bool:
+    def start_load(self, game_db_vendor: str, gpu_model: str = "") -> bool:
         if self._load_started:
             return False
 
         self._load_started = True
-        normalized_gid = int(game_db_gid)
         normalized_vendor = str(game_db_vendor or "default")
         normalized_gpu_model = str(gpu_model or "").strip()
 
         try:
-            self._executor.submit(self._run_load_worker, normalized_gid, normalized_vendor, normalized_gpu_model)
+            self._executor.submit(self._run_load_worker, normalized_vendor, normalized_gpu_model)
         except Exception as exc:
             self._logger.exception("Failed to submit game DB load worker")
             self._schedule_result(
@@ -118,7 +116,6 @@ class GameDbLoadController:
                     module_download_links={},
                     ok=False,
                     error=exc,
-                    game_db_gid=normalized_gid,
                     game_db_vendor=normalized_vendor,
                 ),
                 description="game DB load failure callback",
@@ -127,9 +124,9 @@ class GameDbLoadController:
 
         return True
 
-    def _run_load_worker(self, game_db_gid: int, game_db_vendor: str, gpu_model: str = "") -> None:
+    def _run_load_worker(self, game_db_vendor: str, gpu_model: str = "") -> None:
         try:
-            game_db = self._load_game_db(game_db_gid)
+            game_db = self._load_game_db()
             if not game_db:
                 raise ValueError("Game DB has no data.")
 
@@ -193,7 +190,6 @@ class GameDbLoadController:
                 module_download_links=module_links,
                 ok=True,
                 error=None,
-                game_db_gid=game_db_gid,
                 game_db_vendor=game_db_vendor,
             )
         except Exception as exc:
@@ -202,7 +198,6 @@ class GameDbLoadController:
                 module_download_links={},
                 ok=False,
                 error=exc,
-                game_db_gid=game_db_gid,
                 game_db_vendor=game_db_vendor,
             )
 

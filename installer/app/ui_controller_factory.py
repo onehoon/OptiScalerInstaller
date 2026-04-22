@@ -13,6 +13,7 @@ from .card_visuals import (
     render_game_card_visual,
     update_game_card_base_image,
 )
+from .runtime_state import CardUiRuntimeState
 
 
 @dataclass(frozen=True)
@@ -37,33 +38,31 @@ class UiControllers:
     card_viewport_runtime: CardViewportRuntime
 
 
-def create_card_ui_controller(app: Any, config: UiControllerFactoryConfig) -> GameCardUiController:
-    card_items = getattr(app, "card_items", None)
-    if card_items is None:
-        app.card_items = []
-        card_items = app.card_items
+@dataclass(frozen=True)
+class UiControllerFactoryDeps:
+    """Explicit UI-factory inputs assembled by OptiManagerApp."""
 
-    image_refs = getattr(app, "_ctk_images", None)
-    if image_refs is None:
-        app._ctk_images = []
-        image_refs = app._ctk_images
+    root: Any
+    games_scroll: Any
+    poster_loader: Any
+    poster_queue: Any
+    card_ui_state: CardUiRuntimeState
+    card_items: list[dict[str, Any]]
+    image_refs: list[Any]
+    card_ui_callbacks: GameCardUiCallbacks
+    card_viewport_callbacks: CardViewportCallbacks
 
+
+def create_card_ui_controller(deps: UiControllerFactoryDeps, config: UiControllerFactoryConfig) -> GameCardUiController:
     return GameCardUiController(
-        root=getattr(app, "root", None),
-        games_scroll=app.games_scroll,
-        poster_loader=app._poster_loader,
-        poster_queue=app._poster_queue,
-        card_ui_state=app.card_ui_state,
-        card_items=card_items,
-        image_refs=image_refs,
-        callbacks=GameCardUiCallbacks(
-            get_found_games=lambda: tuple(app.found_exe_list),
-            get_grid_column_count=app._get_dynamic_column_count,
-            get_dynamic_column_count=app._get_dynamic_column_count,
-            get_card_render_controller=lambda: getattr(app, "_card_render_controller", None),
-            select_game=app._set_selected_game,
-            activate_game=app._set_selected_game,
-        ),
+        root=deps.root,
+        games_scroll=deps.games_scroll,
+        poster_loader=deps.poster_loader,
+        poster_queue=deps.poster_queue,
+        card_ui_state=deps.card_ui_state,
+        card_items=deps.card_items,
+        image_refs=deps.image_refs,
+        callbacks=deps.card_ui_callbacks,
         card_width=config.card_width,
         card_height=config.card_height,
         card_background=config.card_background,
@@ -82,28 +81,18 @@ def create_card_ui_controller(app: Any, config: UiControllerFactoryConfig) -> Ga
 
 
 def create_card_viewport_bundle(
-    app: Any,
+    deps: UiControllerFactoryDeps,
     config: UiControllerFactoryConfig,
 ) -> tuple[CardViewportRuntime, CardViewportController]:
     runtime = CardViewportRuntime(
         grid_cols_current=config.grid_cols,
     )
     controller = CardViewportController(
-        root=app.root,
-        games_scroll=app.games_scroll,
-        poster_queue=app._poster_queue,
+        root=deps.root,
+        games_scroll=deps.games_scroll,
+        poster_queue=deps.poster_queue,
         runtime=runtime,
-        callbacks=CardViewportCallbacks(
-            get_card_frames=lambda: tuple(app.card_frames),
-            has_found_games=lambda: bool(app.found_exe_list),
-            render_cards=lambda keep_selection: app._render_cards(keep_selection=keep_selection),
-            get_effective_widget_scale=app._get_effective_widget_scale,
-            set_card_image_updates_suspended=lambda suspended: getattr(
-                getattr(app, "_card_ui_controller", None),
-                "set_card_image_updates_suspended",
-                lambda _value: None,
-            )(suspended),
-        ),
+        callbacks=deps.card_viewport_callbacks,
         card_width=config.card_width,
         card_h_spacing=config.card_h_spacing,
         card_v_spacing=config.card_v_spacing,
@@ -112,9 +101,9 @@ def create_card_viewport_bundle(
     return runtime, controller
 
 
-def build_ui_controllers(app: Any, config: UiControllerFactoryConfig) -> UiControllers:
-    card_ui_controller = create_card_ui_controller(app, config)
-    card_viewport_runtime, card_viewport_controller = create_card_viewport_bundle(app, config)
+def build_ui_controllers(deps: UiControllerFactoryDeps, config: UiControllerFactoryConfig) -> UiControllers:
+    card_ui_controller = create_card_ui_controller(deps, config)
+    card_viewport_runtime, card_viewport_controller = create_card_viewport_bundle(deps, config)
     return UiControllers(
         card_ui=card_ui_controller,
         card_viewport=card_viewport_controller,
@@ -130,6 +119,7 @@ def bind_ui_controllers(app: Any, controllers: UiControllers) -> None:
 
 __all__ = [
     "UiControllerFactoryConfig",
+    "UiControllerFactoryDeps",
     "UiControllers",
     "bind_ui_controllers",
     "build_ui_controllers",
