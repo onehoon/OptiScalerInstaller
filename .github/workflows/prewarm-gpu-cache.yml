@@ -63,4 +63,4 @@ jobs:
             args+=(--debug)
           fi
 
-          python scripts/prewarm_gpu_bundle_cache.py "${args[@]}"
+          python scripts/prewarm_gpu_bundle_cache.py --force --debug "${args[@]}"
