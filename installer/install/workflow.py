@@ -189,12 +189,20 @@ def run_install_workflow(
             cached_archive_path=optipatcher_cached_archive,
         )
     )
-    ini_utils.apply_ini_settings(ini_path, merged_ini_settings, logger=logger)
+    ini_utils.apply_ini_settings(
+        ini_path,
+        merged_ini_settings,
+        logger=logger,
+        allow_add_key=True,
+        allow_add_section=True,
+    )
     if specialk_requested and not specialk_skipped_for_asi:
         ini_utils.apply_ini_settings(
             ini_path,
             {"Plugins:LoadAsiPlugins": "true"},
             logger=logger,
+            allow_add_key=True,
+            allow_add_section=True,
         )
     logger.info("Applied OptiScaler INI")
 

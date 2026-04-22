@@ -246,7 +246,14 @@ def _apply_unreal_value_path(value_text: str, value_path: str, new_value: str) -
     return None
 
 
-def apply_ini_settings(ini_path, settings, logger=None):
+def apply_ini_settings(
+    ini_path,
+    settings,
+    logger=None,
+    *,
+    allow_add_key: bool = False,
+    allow_add_section: bool = False,
+):
     if not settings:
         return
 
@@ -270,12 +277,20 @@ def apply_ini_settings(ini_path, settings, logger=None):
     for k, v in settings.items():
         if isinstance(k, (list, tuple)) and len(k) == 2:
             sec, key = k[0], k[1]
-            sectioned_targets.setdefault(_norm(sec), {})[_norm(key)] = str(v)
+            sectioned_targets.setdefault(_norm(sec), {})[_norm(key)] = (
+                str(sec),
+                str(key),
+                str(v),
+            )
         elif isinstance(k, str) and ":" in k:
             sec, key = k.split(":", 1)
-            sectioned_targets.setdefault(_norm(sec), {})[_norm(key)] = str(v)
+            sectioned_targets.setdefault(_norm(sec), {})[_norm(key)] = (
+                str(sec),
+                str(key),
+                str(v),
+            )
         else:
-            unsectioned_targets[_norm(k)] = str(v)
+            unsectioned_targets[_norm(k)] = (str(k), str(v))
 
     try:
         ini_text, ini_encoding = _read_ini_text_with_fallback(p, logger=logger)
@@ -303,6 +318,8 @@ def apply_ini_settings(ini_path, settings, logger=None):
 
     updated_lines = []
     applied = []
+    applied_sectioned = {}
+    applied_unsectioned = set()
     current_section = None
 
     for original_line in lines:
@@ -336,10 +353,18 @@ def apply_ini_settings(ini_path, settings, logger=None):
             continue
 
         new_value = None
+        matched_section = None
+        matched_unsectioned = False
         if current_section and current_section in sectioned_targets:
-            new_value = sectioned_targets[current_section].get(norm_key)
+            target = sectioned_targets[current_section].get(norm_key)
+            if target is not None:
+                _sec_text, _key_text, new_value = target
+                matched_section = current_section
         if new_value is None:
-            new_value = unsectioned_targets.get(norm_key)
+            target = unsectioned_targets.get(norm_key)
+            if target is not None:
+                _key_text, new_value = target
+                matched_unsectioned = True
 
         if new_value is None:
             updated_lines.append(original_line)
@@ -364,6 +389,10 @@ def apply_ini_settings(ini_path, settings, logger=None):
 
         applied_key = f"{current_section}:{norm_key}" if current_section else norm_key
         applied.append(applied_key)
+        if matched_section is not None:
+            applied_sectioned.setdefault(matched_section, set()).add(norm_key)
+        elif matched_unsectioned:
+            applied_unsectioned.add(norm_key)
         if logger:
             ini_label = p.name or "INI"
             logger.info(
@@ -373,17 +402,38 @@ def apply_ini_settings(ini_path, settings, logger=None):
                 new_value,
             )
 
-    if not applied:
-        return
+    missing_section_map = {}
+    if allow_add_key:
+        for section_name, key_map in sectioned_targets.items():
+            for norm_key, (raw_section, raw_key, raw_value) in key_map.items():
+                if norm_key in applied_sectioned.get(section_name, set()):
+                    continue
+                missing_section_map.setdefault(raw_section, {})[raw_key] = raw_value
+        for norm_key, (raw_key, raw_value) in unsectioned_targets.items():
+            if norm_key in applied_unsectioned:
+                continue
+            missing_section_map.setdefault("", {})[raw_key] = raw_value
 
-    try:
-        _write_ini_text_with_encoding(p, "".join(updated_lines), ini_encoding)
-    except Exception:
-        if logger:
-            logger.exception("Failed to write updated INI file")
-        else:
-            logging.exception("Failed to write updated INI file")
-        return
+    if applied:
+        try:
+            _write_ini_text_with_encoding(p, "".join(updated_lines), ini_encoding)
+        except Exception:
+            if logger:
+                logger.exception("Failed to write updated INI file")
+            else:
+                logging.exception("Failed to write updated INI file")
+            return
+
+    if missing_section_map:
+        _upsert_ini_entries(
+            p,
+            missing_section_map,
+            logger=logger,
+            create_missing_file=False,
+            allow_edit_existing=False,
+            allow_add_key=True,
+            allow_add_section=allow_add_section,
+        )
 
 
 def apply_unreal_ini_settings(ini_path, settings, logger=None):
