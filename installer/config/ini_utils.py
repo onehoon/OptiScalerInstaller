@@ -425,7 +425,7 @@ def apply_ini_settings(
             return
 
     if missing_section_map:
-        _upsert_ini_entries(
+        upsert_ini_entries(
             p,
             missing_section_map,
             logger=logger,
@@ -565,7 +565,7 @@ def apply_unreal_ini_settings(ini_path, settings, logger=None):
         return
 
 
-def _ensure_file_writable(path: Path):
+def ensure_file_writable(path: Path) -> None:
     try:
         cur_mode = path.stat().st_mode
         path.chmod(cur_mode | stat.S_IWRITE)
@@ -573,7 +573,7 @@ def _ensure_file_writable(path: Path):
         logging.exception("Failed to make %s writable", path)
 
 
-def _set_file_readonly(path: Path):
+def set_file_readonly(path: Path) -> None:
     try:
         cur_mode = path.stat().st_mode
         path.chmod(cur_mode & ~stat.S_IWRITE)
@@ -581,7 +581,7 @@ def _set_file_readonly(path: Path):
         logging.exception("Failed to set %s readonly", path)
 
 
-def _upsert_ini_entries(
+def upsert_ini_entries(
     ini_path: Path,
     section_map: dict,
     logger=None,
@@ -613,7 +613,7 @@ def _upsert_ini_entries(
                 return False
 
         try:
-            _ensure_file_writable(ini_path)
+            ensure_file_writable(ini_path)
         except Exception:
             logging.exception("Failed to make INI writable before upsert: %s", ini_path)
 
@@ -753,5 +753,11 @@ def _upsert_ini_entries(
                 logging.exception("Failed to write updated INI: %s", ini_path)
             return False
     return modified
+
+
+# Backward-compatible aliases for internal/private call sites that may still exist.
+_ensure_file_writable = ensure_file_writable
+_set_file_readonly = set_file_readonly
+_upsert_ini_entries = upsert_ini_entries
 
 

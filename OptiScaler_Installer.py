@@ -488,14 +488,9 @@ class OptiManagerApp:
         self._startup_flow = StartupFlowController(
             root=self.root,
             callbacks=StartupFlowCallbacks(
-                start_archive_prepare=lambda: self._call_optional_method(
-                    "_startup_runtime_coordinator",
-                    "start_optiscaler_archive_prepare",
-                ),
+                start_archive_prepare=lambda: self._startup_runtime_coordinator.start_optiscaler_archive_prepare(),
                 start_auto_scan=self._start_auto_scan,
-                show_startup_warning_popup=lambda warning_text, on_close=None: self._call_optional_method(
-                    "_app_notice_controller",
-                    "show_startup_warning_popup",
+                show_startup_warning_popup=lambda warning_text, on_close=None: self._app_notice_controller.show_startup_warning_popup(
                     warning_text,
                     on_close=on_close,
                 ),
@@ -865,16 +860,13 @@ class OptiManagerApp:
                 apply_install_selection_state=self._apply_install_selection_state,
                 set_folder_select_enabled=self._set_folder_select_enabled,
                 check_app_update=lambda: bool(
-                    self._call_optional_method(
-                        "_app_actions_controller",
-                        "check_app_update",
+                    self._app_actions_controller.check_app_update(
                         self.sheet_state.module_download_links,
                         blocked=bool(self.gpu_state.multi_gpu_blocked),
-                        default=False,
                     )
                 ),
                 should_apply_fsr4_for_game=self._should_apply_fsr4_for_game,
-                get_archive_controller=lambda: getattr(self, "_archive_controller", None),
+                get_archive_controller=lambda: self._archive_controller,
                 clear_found_games=self._clear_found_games,
             ),
             unknown_gpu_text=self.txt.main.unknown_gpu,

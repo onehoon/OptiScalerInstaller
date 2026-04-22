@@ -227,11 +227,11 @@ def _apply_existing_file_settings(
     original_readonly = not (file_path.stat().st_mode & stat.S_IWRITE)
     try:
         if original_readonly:
-            ini_utils._ensure_file_writable(file_path)
+            ini_utils.ensure_file_writable(file_path)
         apply_callback()
     finally:
         if original_readonly and restore_original_readonly:
-            ini_utils._set_file_readonly(file_path)
+            ini_utils.set_file_readonly(file_path)
 
 
 def _collect_unreal_ini_profile_targets(
@@ -304,7 +304,7 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
                 settings,
                 logger=logger,
             )
-            ini_utils._upsert_ini_entries(
+            ini_utils.upsert_ini_entries(
                 file_path,
                 section_map,
                 logger=logger,
@@ -409,14 +409,14 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
         try:
             if not engine_path.exists():
                 engine_path.write_text("", encoding="utf-8")
-            ini_utils._ensure_file_writable(engine_path)
-            ini_utils._upsert_ini_entries(engine_path, section_map, logger=logger)
+            ini_utils.ensure_file_writable(engine_path)
+            ini_utils.upsert_ini_entries(engine_path, section_map, logger=logger)
             logger.info("Applied engine_ini_profile settings to %s", engine_path)
         except Exception:
             logger.exception("Failed to apply engine_ini_profile settings to %s", engine_path)
         finally:
             if engine_path.exists():
-                ini_utils._set_file_readonly(engine_path)
+                ini_utils.set_file_readonly(engine_path)
 
 
 def apply_optional_json_settings(target_path: str, game_data: dict[str, Any], logger) -> None:

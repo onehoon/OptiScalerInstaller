@@ -119,82 +119,171 @@ class GameDbLoadController:
 
     def _run_load_worker(self, game_db_vendor: str, gpu_model: str = "") -> None:
         try:
-            game_db = self._load_game_db()
-            if not game_db:
-                raise ValueError("Game DB has no data.")
-
-            message_center = self._load_message_center(self._message_center_url)
-            message_binding = self._load_message_binding(self._message_binding_url)
-            message_repo = self._build_message_repository(message_center, message_binding)
-            game_db = self._materialize_bound_messages(
+            game_db = self._load_base_game_db()
+            message_repo = self._load_message_repository()
+            game_db = self._materialize_messages(game_db, message_repo, game_db_vendor=game_db_vendor)
+            game_db = self._merge_gpu_bundle_if_configured(
                 game_db,
-                message_repo,
-                gpu_vendor=game_db_vendor,
+                game_db_vendor=game_db_vendor,
+                gpu_model=gpu_model,
             )
-
-            # GPU bundle is vendor-specific runtime data; if configured, a failed fetch must fail closed.
-            if self._gpu_bundle_url and game_db_vendor and game_db_vendor != "default":
-                try:
-                    bundle = self._load_gpu_bundle(self._gpu_bundle_url, game_db_vendor, gpu_model)
-                    game_db = self._merge_gpu_bundle(game_db, bundle)
-                except Exception as bundle_err:
-                    self._logger.error("Failed to load GPU bundle: %s", bundle_err)
-                    raise RuntimeError("GPU bundle load failed") from bundle_err
-
-            if (
-                self._game_ini_profile_url
-                and self._engine_ini_profile_url
-                and self._game_xml_profile_url
-                and self._registry_profile_url
-            ):
-                try:
-                    catalogs = self._load_profile_catalogs(
-                        self._game_ini_profile_url,
-                        self._engine_ini_profile_url,
-                        self._game_xml_profile_url,
-                        self._registry_profile_url,
-                        self._game_json_profile_url,
-                        self._game_unreal_ini_profile_url,
-                    )
-                    game_db = self._attach_profile_catalogs(game_db, catalogs)
-                except Exception as profile_err:
-                    self._logger.error("Failed to load profile catalogs: %s", profile_err)
-                    raise RuntimeError("Profile catalog load failed") from profile_err
-
-            module_links = self._load_module_download_links()
-
-            warning_ko = message_loader.resolve_startup_warning_text(
+            game_db = self._attach_profile_catalogs_if_configured(game_db)
+            module_links = self._load_module_links()
+            self._inject_startup_warning_links(
+                module_links,
                 message_repo,
-                gpu_vendor=game_db_vendor,
-                lang="ko",
+                game_db_vendor=game_db_vendor,
             )
-            warning_en = message_loader.resolve_startup_warning_text(
-                message_repo,
-                gpu_vendor=game_db_vendor,
-                lang="en",
-            )
-            if warning_ko:
-                module_links["__warning_kr__"] = warning_ko
-            if warning_en:
-                module_links["__warning_en__"] = warning_en
-
-            result = GameDbLoadResult(
-                game_db=game_db,
-                module_download_links=module_links,
-                ok=True,
-                error=None,
+            result = self._build_success_result(
+                game_db,
+                module_links,
                 game_db_vendor=game_db_vendor,
             )
         except Exception as exc:
-            result = GameDbLoadResult(
-                game_db={},
-                module_download_links={},
-                ok=False,
-                error=exc,
-                game_db_vendor=game_db_vendor,
-            )
+            result = self._build_failure_result(exc, game_db_vendor=game_db_vendor)
 
         self._schedule_result(result, description="game DB load completion callback")
+
+    def _load_base_game_db(self) -> dict[str, dict[str, Any]]:
+        game_db = self._load_game_db()
+        if not game_db:
+            raise ValueError("Game DB has no data.")
+        return game_db
+
+    def _load_message_repository(self) -> message_loader.MessageRepository:
+        message_center = self._load_message_center(self._message_center_url)
+        message_binding = self._load_message_binding(self._message_binding_url)
+        return self._build_message_repository(message_center, message_binding)
+
+    def _materialize_messages(
+        self,
+        game_db: dict[str, dict[str, Any]],
+        message_repo: message_loader.MessageRepository,
+        *,
+        game_db_vendor: str,
+    ) -> dict[str, dict[str, Any]]:
+        return self._materialize_bound_messages(
+            game_db,
+            message_repo,
+            gpu_vendor=game_db_vendor,
+        )
+
+    def _merge_gpu_bundle_if_configured(
+        self,
+        game_db: dict[str, dict[str, Any]],
+        *,
+        game_db_vendor: str,
+        gpu_model: str,
+    ) -> dict[str, dict[str, Any]]:
+        if not self._should_load_gpu_bundle(game_db_vendor):
+            return game_db
+
+        # GPU bundle is vendor-specific runtime data; if configured, a failed fetch must fail closed.
+        try:
+            bundle = self._load_gpu_bundle(self._gpu_bundle_url, game_db_vendor, gpu_model)
+            return self._merge_gpu_bundle(game_db, bundle)
+        except Exception as bundle_err:
+            self._logger.error("Failed to load GPU bundle: %s", bundle_err)
+            raise RuntimeError("GPU bundle load failed") from bundle_err
+
+    def _should_load_gpu_bundle(self, game_db_vendor: str) -> bool:
+        return bool(self._gpu_bundle_url and game_db_vendor and game_db_vendor != "default")
+
+    def _attach_profile_catalogs_if_configured(
+        self,
+        game_db: dict[str, dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        if not self._should_attach_profile_catalogs():
+            return game_db
+
+        try:
+            catalogs = self._load_profile_catalogs(
+                self._game_ini_profile_url,
+                self._engine_ini_profile_url,
+                self._game_xml_profile_url,
+                self._registry_profile_url,
+                self._game_json_profile_url,
+                self._game_unreal_ini_profile_url,
+            )
+            return self._attach_profile_catalogs(game_db, catalogs)
+        except Exception as profile_err:
+            self._logger.error("Failed to load profile catalogs: %s", profile_err)
+            raise RuntimeError("Profile catalog load failed") from profile_err
+
+    def _should_attach_profile_catalogs(self) -> bool:
+        return bool(
+            self._game_ini_profile_url
+            and self._engine_ini_profile_url
+            and self._game_xml_profile_url
+            and self._registry_profile_url
+        )
+
+    def _load_module_links(self) -> dict[str, Any]:
+        return self._load_module_download_links()
+
+    def _inject_startup_warning_links(
+        self,
+        module_links: dict[str, Any],
+        message_repo: message_loader.MessageRepository,
+        *,
+        game_db_vendor: str,
+    ) -> None:
+        warning_ko = self._resolve_startup_warning_text(
+            message_repo,
+            game_db_vendor=game_db_vendor,
+            lang="ko",
+        )
+        warning_en = self._resolve_startup_warning_text(
+            message_repo,
+            game_db_vendor=game_db_vendor,
+            lang="en",
+        )
+        if warning_ko:
+            module_links["__warning_kr__"] = warning_ko
+        if warning_en:
+            module_links["__warning_en__"] = warning_en
+
+    def _resolve_startup_warning_text(
+        self,
+        message_repo: message_loader.MessageRepository,
+        *,
+        game_db_vendor: str,
+        lang: str,
+    ) -> str:
+        return message_loader.resolve_startup_warning_text(
+            message_repo,
+            gpu_vendor=game_db_vendor,
+            lang=lang,
+        )
+
+    def _build_success_result(
+        self,
+        game_db: dict[str, dict[str, Any]],
+        module_download_links: dict[str, Any],
+        *,
+        game_db_vendor: str,
+    ) -> GameDbLoadResult:
+        return GameDbLoadResult(
+            game_db=game_db,
+            module_download_links=module_download_links,
+            ok=True,
+            error=None,
+            game_db_vendor=game_db_vendor,
+        )
+
+    def _build_failure_result(
+        self,
+        error: Exception,
+        *,
+        game_db_vendor: str,
+    ) -> GameDbLoadResult:
+        return GameDbLoadResult(
+            game_db={},
+            module_download_links={},
+            ok=False,
+            error=error,
+            game_db_vendor=game_db_vendor,
+        )
 
     def _schedule_result(self, result: GameDbLoadResult, *, description: str) -> None:
         try:
