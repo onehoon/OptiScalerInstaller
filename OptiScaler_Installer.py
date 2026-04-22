@@ -143,7 +143,7 @@ def _get_runtime_config_value(name: str, default: str = "") -> str:
 
 
 # Application Version
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.4.1"
 # Install flow supports up to two detected GPUs. Dual-GPU requires explicit user selection.
 MAX_SUPPORTED_GPU_COUNT = 2
 
