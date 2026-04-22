@@ -7,46 +7,30 @@ import sys
 import importlib
 from pathlib import Path
 import re
-from typing import Callable, Optional
+from typing import Optional
 from installer import app_update
-from installer.app.app_actions_controller import AppActionsController
-from installer.app.app_shutdown_controller import AppShutdownController
-from installer.app.archive_controller import ArchivePreparationController, ArchivePreparationState
-from installer.app.card_render_controller import CardRenderController
-from installer.app.card_ui import GameCardUiCallbacks, GameCardUiController
-from installer.app.card_viewport import CardViewportCallbacks, CardViewportController, CardViewportRuntime
+from installer.app.card_ui import GameCardUiCallbacks
+from installer.app.card_viewport import CardViewportCallbacks
 from installer.app.controller_factory import (
     AppControllerFactoryConfig,
-    AppControllers,
     bind_app_controllers,
     build_app_controllers,
 )
-from installer.app.game_db_controller import GameDbLoadController, GameDbLoadResult
-from installer.app.gpu_flow_controller import GpuFlowController, GpuFlowState
 from installer.app.install_flow import InstallFlowController
 from installer.app.install_selection_controller import (
-    InstallSelectionController,
     InstallSelectionPrecheckOutcome,
     InstallSelectionUiState,
 )
 from installer.app.game_support_policy import parse_support_flag
 from installer.app.install_state import build_install_button_state_inputs, build_selected_game_snapshot
 from installer.app.install_ui_state import InstallButtonStateInputs, compute_install_button_state
-from installer.app.notice_controller import AppNoticeController
 from installer.app.poster_queue import PosterQueueController
 from installer.app.runtime_state import (
-    ArchiveRuntimeState,
-    CardUiRuntimeState,
-    GpuRuntimeState,
-    InstallRuntimeState,
-    SheetRuntimeState,
     build_runtime_state_bundle,
     get_runtime_state_attr,
     set_runtime_state_attr,
 )
-from installer.app.scan_controller import ScanController
-from installer.app.scan_entry_controller import ScanEntryController, ScanEntryState
-from installer.app.scan_feedback import ScanFeedbackController
+from installer.app.scan_entry_controller import ScanEntryState
 from installer.app.startup_flow import StartupFlowCallbacks, StartupFlowController
 from installer.app.startup_runtime import (
     StartupRuntimeCallbacks,
@@ -504,9 +488,17 @@ class OptiManagerApp:
         self._startup_flow = StartupFlowController(
             root=self.root,
             callbacks=StartupFlowCallbacks(
-                start_archive_prepare=self._start_optiscaler_archive_prepare,
+                start_archive_prepare=lambda: self._call_optional_method(
+                    "_startup_runtime_coordinator",
+                    "start_optiscaler_archive_prepare",
+                ),
                 start_auto_scan=self._start_auto_scan,
-                show_startup_warning_popup=self._show_startup_warning_popup,
+                show_startup_warning_popup=lambda warning_text, on_close=None: self._call_optional_method(
+                    "_app_notice_controller",
+                    "show_startup_warning_popup",
+                    warning_text,
+                    on_close=on_close,
+                ),
             ),
             is_multi_gpu_blocked=self._is_multi_gpu_block_active,
             get_startup_warning_text=lambda: pick_module_message(self.sheet_state.module_download_links, "warning", self.lang),
@@ -644,26 +636,6 @@ class OptiManagerApp:
             return
         widget.configure(state="normal" if enabled else "disabled")
 
-    def _show_game_selection_popup(
-        self,
-        message_text: str,
-        on_confirm: Optional[Callable[[], None]] = None,
-    ) -> None:
-        shell = self._get_ui_shell()
-        if shell is None:
-            return
-        shell.show_game_selection_popup(message_text, on_confirm=on_confirm)
-
-    def _show_precheck_popup(
-        self,
-        message_text: str,
-        on_close: Optional[Callable[[], None]] = None,
-    ) -> None:
-        shell = self._get_ui_shell()
-        if shell is None:
-            return
-        shell.show_precheck_popup(message_text, on_close=on_close)
-
     def _is_multi_gpu_block_active(self) -> bool:
         return self.gpu_state.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
@@ -735,17 +707,11 @@ class OptiManagerApp:
             return
         shell.update_selected_game_header()
 
-    def _show_after_install_popup(self, game: dict):
-        shell = self._get_ui_shell()
-        if shell is None:
-            return
-        shell.show_after_install_popup(game)
-
-    def _call_optional_method(self, attr_name: str, method_name: str, *args, **kwargs) -> None:
+    def _call_optional_method(self, attr_name: str, method_name: str, *args, default=None, **kwargs):
         target = getattr(self, attr_name, None)
         if target is None:
-            return
-        getattr(target, method_name)(*args, **kwargs)
+            return default
+        return getattr(target, method_name)(*args, **kwargs)
 
     def _get_ui_shell(self) -> Optional[AppUiShell]:
         return getattr(self, "_ui_shell", None)
@@ -863,88 +829,9 @@ class OptiManagerApp:
             self.gpu_state.gpu_info,
         )
 
-    def _on_game_db_loaded(self, result: GameDbLoadResult) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_game_db_loaded(result)
-
-    def _start_optiscaler_archive_prepare(self):
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.start_optiscaler_archive_prepare()
-
-    def check_app_update(self) -> bool:
-        controller = getattr(self, "_app_actions_controller", None)
-        if controller is None:
-            return False
-        return controller.check_app_update(
-            self.sheet_state.module_download_links,
-            blocked=bool(self.gpu_state.multi_gpu_blocked),
-        )
-
-    def _show_startup_warning_popup(
-        self,
-        warning_text: str,
-        on_close: Optional[Callable[[], None]] = None,
-    ) -> None:
-        controller = getattr(self, "_app_notice_controller", None)
-        if controller is None:
-            return
-        controller.show_startup_warning_popup(warning_text, on_close=on_close)
-
     def _is_scan_in_progress(self) -> bool:
         controller = getattr(self, "_scan_controller", None)
         return bool(controller and controller.is_scan_in_progress)
-
-    def _apply_gpu_flow_state(self, state: GpuFlowState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.apply_gpu_flow_state(state)
-
-    def _handle_unsupported_gpu_block(self, scan_status_message: str, info_text: str) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.handle_unsupported_gpu_block(scan_status_message, info_text)
-
-    def _on_optiscaler_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_optiscaler_archive_state_changed(state)
-
-    def _on_fsr4_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_fsr4_archive_state_changed(state)
-
-    def _on_optipatcher_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_optipatcher_archive_state_changed(state)
-
-    def _on_specialk_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_specialk_archive_state_changed(state)
-
-    def _on_ual_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_ual_archive_state_changed(state)
-
-    def _on_unreal5_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        coordinator = getattr(self, "_startup_runtime_coordinator", None)
-        if coordinator is None:
-            return
-        return coordinator.on_unreal5_archive_state_changed(state)
 
     def _clear_found_games(self) -> None:
         self.found_exe_list = []
@@ -977,7 +864,15 @@ class OptiManagerApp:
                 update_selected_game_header=self._update_selected_game_header,
                 apply_install_selection_state=self._apply_install_selection_state,
                 set_folder_select_enabled=self._set_folder_select_enabled,
-                check_app_update=self.check_app_update,
+                check_app_update=lambda: bool(
+                    self._call_optional_method(
+                        "_app_actions_controller",
+                        "check_app_update",
+                        self.sheet_state.module_download_links,
+                        blocked=bool(self.gpu_state.multi_gpu_blocked),
+                        default=False,
+                    )
+                ),
                 should_apply_fsr4_for_game=self._should_apply_fsr4_for_game,
                 get_archive_controller=lambda: getattr(self, "_archive_controller", None),
                 clear_found_games=self._clear_found_games,
@@ -1265,39 +1160,6 @@ class OptiManagerApp:
         if controller is None:
             return
         return controller.apply_selected_install()
-
-    def _apply_optiscaler_worker(
-        self,
-        game_data,
-        source_archive,
-        resolved_dll_name,
-        fsr4_source_archive,
-        fsr4_required,
-        ual_cached_archive="",
-        optipatcher_cached_archive="",
-        specialk_cached_archive="",
-        unreal5_cached_archive="",
-    ):
-        controller = self._get_install_flow_controller()
-        if controller is None:
-            return
-        return controller.run_install_worker(
-            game_data,
-            source_archive,
-            resolved_dll_name,
-            fsr4_source_archive,
-            fsr4_required,
-            ual_cached_archive=ual_cached_archive,
-            optipatcher_cached_archive=optipatcher_cached_archive,
-            specialk_cached_archive=specialk_cached_archive,
-            unreal5_cached_archive=unreal5_cached_archive,
-        )
-
-    def _on_install_finished(self, success, message, installed_game=None):
-        controller = self._get_install_flow_controller()
-        if controller is None:
-            return
-        return controller.on_install_finished(success, message, installed_game)
 
 
 if __name__ == "__main__":

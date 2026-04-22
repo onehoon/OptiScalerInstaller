@@ -93,6 +93,10 @@ def _ensure_writable(file_path: Path) -> None:
         logging.debug("Failed to update file attributes for %s", file_path)
 
 
+def ensure_writable(file_path) -> None:
+    _ensure_writable(Path(file_path))
+
+
 def _is_optipatcher_asi_name(file_name: str) -> bool:
     normalized = Path(str(file_name or "").strip()).name.lower()
     return normalized.endswith(".asi") and "optipatcher" in normalized

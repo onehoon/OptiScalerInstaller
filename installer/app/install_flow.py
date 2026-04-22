@@ -29,8 +29,6 @@ class InstallFlowCallbacks:
     get_lang: Callable[[], str]
     should_apply_fsr4_for_game: Callable[[Mapping[str, Any]], bool]
     update_install_button_state: Callable[[], None]
-    install_worker_entry: Callable[..., None]
-    finish_install: Callable[[bool, str, Mapping[str, Any] | None], None]
     show_after_install_popup: Callable[[Mapping[str, Any]], None]
     set_information_text: Callable[[str], None]
     show_info: Callable[[str, str], None]
@@ -129,12 +127,18 @@ class InstallFlowController:
                 error=str(exc),
             )
 
-    def build_install_entry_state(self) -> InstallEntryState:
-        selection = build_selected_game_snapshot(
+    def _build_selection_snapshot(self):
+        return build_selected_game_snapshot(
             self._callbacks.get_found_games(),
             self._card_ui_state.selected_game_index,
             self._callbacks.get_lang(),
         )
+
+    def _resolve_cached_archive(self, ready: bool, archive_path: str) -> str:
+        return archive_path if ready else ""
+
+    def build_install_entry_state(self) -> InstallEntryState:
+        selection = self._build_selection_snapshot()
         archive = self._archive_state
         predownload_in_progress = bool(
             archive.optipatcher_downloading
@@ -144,26 +148,35 @@ class InstallFlowController:
         )
         return build_install_entry_state(
             selection=selection,
-            multi_gpu_blocked=bool(self._gpu_state.multi_gpu_blocked),
-            install_in_progress=bool(self._install_state.in_progress),
-            optiscaler_archive_downloading=bool(archive.optiscaler_downloading),
-            install_precheck_running=bool(self._install_state.precheck_running),
-            install_precheck_ok=bool(self._install_state.precheck_ok),
-            install_precheck_error=str(self._install_state.precheck_error or ""),
-            install_precheck_dll_name=str(self._install_state.precheck_dll_name or ""),
-            optiscaler_archive_ready=bool(archive.optiscaler_ready),
-            opti_source_archive=str(archive.opti_source_archive or ""),
-            optiscaler_archive_error=str(archive.optiscaler_error or ""),
-            fsr4_archive_downloading=bool(archive.fsr4_downloading),
-            fsr4_archive_ready=bool(archive.fsr4_ready),
-            fsr4_source_archive=str(archive.fsr4_source_archive or ""),
-            fsr4_archive_error=str(archive.fsr4_error or ""),
-            game_popup_confirmed=bool(self._install_state.popup_confirmed),
+            multi_gpu_blocked=self._gpu_state.multi_gpu_blocked,
+            install_in_progress=self._install_state.in_progress,
+            optiscaler_archive_downloading=archive.optiscaler_downloading,
+            install_precheck_running=self._install_state.precheck_running,
+            install_precheck_ok=self._install_state.precheck_ok,
+            install_precheck_error=self._install_state.precheck_error,
+            install_precheck_dll_name=self._install_state.precheck_dll_name,
+            optiscaler_archive_ready=archive.optiscaler_ready,
+            opti_source_archive=archive.opti_source_archive,
+            optiscaler_archive_error=archive.optiscaler_error,
+            fsr4_archive_downloading=archive.fsr4_downloading,
+            fsr4_archive_ready=archive.fsr4_ready,
+            fsr4_source_archive=archive.fsr4_source_archive,
+            fsr4_archive_error=archive.fsr4_error,
+            game_popup_confirmed=self._install_state.popup_confirmed,
             predownload_in_progress=predownload_in_progress,
-            ual_cached_archive=str(archive.ual_source_archive or "") if archive.ual_ready else "",
-            optipatcher_cached_archive=str(archive.optipatcher_source_archive or "") if archive.optipatcher_ready else "",
-            specialk_cached_archive=str(archive.specialk_source_archive or "") if archive.specialk_ready else "",
-            unreal5_cached_archive=str(archive.unreal5_source_archive or "") if archive.unreal5_ready else "",
+            ual_cached_archive=self._resolve_cached_archive(archive.ual_ready, archive.ual_source_archive),
+            optipatcher_cached_archive=self._resolve_cached_archive(
+                archive.optipatcher_ready,
+                archive.optipatcher_source_archive,
+            ),
+            specialk_cached_archive=self._resolve_cached_archive(
+                archive.specialk_ready,
+                archive.specialk_source_archive,
+            ),
+            unreal5_cached_archive=self._resolve_cached_archive(
+                archive.unreal5_ready,
+                archive.unreal5_source_archive,
+            ),
         )
 
     def show_install_entry_rejection(self, decision: InstallEntryDecision) -> None:
@@ -230,7 +243,7 @@ class InstallFlowController:
         self._install_state.in_progress = True
         self._callbacks.update_install_button_state()
         self._task_executor.submit(
-            self._callbacks.install_worker_entry,
+            self.run_install_worker,
             game_data,
             source_archive,
             resolved_dll_name,
@@ -282,18 +295,18 @@ class InstallFlowController:
             )
             self._root.after(
                 0,
-                lambda game=dict(installed_game): self._callbacks.finish_install(True, "Install Completed", game),
+                lambda game=dict(installed_game): self.on_install_finished(True, "Install Completed", game),
             )
         except RuntimeError as exc:
             self._root.after(
                 0,
-                lambda err=exc, game=dict(game_data): self._callbacks.finish_install(False, str(err), game),
+                lambda err=exc, game=dict(game_data): self.on_install_finished(False, str(err), game),
             )
         except Exception as exc:
             logger.exception("Install failed: %s", exc)
             self._root.after(
                 0,
-                lambda err=exc, game=dict(game_data): self._callbacks.finish_install(False, str(err), game),
+                lambda err=exc, game=dict(game_data): self.on_install_finished(False, str(err), game),
             )
 
     def on_install_finished(self, success: bool, message: str, installed_game=None) -> None:
@@ -326,6 +339,12 @@ def create_install_flow_controller(
     *,
     create_prefixed_logger: Callable[[str], Any],
 ) -> InstallFlowController:
+    def _show_after_install_popup(game: Mapping[str, Any]) -> None:
+        ui_shell = getattr(app, "_ui_shell", None)
+        if ui_shell is None:
+            return
+        ui_shell.show_after_install_popup(game)
+
     return InstallFlowController(
         app_ref=app,
         root=app.root,
@@ -341,9 +360,7 @@ def create_install_flow_controller(
             get_lang=lambda: app.lang,
             should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
             update_install_button_state=app._update_install_button_state,
-            install_worker_entry=app._apply_optiscaler_worker,
-            finish_install=app._on_install_finished,
-            show_after_install_popup=app._show_after_install_popup,
+            show_after_install_popup=_show_after_install_popup,
             set_information_text=app._set_information_text,
             show_info=messagebox.showinfo,
             show_warning=messagebox.showwarning,

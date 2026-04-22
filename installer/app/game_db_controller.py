@@ -29,14 +29,7 @@ class GameDbLoadResult:
     error: Exception | None
     module_download_links: dict[str, Any] = field(default_factory=dict)
     game_db_vendor: str = "default"
-    # Backward-compatible aliases used by legacy tests/callers
-    resource_master: dict[str, Any] = field(default_factory=dict)
     startup_warning_text: str = ""
-
-    def __post_init__(self) -> None:
-        # Legacy callers pass resource_master; normalize to module_download_links.
-        if self.resource_master and not self.module_download_links:
-            object.__setattr__(self, "module_download_links", dict(self.resource_master))
 
 
 @dataclass(frozen=True)

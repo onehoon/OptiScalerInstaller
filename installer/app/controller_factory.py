@@ -112,7 +112,11 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
         executor=app._task_executor,
         schedule_ui=ui_schedule,
         callbacks=GameDbControllerCallbacks(
-            on_load_complete=app._on_game_db_loaded,
+            on_load_complete=lambda result: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_game_db_loaded",
+                result,
+            ),
         ),
         config=config,
     )
@@ -120,8 +124,17 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
         executor=app._task_executor,
         schedule_ui=ui_schedule,
         callbacks=GpuFlowCallbacks(
-            apply_state=app._apply_gpu_flow_state,
-            handle_unsupported_gpu=app._handle_unsupported_gpu_block,
+            apply_state=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "apply_gpu_flow_state",
+                state,
+            ),
+            handle_unsupported_gpu=lambda scan_status_message, info_text: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "handle_unsupported_gpu_block",
+                scan_status_message,
+                info_text,
+            ),
             set_scan_status_message=app._set_scan_status_message,
             update_sheet_status=app._update_sheet_status,
             update_install_button_state=app._update_install_button_state,
@@ -197,8 +210,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
                 install_state=app.install_state,
                 dialogs_strings=app.txt.dialogs,
             ),
-            show_selection_popup=app._show_game_selection_popup,
-            show_precheck_popup=app._show_precheck_popup,
+            show_selection_popup=app_notice.show_selection_popup,
+            show_precheck_popup=app_notice.show_precheck_popup,
         ),
     )
     viewport = app._card_viewport_controller
@@ -360,12 +373,36 @@ def _build_archive_controller(app: Any, schedule_ui: Callable[[Callable[[], None
         optiscaler_executor=getattr(app, "_optiscaler_prepare_executor", None),
         schedule=schedule_ui,
         callbacks=ArchivePreparationCallbacks(
-            on_optiscaler_state_changed=app._on_optiscaler_archive_state_changed,
-            on_fsr4_state_changed=app._on_fsr4_archive_state_changed,
-            on_optipatcher_state_changed=app._on_optipatcher_archive_state_changed,
-            on_specialk_state_changed=app._on_specialk_archive_state_changed,
-            on_ual_state_changed=app._on_ual_archive_state_changed,
-            on_unreal5_state_changed=app._on_unreal5_archive_state_changed,
+            on_optiscaler_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_optiscaler_archive_state_changed",
+                state,
+            ),
+            on_fsr4_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_fsr4_archive_state_changed",
+                state,
+            ),
+            on_optipatcher_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_optipatcher_archive_state_changed",
+                state,
+            ),
+            on_specialk_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_specialk_archive_state_changed",
+                state,
+            ),
+            on_ual_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_ual_archive_state_changed",
+                state,
+            ),
+            on_unreal5_state_changed=lambda state: app._call_optional_method(
+                "_startup_runtime_coordinator",
+                "on_unreal5_archive_state_changed",
+                state,
+            ),
         ),
         download_to_file=installer_services.download_to_file,
         manifest_root=app.manifest_root,

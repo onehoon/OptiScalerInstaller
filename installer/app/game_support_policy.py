@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from ..common.flag_parser import parse_bool_token
 from ..system import gpu_service
 
 
@@ -24,25 +25,13 @@ def _strip_trademark_markers(value: object) -> str:
 
 
 def parse_support_flag(value: object, *, native_xefg_means_false: bool = True) -> bool:
-    if isinstance(value, bool):
-        return value
-
-    text = str(value or "").strip().lower()
-    if not text:
-        return False
-
-    false_tokens = {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-"}
-    if native_xefg_means_false:
-        false_tokens.add("native xefg")
-    if text in false_tokens:
-        return False
-
-    true_tokens = {"1", "true", "yes", "y", "on"}
-    if text in true_tokens:
-        return True
-
-    # Keep legacy behavior: any non-empty unsupported token is treated as truthy.
-    return True
+    extra_false_tokens = ("native xefg",) if native_xefg_means_false else ()
+    return parse_bool_token(
+        value,
+        empty_default=False,
+        unknown_default=True,
+        extra_false_tokens=extra_false_tokens,
+    )
 
 
 def is_game_supported_for_vendor(

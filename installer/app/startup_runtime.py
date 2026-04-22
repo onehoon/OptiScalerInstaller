@@ -62,6 +62,16 @@ class StartupRuntimeCoordinatorDeps:
     logger: Any = None
 
 
+@dataclass(frozen=True)
+class _ArchiveAssetConfig:
+    entry_key: str
+    cache_dir_attr: str
+    prepare_method_name: str
+    state_prefix: str
+    source_archive_field: str
+    include_manifest_root: bool = False
+
+
 class StartupRuntimeCoordinator:
     def __init__(
         self,
@@ -97,6 +107,55 @@ class StartupRuntimeCoordinator:
         self._unknown_gpu_text = str(unknown_gpu_text or "").strip() or "Unknown GPU"
         self._callbacks = callbacks
         self._logger = logger or logging.getLogger()
+        self._archive_assets = {
+            "optiscaler": _ArchiveAssetConfig(
+                entry_key="optiscaler",
+                cache_dir_attr="_optiscaler_cache_dir",
+                prepare_method_name="prepare_optiscaler",
+                state_prefix="optiscaler",
+                source_archive_field="opti_source_archive",
+            ),
+            "fsr4": _ArchiveAssetConfig(
+                entry_key="fsr4int8",
+                cache_dir_attr="_fsr4_cache_dir",
+                prepare_method_name="prepare_fsr4",
+                state_prefix="fsr4",
+                source_archive_field="fsr4_source_archive",
+            ),
+            "optipatcher": _ArchiveAssetConfig(
+                entry_key="optipatcher",
+                cache_dir_attr="_optipatcher_cache_dir",
+                prepare_method_name="prepare_optipatcher",
+                state_prefix="optipatcher",
+                source_archive_field="optipatcher_source_archive",
+                include_manifest_root=True,
+            ),
+            "specialk": _ArchiveAssetConfig(
+                entry_key="specialk",
+                cache_dir_attr="_specialk_cache_dir",
+                prepare_method_name="prepare_specialk",
+                state_prefix="specialk",
+                source_archive_field="specialk_source_archive",
+                include_manifest_root=True,
+            ),
+            "ual": _ArchiveAssetConfig(
+                entry_key="ultimateasiloader",
+                cache_dir_attr="_ual_cache_dir",
+                prepare_method_name="prepare_ual",
+                state_prefix="ual",
+                source_archive_field="ual_source_archive",
+                include_manifest_root=True,
+            ),
+            "unreal5": _ArchiveAssetConfig(
+                entry_key="unreal5",
+                cache_dir_attr="_unreal5_cache_dir",
+                prepare_method_name="prepare_unreal5",
+                state_prefix="unreal5",
+                source_archive_field="unreal5_source_archive",
+                include_manifest_root=True,
+            ),
+        }
+        self._startup_archive_prepare_order = ("fsr4", "optipatcher", "specialk", "ual", "unreal5")
 
     def apply_gpu_flow_state(self, state: GpuFlowState) -> None:
         gpu_state = self._gpu_state
@@ -155,7 +214,7 @@ class StartupRuntimeCoordinator:
         sheet_state.active_vendor = str(result.game_db_vendor or "default")
         sheet_state.game_db = result.game_db if result.ok else {}
         sheet_state.module_download_links = result.module_download_links if result.ok else {}
-        sheet_state.startup_warning_text = str(getattr(result, "startup_warning_text", "") or "")
+        sheet_state.startup_warning_text = str(result.startup_warning_text or "")
         sheet_state.status = result.ok
         rtss_state = rtss_notice.probe_rtss_startup_state(logger=self._logger)
         install_state.rtss_scan_ok = bool(rtss_state.scan_ok)
@@ -189,161 +248,86 @@ class StartupRuntimeCoordinator:
             self._callbacks.run_post_sheet_startup(result.ok)
 
     def start_optiscaler_archive_prepare(self) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
+        state = self._prepare_archive("optiscaler")
+        if state is None:
             return
 
-        entry = self._sheet_state.module_download_links.get("optiscaler", {})
-        state = controller.prepare_optiscaler(entry, self._optiscaler_cache_dir)
-        self.apply_optiscaler_archive_state(state)
-        self.start_fsr4_archive_prepare()
-        self.start_optipatcher_archive_prepare()
-        self.start_specialk_archive_prepare()
-        self.start_ual_archive_prepare()
-        self.start_unreal5_archive_prepare()
+        self._apply_archive_state_for_asset("optiscaler", state)
+        for asset_key in self._startup_archive_prepare_order:
+            self._start_archive_prepare(asset_key, update_install_button_state=False)
         self._callbacks.update_install_button_state()
-
-    # Backward-compatible entrypoint used by legacy tests/callers.
-    def on_resource_master_ready(self, resource_master: Mapping[str, Any]) -> None:
-        self._sheet_state.module_download_links = dict(resource_master or {})
 
     def start_fsr4_archive_prepare(self) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
-            return
-
-        enabled = self._callbacks.should_apply_fsr4_for_game(None)
-        if not enabled:
-            self._logger.info("[APP] Skipping FSR4 preparation for GPU: %s", self._gpu_state.gpu_info)
-
-        entry = self._sheet_state.module_download_links.get("fsr4int8", {})
-        state = controller.prepare_fsr4(
-            entry,
-            self._fsr4_cache_dir,
-            enabled=enabled,
-        )
-        self.apply_fsr4_archive_state(state)
-        self._callbacks.update_install_button_state()
-
-    def _start_versioned_archive_prepare(
-        self,
-        *,
-        entry_key: str,
-        cache_dir: Path,
-        prepare_archive: Callable[
-            [ArchivePreparationController, Mapping[str, object] | None, Path],
-            ArchivePreparationState,
-        ],
-        apply_state: Callable[[ArchivePreparationState], None],
-    ) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
-            return
-
-        entry = self._sheet_state.module_download_links.get(entry_key, {})
-        state = prepare_archive(controller, entry, cache_dir)
-        apply_state(state)
-        self._callbacks.update_install_button_state()
+        self._start_archive_prepare("fsr4")
 
     def start_optipatcher_archive_prepare(self) -> None:
-        self._start_versioned_archive_prepare(
-            entry_key="optipatcher",
-            cache_dir=self._optipatcher_cache_dir,
-            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_optipatcher(
-                entry,
-                cache_dir,
-                self._manifest_root,
-            ),
-            apply_state=self.apply_optipatcher_archive_state,
-        )
+        self._start_archive_prepare("optipatcher")
 
     def start_specialk_archive_prepare(self) -> None:
-        self._start_versioned_archive_prepare(
-            entry_key="specialk",
-            cache_dir=self._specialk_cache_dir,
-            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_specialk(
-                entry,
-                cache_dir,
-                self._manifest_root,
-            ),
-            apply_state=self.apply_specialk_archive_state,
-        )
+        self._start_archive_prepare("specialk")
 
     def start_ual_archive_prepare(self) -> None:
-        self._start_versioned_archive_prepare(
-            entry_key="ultimateasiloader",
-            cache_dir=self._ual_cache_dir,
-            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_ual(
-                entry,
-                cache_dir,
-                self._manifest_root,
-            ),
-            apply_state=self.apply_ual_archive_state,
-        )
+        self._start_archive_prepare("ual")
 
     def start_unreal5_archive_prepare(self) -> None:
-        self._start_versioned_archive_prepare(
-            entry_key="unreal5",
-            cache_dir=self._unreal5_cache_dir,
-            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_unreal5(
-                entry,
-                cache_dir,
-                self._manifest_root,
-            ),
-            apply_state=self.apply_unreal5_archive_state,
-        )
+        self._start_archive_prepare("unreal5")
 
-    def _apply_archive_state(
-        self, state: ArchivePreparationState, prefix: str, source_archive_field: str
-    ) -> None:
+    def _prepare_archive(self, asset_key: str) -> ArchivePreparationState | None:
+        controller = self._callbacks.get_archive_controller()
+        if controller is None:
+            return None
+
+        config = self._archive_assets[asset_key]
+        entry = self._sheet_state.module_download_links.get(config.entry_key, {})
+        cache_dir = getattr(self, config.cache_dir_attr)
+        prepare_archive = getattr(controller, config.prepare_method_name)
+        if asset_key == "fsr4":
+            enabled = self._callbacks.should_apply_fsr4_for_game(None)
+            if not enabled:
+                self._logger.info("[APP] Skipping FSR4 preparation for GPU: %s", self._gpu_state.gpu_info)
+            return prepare_archive(entry, cache_dir, enabled=enabled)
+        if config.include_manifest_root:
+            return prepare_archive(entry, cache_dir, self._manifest_root)
+        return prepare_archive(entry, cache_dir)
+
+    def _start_archive_prepare(self, asset_key: str, *, update_install_button_state: bool = True) -> None:
+        state = self._prepare_archive(asset_key)
+        if state is None:
+            return
+        self._apply_archive_state_for_asset(asset_key, state)
+        if update_install_button_state:
+            self._callbacks.update_install_button_state()
+
+    def _apply_archive_state_for_asset(self, asset_key: str, state: ArchivePreparationState) -> None:
+        config = self._archive_assets[asset_key]
         archive_state = self._archive_state
-        setattr(archive_state, f"{prefix}_filename", str(state.filename or ""))
-        setattr(archive_state, f"{prefix}_ready", bool(state.ready))
-        setattr(archive_state, f"{prefix}_downloading", bool(state.downloading))
-        setattr(archive_state, f"{prefix}_error", str(state.error_message or ""))
-        setattr(archive_state, source_archive_field, str(state.archive_path or ""))
+        setattr(archive_state, f"{config.state_prefix}_filename", str(state.filename or ""))
+        setattr(archive_state, f"{config.state_prefix}_ready", bool(state.ready))
+        setattr(archive_state, f"{config.state_prefix}_downloading", bool(state.downloading))
+        setattr(archive_state, f"{config.state_prefix}_error", str(state.error_message or ""))
+        setattr(archive_state, config.source_archive_field, str(state.archive_path or ""))
 
-    def apply_optiscaler_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "optiscaler", "opti_source_archive")
-
-    def apply_fsr4_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "fsr4", "fsr4_source_archive")
-
-    def apply_optipatcher_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "optipatcher", "optipatcher_source_archive")
-
-    def apply_specialk_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "specialk", "specialk_source_archive")
-
-    def apply_ual_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "ual", "ual_source_archive")
-
-    def apply_unreal5_archive_state(self, state: ArchivePreparationState) -> None:
-        self._apply_archive_state(state, "unreal5", "unreal5_source_archive")
+    def _on_archive_state_changed(self, asset_key: str, state: ArchivePreparationState) -> None:
+        self._apply_archive_state_for_asset(asset_key, state)
+        self._callbacks.update_install_button_state()
 
     def on_optiscaler_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_optiscaler_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("optiscaler", state)
 
     def on_fsr4_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_fsr4_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("fsr4", state)
 
     def on_optipatcher_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_optipatcher_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("optipatcher", state)
 
     def on_specialk_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_specialk_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("specialk", state)
 
     def on_ual_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_ual_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("ual", state)
 
     def on_unreal5_archive_state_changed(self, state: ArchivePreparationState) -> None:
-        self.apply_unreal5_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._on_archive_state_changed("unreal5", state)
 
 
 def create_startup_runtime_coordinator(deps: StartupRuntimeCoordinatorDeps) -> StartupRuntimeCoordinator:

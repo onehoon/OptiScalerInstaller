@@ -62,20 +62,13 @@ class AppNoticeController:
         message_text: str,
         on_confirm: Optional[Callable[[], None]] = None,
     ) -> None:
-        message_popup.show_message_popup(
-            root=self._root,
+        self._show_popup(
             message_text=message_text,
-            theme=self._popup_theme,
             title=self._installer_notice_title,
-            confirm_text=self._confirm_text,
-            on_close=self._schedule_callback(on_confirm),
+            on_close=on_confirm,
             allow_window_close=False,
-            scrollable=False,
             debug_name="selection popup",
-            max_text_chars=110,
-            emphasis_font_size=13,
-            root_width_fallback=self._root_width_fallback,
-            root_height_fallback=self._root_height_fallback,
+            schedule_on_close=True,
         )
 
     def show_precheck_popup(
@@ -83,20 +76,13 @@ class AppNoticeController:
         message_text: str,
         on_close: Optional[Callable[[], None]] = None,
     ) -> None:
-        message_popup.show_message_popup(
-            root=self._root,
+        self._show_popup(
             message_text=message_text,
-            theme=self._popup_theme,
             title=self._warning_title,
-            confirm_text=self._confirm_text,
-            on_close=self._schedule_callback(on_close),
+            on_close=on_close,
             allow_window_close=True,
-            scrollable=False,
             debug_name="precheck popup",
-            max_text_chars=110,
-            emphasis_font_size=13,
-            root_width_fallback=self._root_width_fallback,
-            root_height_fallback=self._root_height_fallback,
+            schedule_on_close=True,
         )
 
     def show_startup_warning_popup(
@@ -104,16 +90,35 @@ class AppNoticeController:
         warning_text: str,
         on_close: Optional[Callable[[], None]] = None,
     ) -> None:
-        message_popup.show_message_popup(
-            root=self._root,
+        self._show_popup(
             message_text=warning_text,
-            theme=self._popup_theme,
             title=self._notice_title,
-            confirm_text=self._confirm_text,
             on_close=on_close,
             allow_window_close=True,
-            scrollable=False,
             debug_name="startup warning popup",
+            schedule_on_close=False,
+        )
+
+    def _show_popup(
+        self,
+        *,
+        message_text: str,
+        title: str,
+        on_close: Optional[Callable[[], None]],
+        allow_window_close: bool,
+        debug_name: str,
+        schedule_on_close: bool,
+    ) -> None:
+        message_popup.show_message_popup(
+            root=self._root,
+            message_text=message_text,
+            theme=self._popup_theme,
+            title=title,
+            confirm_text=self._confirm_text,
+            on_close=self._resolve_popup_on_close(on_close, schedule_on_close=schedule_on_close),
+            allow_window_close=allow_window_close,
+            scrollable=False,
+            debug_name=debug_name,
             max_text_chars=110,
             emphasis_font_size=13,
             root_width_fallback=self._root_width_fallback,
@@ -163,6 +168,18 @@ class AppNoticeController:
         if not callable(callback):
             return None
         return lambda: self._schedule_idle(callback)
+
+    def _resolve_popup_on_close(
+        self,
+        callback: Optional[Callable[[], None]],
+        *,
+        schedule_on_close: bool,
+    ) -> Optional[Callable[[], None]]:
+        if not callable(callback):
+            return None
+        if not schedule_on_close:
+            return callback
+        return self._schedule_callback(callback)
 
 
 __all__ = ["AppNoticeController"]

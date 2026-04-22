@@ -28,8 +28,8 @@ class InstallButtonState:
     reason_code: str = ""
 
 
-def compute_install_button_state(inputs: InstallButtonStateInputs) -> InstallButtonState:
-    checks = (
+def _iter_install_button_checks(inputs: InstallButtonStateInputs):
+    return (
         ("multi_gpu_blocked", not inputs.multi_gpu_blocked),
         ("gpu_selection_pending", not inputs.gpu_selection_pending),
         ("sheet_loading", not inputs.sheet_loading),
@@ -46,7 +46,13 @@ def compute_install_button_state(inputs: InstallButtonStateInputs) -> InstallBut
         ("confirm_popup_required", inputs.game_popup_confirmed),
     )
 
-    reason_code = next((code for code, passed in checks if not passed), "")
+
+def _resolve_install_button_reason_code(inputs: InstallButtonStateInputs) -> str:
+    return next((code for code, passed in _iter_install_button_checks(inputs) if not passed), "")
+
+
+def compute_install_button_state(inputs: InstallButtonStateInputs) -> InstallButtonState:
+    reason_code = _resolve_install_button_reason_code(inputs)
     return InstallButtonState(
         enabled=not bool(reason_code),
         show_installing=bool(inputs.install_in_progress),

@@ -99,59 +99,6 @@ _RUNTIME_STATE_OBJECT_MAP = {
     "install_state": ("_install_state", InstallRuntimeState),
     "card_ui_state": ("_card_ui_state", CardUiRuntimeState),
 }
-_RUNTIME_STATE_FIELD_MAP = {
-    "opti_source_archive": ("_archive_state", "opti_source_archive", ArchiveRuntimeState),
-    "fsr4_source_archive": ("_archive_state", "fsr4_source_archive", ArchiveRuntimeState),
-    "optiscaler_archive_ready": ("_archive_state", "optiscaler_ready", ArchiveRuntimeState),
-    "optiscaler_archive_downloading": ("_archive_state", "optiscaler_downloading", ArchiveRuntimeState),
-    "optiscaler_archive_error": ("_archive_state", "optiscaler_error", ArchiveRuntimeState),
-    "optiscaler_archive_filename": ("_archive_state", "optiscaler_filename", ArchiveRuntimeState),
-    "fsr4_archive_ready": ("_archive_state", "fsr4_ready", ArchiveRuntimeState),
-    "fsr4_archive_downloading": ("_archive_state", "fsr4_downloading", ArchiveRuntimeState),
-    "fsr4_archive_error": ("_archive_state", "fsr4_error", ArchiveRuntimeState),
-    "fsr4_archive_filename": ("_archive_state", "fsr4_filename", ArchiveRuntimeState),
-    "optipatcher_source_archive": ("_archive_state", "optipatcher_source_archive", ArchiveRuntimeState),
-    "optipatcher_archive_ready": ("_archive_state", "optipatcher_ready", ArchiveRuntimeState),
-    "optipatcher_archive_downloading": ("_archive_state", "optipatcher_downloading", ArchiveRuntimeState),
-    "optipatcher_archive_error": ("_archive_state", "optipatcher_error", ArchiveRuntimeState),
-    "optipatcher_archive_filename": ("_archive_state", "optipatcher_filename", ArchiveRuntimeState),
-    "specialk_source_archive": ("_archive_state", "specialk_source_archive", ArchiveRuntimeState),
-    "specialk_archive_ready": ("_archive_state", "specialk_ready", ArchiveRuntimeState),
-    "specialk_archive_downloading": ("_archive_state", "specialk_downloading", ArchiveRuntimeState),
-    "specialk_archive_error": ("_archive_state", "specialk_error", ArchiveRuntimeState),
-    "specialk_archive_filename": ("_archive_state", "specialk_filename", ArchiveRuntimeState),
-    "ual_source_archive": ("_archive_state", "ual_source_archive", ArchiveRuntimeState),
-    "ual_archive_ready": ("_archive_state", "ual_ready", ArchiveRuntimeState),
-    "ual_archive_downloading": ("_archive_state", "ual_downloading", ArchiveRuntimeState),
-    "ual_archive_error": ("_archive_state", "ual_error", ArchiveRuntimeState),
-    "ual_archive_filename": ("_archive_state", "ual_filename", ArchiveRuntimeState),
-    "unreal5_source_archive": ("_archive_state", "unreal5_source_archive", ArchiveRuntimeState),
-    "unreal5_archive_ready": ("_archive_state", "unreal5_ready", ArchiveRuntimeState),
-    "unreal5_archive_downloading": ("_archive_state", "unreal5_downloading", ArchiveRuntimeState),
-    "unreal5_archive_error": ("_archive_state", "unreal5_error", ArchiveRuntimeState),
-    "unreal5_archive_filename": ("_archive_state", "unreal5_filename", ArchiveRuntimeState),
-    "gpu_names": ("_gpu_state", "gpu_names", GpuRuntimeState),
-    "gpu_count": ("_gpu_state", "gpu_count", GpuRuntimeState),
-    "is_multi_gpu": ("_gpu_state", "is_multi_gpu", GpuRuntimeState),
-    "multi_gpu_blocked": ("_gpu_state", "multi_gpu_blocked", GpuRuntimeState),
-    "gpu_info": ("_gpu_state", "gpu_info", GpuRuntimeState),
-    "sheet_status": ("_sheet_state", "status", SheetRuntimeState),
-    "sheet_loading": ("_sheet_state", "loading", SheetRuntimeState),
-    "active_game_db_vendor": ("_sheet_state", "active_vendor", SheetRuntimeState),
-    "game_db": ("_sheet_state", "game_db", SheetRuntimeState),
-    "module_download_links": ("_sheet_state", "module_download_links", SheetRuntimeState),
-    "startup_warning_text": ("_sheet_state", "startup_warning_text", SheetRuntimeState),
-    "install_in_progress": ("_install_state", "in_progress", InstallRuntimeState),
-    "install_precheck_running": ("_install_state", "precheck_running", InstallRuntimeState),
-    "install_precheck_ok": ("_install_state", "precheck_ok", InstallRuntimeState),
-    "install_precheck_error": ("_install_state", "precheck_error", InstallRuntimeState),
-    "install_precheck_dll_name": ("_install_state", "precheck_dll_name", InstallRuntimeState),
-    "rtss_scan_ok": ("_install_state", "rtss_scan_ok", InstallRuntimeState),
-    "rtss_installed": ("_install_state", "rtss_installed", InstallRuntimeState),
-    "rtss_profiles_global_exists": ("_install_state", "rtss_profiles_global_exists", InstallRuntimeState),
-    "rtss_global_fix_needed": ("_install_state", "rtss_global_fix_needed", InstallRuntimeState),
-    "selected_game_index": ("_card_ui_state", "selected_game_index", CardUiRuntimeState),
-}
 
 
 def build_runtime_state_bundle(*, checking_gpu_text: str) -> RuntimeStateBundle:
@@ -174,15 +121,6 @@ def get_runtime_state_attr(instance: Any, name: str) -> Any:
             object.__setattr__(instance, storage_name, state)
         return state
 
-    state_field = _RUNTIME_STATE_FIELD_MAP.get(name)
-    if state_field is not None:
-        storage_name, field_name, factory = state_field
-        state = instance.__dict__.get(storage_name)
-        if state is None:
-            state = factory()
-            object.__setattr__(instance, storage_name, state)
-        return getattr(state, field_name)
-
     raise AttributeError(f"{type(instance).__name__!s} object has no attribute {name!r}")
 
 
@@ -191,16 +129,6 @@ def set_runtime_state_attr(instance: Any, name: str, value: Any) -> bool:
     if state_object is not None:
         storage_name, _factory = state_object
         object.__setattr__(instance, storage_name, value)
-        return True
-
-    state_field = _RUNTIME_STATE_FIELD_MAP.get(name)
-    if state_field is not None:
-        storage_name, field_name, factory = state_field
-        state = instance.__dict__.get(storage_name)
-        if state is None:
-            state = factory()
-            object.__setattr__(instance, storage_name, state)
-        setattr(state, field_name, value)
         return True
 
     return False

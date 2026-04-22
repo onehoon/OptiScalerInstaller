@@ -42,11 +42,6 @@ class InstallWorkflowCallbacks:
 
 def resolve_install_exclude_patterns(module_download_links: Mapping[str, object]) -> list[str]:
     exclude_raw = str(module_download_links.get("__exclude_list__", "")).strip()
-    if not exclude_raw:
-        legacy_entry = module_download_links.get("exclude_list")
-        if isinstance(legacy_entry, Mapping):
-            legacy_filename = legacy_entry.get("filename", "")
-            exclude_raw = str(legacy_filename).strip()
     return [token.strip() for token in exclude_raw.split("|") if token.strip()]
 
 
@@ -113,7 +108,7 @@ def build_install_context(
 def run_install_workflow(
     app: Any,
     install_ctx: InstallContext,
-    module_download_links: Mapping[str, object] | None = None,
+    module_download_links: Mapping[str, object],
     gpu_info: Any = None,
     callbacks: InstallWorkflowCallbacks | None = None,
     logger=None,
@@ -122,18 +117,12 @@ def run_install_workflow(
     optipatcher_cached_archive: str = "",
     specialk_cached_archive: str = "",
     unreal5_cached_archive: str = "",
-    **legacy_kwargs: Any,
 ) -> dict[str, Any]:
-    if module_download_links is None:
-        module_download_links = legacy_kwargs.pop("resource_master", {})
     if callbacks is None:
         raise TypeError("callbacks is required")
     if logger is None:
         import logging
         logger = logging.getLogger()
-    if legacy_kwargs:
-        unexpected_keys = ", ".join(sorted(str(key) for key in legacy_kwargs))
-        raise TypeError(f"Unexpected keyword arguments: {unexpected_keys}")
 
     logger.info("Install started: target=%s", install_ctx.target_path)
     exclude_patterns = resolve_install_exclude_patterns(module_download_links)

@@ -4,6 +4,48 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 
+def _normalize_text(value: object) -> str:
+    return str(value or "")
+
+
+def _reject(code: str, *, detail: str = "") -> "InstallEntryDecision":
+    return InstallEntryDecision(
+        ok=False,
+        code=str(code or ""),
+        detail=_normalize_text(detail),
+    )
+
+
+def _resolve_selected_game(state: "InstallEntryState") -> Mapping[str, Any] | None:
+    if state.selected_game_index is None:
+        return None
+
+    selected_index = int(state.selected_game_index)
+    if selected_index < 0 or selected_index >= len(state.found_games):
+        return None
+    return state.found_games[selected_index]
+
+
+def _build_success_decision(
+    state: "InstallEntryState",
+    *,
+    selected_game: Mapping[str, Any],
+    fsr4_required: bool,
+) -> "InstallEntryDecision":
+    return InstallEntryDecision(
+        ok=True,
+        selected_game=selected_game,
+        source_archive=_normalize_text(state.opti_source_archive),
+        resolved_dll_name=_normalize_text(state.install_precheck_dll_name),
+        fsr4_required=bool(fsr4_required),
+        fsr4_source_archive=_normalize_text(state.fsr4_source_archive) if fsr4_required else "",
+        ual_cached_archive=_normalize_text(state.ual_cached_archive),
+        optipatcher_cached_archive=_normalize_text(state.optipatcher_cached_archive),
+        specialk_cached_archive=_normalize_text(state.specialk_cached_archive),
+        unreal5_cached_archive=_normalize_text(state.unreal5_cached_archive),
+    )
+
+
 @dataclass(frozen=True)
 class InstallEntryState:
     multi_gpu_blocked: bool
@@ -51,67 +93,47 @@ def validate_install_entry(
     should_apply_fsr4: Callable[[Mapping[str, Any]], bool],
 ) -> InstallEntryDecision:
     if state.multi_gpu_blocked:
-        return InstallEntryDecision(ok=False, code="multi_gpu_blocked")
+        return _reject("multi_gpu_blocked")
 
     if state.install_in_progress:
-        return InstallEntryDecision(ok=False, code="install_in_progress")
+        return _reject("install_in_progress")
 
     if state.predownload_in_progress:
-        return InstallEntryDecision(ok=False, code="predownload_in_progress")
+        return _reject("predownload_in_progress")
 
     if state.selected_game_index is None:
-        return InstallEntryDecision(ok=False, code="no_game_selected")
+        return _reject("no_game_selected")
 
     if state.optiscaler_archive_downloading:
-        return InstallEntryDecision(ok=False, code="optiscaler_archive_downloading")
+        return _reject("optiscaler_archive_downloading")
 
     if state.install_precheck_running:
-        return InstallEntryDecision(ok=False, code="install_precheck_running")
+        return _reject("install_precheck_running")
 
     if not state.install_precheck_ok or not state.install_precheck_dll_name:
-        return InstallEntryDecision(
-            ok=False,
-            code="precheck_incomplete",
-            detail=str(state.install_precheck_error or ""),
-        )
+        return _reject("precheck_incomplete", detail=_normalize_text(state.install_precheck_error))
 
     if not state.optiscaler_archive_ready or not state.opti_source_archive:
-        return InstallEntryDecision(
-            ok=False,
-            code="optiscaler_archive_not_ready",
-            detail=str(state.optiscaler_archive_error or ""),
-        )
+        return _reject("optiscaler_archive_not_ready", detail=_normalize_text(state.optiscaler_archive_error))
 
-    selected_index = int(state.selected_game_index)
-    if selected_index < 0 or selected_index >= len(state.found_games):
-        return InstallEntryDecision(ok=False, code="invalid_game_selection")
+    selected_game = _resolve_selected_game(state)
+    if selected_game is None:
+        return _reject("invalid_game_selection")
 
-    selected_game = state.found_games[selected_index]
     fsr4_required = bool(should_apply_fsr4(selected_game))
     if fsr4_required and state.fsr4_archive_downloading:
-        return InstallEntryDecision(ok=False, code="fsr4_archive_downloading")
+        return _reject("fsr4_archive_downloading")
 
     if fsr4_required and (not state.fsr4_archive_ready or not state.fsr4_source_archive):
-        return InstallEntryDecision(
-            ok=False,
-            code="fsr4_not_ready",
-            detail=str(state.fsr4_archive_error or ""),
-        )
+        return _reject("fsr4_not_ready", detail=_normalize_text(state.fsr4_archive_error))
 
     if not state.game_popup_confirmed:
-        return InstallEntryDecision(ok=False, code="confirm_popup_required")
+        return _reject("confirm_popup_required")
 
-    return InstallEntryDecision(
-        ok=True,
+    return _build_success_decision(
+        state,
         selected_game=selected_game,
-        source_archive=str(state.opti_source_archive or ""),
-        resolved_dll_name=str(state.install_precheck_dll_name or ""),
         fsr4_required=fsr4_required,
-        fsr4_source_archive=str(state.fsr4_source_archive or "") if fsr4_required else "",
-        ual_cached_archive=str(state.ual_cached_archive or ""),
-        optipatcher_cached_archive=str(state.optipatcher_cached_archive or ""),
-        specialk_cached_archive=str(state.specialk_cached_archive or ""),
-        unreal5_cached_archive=str(state.unreal5_cached_archive or ""),
     )
 
 

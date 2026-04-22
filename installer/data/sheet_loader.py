@@ -4,6 +4,7 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from ..common.cover_utils import normalize_cover_filename
+from ..common.flag_parser import parse_bool_token
 from ..common.network_utils import get_shared_retry_session
 
 
@@ -144,14 +145,12 @@ def _build_module_download_links_from_rows(rows: object) -> dict[str, dict[str, 
 
 
 def _is_truthy_support_flag(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    text = str(value or "").strip().lower()
-    if not text:
-        return False
-    if text in {"0", "false", "no", "n", "off", "null", "none", "na", "n/a", "-", "native xefg"}:
-        return False
-    return True
+    return parse_bool_token(
+        value,
+        empty_default=False,
+        unknown_default=True,
+        extra_false_tokens=("native xefg",),
+    )
 
 
 def _is_enabled_flag(value: object) -> bool:

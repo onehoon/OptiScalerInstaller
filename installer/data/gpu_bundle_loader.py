@@ -6,6 +6,7 @@ import re
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from ..common.flag_parser import parse_bool_token
 from ..common.network_utils import build_retry_session
 
 
@@ -174,16 +175,11 @@ def _normalize_bundle_games(
 
 
 def _to_bool(value: object, default: bool = False) -> bool:
-    if isinstance(value, bool):
-        return value
-    text = str(value or "").strip().lower()
-    if not text:
-        return default
-    if text in {"1", "true", "yes", "y", "on"}:
-        return True
-    if text in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
+    return parse_bool_token(
+        value,
+        empty_default=default,
+        unknown_default=default,
+    )
 
 
 def _safe_int(value: object, default: int = 100) -> int:
