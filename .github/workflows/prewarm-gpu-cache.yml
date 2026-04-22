@@ -19,7 +19,7 @@ on:
         type: string
         default: "3"
   schedule:
-    - cron: "10 */3 * * *"
+    - cron: "37 */2 * * *"
 
 permissions: {}
 
@@ -63,4 +63,4 @@ jobs:
             args+=(--debug)
           fi
 
-          python scripts/prewarm_gpu_bundle_cache.py --force --debug "${args[@]}"
+          python scripts/prewarm_gpu_bundle_cache.py "${args[@]}"
