@@ -225,45 +225,73 @@ class StartupRuntimeCoordinator:
         self.apply_fsr4_archive_state(state)
         self._callbacks.update_install_button_state()
 
-    def start_optipatcher_archive_prepare(self) -> None:
+    def _start_versioned_archive_prepare(
+        self,
+        *,
+        entry_key: str,
+        cache_dir: Path,
+        prepare_archive: Callable[
+            [ArchivePreparationController, Mapping[str, object] | None, Path],
+            ArchivePreparationState,
+        ],
+        apply_state: Callable[[ArchivePreparationState], None],
+    ) -> None:
         controller = self._callbacks.get_archive_controller()
         if controller is None:
             return
 
-        entry = self._sheet_state.module_download_links.get("optipatcher", {})
-        state = controller.prepare_optipatcher(entry, self._optipatcher_cache_dir, self._manifest_root)
-        self.apply_optipatcher_archive_state(state)
+        entry = self._sheet_state.module_download_links.get(entry_key, {})
+        state = prepare_archive(controller, entry, cache_dir)
+        apply_state(state)
         self._callbacks.update_install_button_state()
+
+    def start_optipatcher_archive_prepare(self) -> None:
+        self._start_versioned_archive_prepare(
+            entry_key="optipatcher",
+            cache_dir=self._optipatcher_cache_dir,
+            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_optipatcher(
+                entry,
+                cache_dir,
+                self._manifest_root,
+            ),
+            apply_state=self.apply_optipatcher_archive_state,
+        )
 
     def start_specialk_archive_prepare(self) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
-            return
-
-        entry = self._sheet_state.module_download_links.get("specialk", {})
-        state = controller.prepare_specialk(entry, self._specialk_cache_dir, self._manifest_root)
-        self.apply_specialk_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._start_versioned_archive_prepare(
+            entry_key="specialk",
+            cache_dir=self._specialk_cache_dir,
+            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_specialk(
+                entry,
+                cache_dir,
+                self._manifest_root,
+            ),
+            apply_state=self.apply_specialk_archive_state,
+        )
 
     def start_ual_archive_prepare(self) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
-            return
-
-        entry = self._sheet_state.module_download_links.get("ultimateasiloader", {})
-        state = controller.prepare_ual(entry, self._ual_cache_dir, self._manifest_root)
-        self.apply_ual_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._start_versioned_archive_prepare(
+            entry_key="ultimateasiloader",
+            cache_dir=self._ual_cache_dir,
+            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_ual(
+                entry,
+                cache_dir,
+                self._manifest_root,
+            ),
+            apply_state=self.apply_ual_archive_state,
+        )
 
     def start_unreal5_archive_prepare(self) -> None:
-        controller = self._callbacks.get_archive_controller()
-        if controller is None:
-            return
-
-        entry = self._sheet_state.module_download_links.get("unreal5", {})
-        state = controller.prepare_unreal5(entry, self._unreal5_cache_dir, self._manifest_root)
-        self.apply_unreal5_archive_state(state)
-        self._callbacks.update_install_button_state()
+        self._start_versioned_archive_prepare(
+            entry_key="unreal5",
+            cache_dir=self._unreal5_cache_dir,
+            prepare_archive=lambda controller, entry, cache_dir: controller.prepare_unreal5(
+                entry,
+                cache_dir,
+                self._manifest_root,
+            ),
+            apply_state=self.apply_unreal5_archive_state,
+        )
 
     def _apply_archive_state(
         self, state: ArchivePreparationState, prefix: str, source_archive_field: str
