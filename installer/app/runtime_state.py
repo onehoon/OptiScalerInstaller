@@ -57,7 +57,6 @@ class SheetRuntimeState:
     active_vendor: str = "default"
     game_db: dict[str, Any] = field(default_factory=dict)
     module_download_links: dict[str, Any] = field(default_factory=dict)
-    startup_warning_text: str = ""
 
 
 @dataclass

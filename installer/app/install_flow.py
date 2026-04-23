@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import Executor
 from dataclasses import dataclass
-import logging
 from tkinter import messagebox
 from typing import Any
+
+from .ui_shell_actions import set_information_text
 
 from installer.games.handlers import get_game_handler
 from installer.i18n import build_install_information_text
@@ -51,7 +52,6 @@ class InstallFlowController:
         card_ui_state: CardUiRuntimeState,
         callbacks: InstallFlowCallbacks,
         create_prefixed_logger: Callable[[str], Any],
-        logger=None,
     ) -> None:
         self._app_ref = app_ref
         self._root = root
@@ -127,18 +127,15 @@ class InstallFlowController:
                 error=str(exc),
             )
 
-    def _build_selection_snapshot(self):
-        return build_selected_game_snapshot(
-            self._callbacks.get_found_games(),
-            self._card_ui_state.selected_game_index,
-            self._callbacks.get_lang(),
-        )
-
     def _resolve_cached_archive(self, ready: bool, archive_path: str) -> str:
         return archive_path if ready else ""
 
     def build_install_entry_state(self) -> InstallEntryState:
-        selection = self._build_selection_snapshot()
+        selection = build_selected_game_snapshot(
+            self._callbacks.get_found_games(),
+            self._card_ui_state.selected_game_index,
+            self._callbacks.get_lang(),
+        )
         archive = self._archive_state
         predownload_in_progress = bool(
             archive.optipatcher_downloading
@@ -361,13 +358,12 @@ def create_install_flow_controller(
             should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
             update_install_button_state=app._update_install_button_state,
             show_after_install_popup=_show_after_install_popup,
-            set_information_text=app._set_information_text,
+            set_information_text=lambda text="": set_information_text(app, text),
             show_info=messagebox.showinfo,
             show_warning=messagebox.showwarning,
             show_error=messagebox.showerror,
         ),
         create_prefixed_logger=create_prefixed_logger,
-        logger=logging.getLogger(),
     )
 
 

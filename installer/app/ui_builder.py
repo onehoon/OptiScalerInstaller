@@ -5,6 +5,15 @@ from typing import Any
 
 import customtkinter as ctk
 
+from .ui_shell_actions import (
+    apply_information_text_shift,
+    open_supported_games_wiki,
+    refresh_optiscaler_archive_info_ui,
+    set_information_text,
+    set_status_badge_state,
+    set_supported_games_wiki_link_hover,
+)
+
 
 @dataclass(frozen=True)
 class MainUiTheme:
@@ -101,7 +110,7 @@ def _build_header(app: Any, theme: MainUiTheme) -> None:
         anchor="w",
     )
     app.status_badge_label.grid(row=0, column=1, sticky="w")
-    app._set_status_badge_state(app.txt.main.status_game_db, theme.status_indicator_loading_color, pulse=True)
+    set_status_badge_state(app, app.txt.main.status_game_db, theme.status_indicator_loading_color, pulse=True)
 
     sep = ctk.CTkFrame(hdr, height=1, fg_color="#4A5361", corner_radius=0)
     sep.grid(row=2, column=0, sticky="ew")
@@ -175,9 +184,9 @@ def _build_grid_area(app: Any, theme: MainUiTheme) -> None:
     )
     app.lbl_supported_games_wiki_link.grid(row=0, column=0, padx=(14, 12), pady=(1, 0), sticky="w")
     if theme.supported_games_wiki_url:
-        app.lbl_supported_games_wiki_link.bind("<Enter>", lambda _event: app._set_supported_games_wiki_link_hover(True))
-        app.lbl_supported_games_wiki_link.bind("<Leave>", lambda _event: app._set_supported_games_wiki_link_hover(False))
-        app.lbl_supported_games_wiki_link.bind("<Button-1>", app._open_supported_games_wiki)
+        app.lbl_supported_games_wiki_link.bind("<Enter>", lambda _event: set_supported_games_wiki_link_hover(app, True))
+        app.lbl_supported_games_wiki_link.bind("<Leave>", lambda _event: set_supported_games_wiki_link_hover(app, False))
+        app.lbl_supported_games_wiki_link.bind("<Button-1>", lambda _event: open_supported_games_wiki(app, _event))
 
     selected_header_row = ctk.CTkFrame(header_row, fg_color="transparent", corner_radius=0)
     selected_header_row.grid(row=0, column=1, padx=(8, theme.meta_right_pad), pady=(1, 0), sticky="ew")
@@ -274,8 +283,7 @@ def _build_bottom_bar(app: Any, theme: MainUiTheme) -> None:
         border_width=0,
     )
     app.info_text.grid(row=0, column=0, sticky="ew", pady=(0, 0))
-    app._apply_information_text_shift()
-
-    app._refresh_optiscaler_archive_info_ui()
-    app._set_information_text(app.txt.main.select_game_hint)
+    apply_information_text_shift(app)
+    refresh_optiscaler_archive_info_ui(app)
+    set_information_text(app, app.txt.main.select_game_hint)
     app._update_install_button_state()

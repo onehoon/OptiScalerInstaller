@@ -214,7 +214,6 @@ class StartupRuntimeCoordinator:
         sheet_state.active_vendor = str(result.game_db_vendor or "default")
         sheet_state.game_db = result.game_db if result.ok else {}
         sheet_state.module_download_links = result.module_download_links if result.ok else {}
-        sheet_state.startup_warning_text = str(result.startup_warning_text or "")
         sheet_state.status = result.ok
         rtss_state = rtss_notice.probe_rtss_startup_state(logger=self._logger)
         install_state.rtss_scan_ok = bool(rtss_state.scan_ok)

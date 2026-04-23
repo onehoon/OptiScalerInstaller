@@ -16,6 +16,17 @@ from . import gpu_notice
 from .app_actions_controller import AppActionCallbacks, AppActionsController
 from .app_shutdown_controller import AppShutdownCallbacks, AppShutdownController, AppShutdownStep
 from .archive_controller import ArchivePreparationCallbacks, ArchivePreparationController
+from .card_runtime_actions import (
+    add_game_card_incremental,
+    append_found_game,
+    apply_selected_game_index,
+    clear_cards,
+    create_and_place_card,
+    hide_empty_label,
+    reset_scan_results_for_new_scan,
+    restore_rendered_selection,
+    run_install_precheck,
+)
 from .card_render_controller import CardRenderCallbacks, CardRenderController
 from .game_db_controller import GameDbControllerCallbacks, GameDbLoadController
 from .gpu_flow_controller import GpuFlowCallbacks, GpuFlowController
@@ -25,6 +36,11 @@ from .notice_controller import AppNoticeController
 from .scan_controller import ScanController, ScanControllerCallbacks
 from .scan_entry_controller import ScanEntryCallbacks, ScanEntryController
 from .scan_feedback import ScanFeedbackCallbacks, ScanFeedbackController
+from .ui_shell_actions import (
+    set_information_text,
+    set_scan_status_message,
+    update_sheet_status,
+)
 
 
 @dataclass(frozen=True)
@@ -64,6 +80,13 @@ class AppControllers:
     install_flow: InstallFlowController
     install_selection: InstallSelectionController
     card_render: CardRenderController
+
+
+def _call_optional_method(target: Any, attr_name: str, method_name: str, *args, default=None, **kwargs):
+    method_target = getattr(target, attr_name, None)
+    if method_target is None:
+        return default
+    return getattr(method_target, method_name)(*args, **kwargs)
 
 
 def _build_thread_safe_ui_scheduler(root: Any, *, logger: Any = None, poll_ms: int = 25) -> Callable[[Callable[[], None]], None]:
@@ -125,8 +148,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
                 scan_status_message,
                 info_text,
             ),
-            set_scan_status_message=app._set_scan_status_message,
-            update_sheet_status=app._update_sheet_status,
+            set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
+            update_sheet_status=lambda: update_sheet_status(app),
             update_install_button_state=app._update_install_button_state,
             start_game_db_load=app._start_game_db_load_async,
         ),
@@ -137,9 +160,9 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
     scan_feedback = _build_scan_feedback_controller(
         root=app.root,
         callbacks=ScanFeedbackCallbacks(
-            set_scan_status_message=app._set_scan_status_message,
+            set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
             set_select_folder_enabled=app._set_folder_select_enabled,
-            set_information_text=app._set_information_text,
+            set_information_text=lambda text="": set_information_text(app, text),
             enqueue_startup_popup=app._startup_flow.enqueue_popup,
             run_next_startup_popup=app._startup_flow.run_next_popup,
         ),
@@ -156,8 +179,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
         schedule_ui=ui_schedule,
         callbacks=ScanControllerCallbacks(
             prepare_scan_ui=scan_feedback.prepare_scan_ui,
-            reset_scan_results=app._reset_scan_results_for_new_scan,
-            add_game_card=app._add_game_card_incremental,
+            reset_scan_results=lambda: reset_scan_results_for_new_scan(app),
+            add_game_card=lambda game: add_game_card_incremental(app, game),
             finish_scan_ui=scan_feedback.finish_scan_ui,
             pump_poster_queue=app._pump_poster_queue,
             show_auto_scan_empty_popup=scan_feedback.enqueue_initial_auto_scan_empty_popup,
@@ -179,8 +202,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
     install_selection = _build_install_selection_controller(
         schedule=app.root.after_idle,
         callbacks=InstallSelectionCallbacks(
-            apply_selected_index=app._apply_selected_game_index,
-            set_information_text=app._set_information_text,
+            apply_selected_index=lambda index: apply_selected_game_index(app, index),
+            set_information_text=lambda text="": set_information_text(app, text),
             build_information_text=lambda game: build_install_information_text(
                 game,
                 lang=app.lang,
@@ -193,7 +216,7 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
             ),
             apply_ui_state=app._apply_install_selection_state,
             update_install_button_state=app._update_install_button_state,
-            run_precheck=install_flow.run_install_precheck,
+            run_precheck=lambda game: run_install_precheck(app, game),
             get_selection_popup_message=lambda game: _build_selection_popup_message(
                 game=game,
                 lang=app.lang,
@@ -207,13 +230,13 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
     viewport = app._card_viewport_controller
     card_render = _build_card_render_controller(
         callbacks=CardRenderCallbacks(
-            append_found_game=app._append_found_game,
-            clear_cards=app._clear_cards,
-            hide_empty_label=app._hide_empty_label,
+            append_found_game=lambda game: append_found_game(app, game),
+            clear_cards=lambda keep_selection=False: clear_cards(app, keep_selection),
+            hide_empty_label=lambda: hide_empty_label(app),
             configure_card_columns=viewport.configure_card_columns,
-            create_and_place_card=app._create_and_place_card,
+            create_and_place_card=lambda index, game, placement: create_and_place_card(app, index, game, placement),
             fit_cards_to_visible_width=viewport.fit_cards_to_visible_width,
-            restore_selection=app._restore_rendered_selection,
+            restore_selection=lambda index, game: restore_rendered_selection(app, index, game),
             schedule_scrollregion_refresh=viewport.schedule_games_scrollregion_refresh,
             pump_poster_queue=app._pump_poster_queue,
         ),
@@ -291,15 +314,16 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
             best_effort_steps=(
                 AppShutdownStep(
                     "shutdown header status presenter",
-                    lambda: app._call_optional_method("_header_status_presenter", "shutdown"),
+                    lambda: _call_optional_method(app, "_header_status_presenter", "shutdown"),
                 ),
                 AppShutdownStep(
                     "shutdown poster queue",
-                    lambda: app._call_optional_method("_poster_queue", "shutdown"),
+                    lambda: _call_optional_method(app, "_poster_queue", "shutdown"),
                 ),
                 AppShutdownStep(
                     "shutdown image executor",
-                    lambda: app._call_optional_method(
+                    lambda: _call_optional_method(
+                        app,
                         "_image_executor",
                         "shutdown",
                         wait=False,
@@ -308,7 +332,8 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                 ),
                 AppShutdownStep(
                     "shutdown task executor",
-                    lambda: app._call_optional_method(
+                    lambda: _call_optional_method(
+                        app,
                         "_task_executor",
                         "shutdown",
                         wait=False,
@@ -317,7 +342,8 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                 ),
                 AppShutdownStep(
                     "shutdown scan executor",
-                    lambda: app._call_optional_method(
+                    lambda: _call_optional_method(
+                        app,
                         "_scan_executor",
                         "shutdown",
                         wait=False,
@@ -326,7 +352,8 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                 ),
                 AppShutdownStep(
                     "shutdown optiscaler prepare executor",
-                    lambda: app._call_optional_method(
+                    lambda: _call_optional_method(
+                        app,
                         "_optiscaler_prepare_executor",
                         "shutdown",
                         wait=False,
@@ -335,7 +362,8 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                 ),
                 AppShutdownStep(
                     "shutdown download executor",
-                    lambda: app._call_optional_method(
+                    lambda: _call_optional_method(
+                        app,
                         "_download_executor",
                         "shutdown",
                         wait=False,
@@ -344,11 +372,11 @@ def _build_app_shutdown_controller(app: Any) -> AppShutdownController:
                 ),
                 AppShutdownStep(
                     "close poster loader",
-                    lambda: app._call_optional_method("_poster_loader", "close"),
+                    lambda: _call_optional_method(app, "_poster_loader", "close"),
                 ),
                 AppShutdownStep(
                     "shutdown app update manager",
-                    lambda: app._call_optional_method("_app_update_manager", "shutdown"),
+                    lambda: _call_optional_method(app, "_app_update_manager", "shutdown"),
                 ),
             ),
             destroy_root=app.root.destroy,

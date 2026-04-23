@@ -19,27 +19,6 @@ def _normalize_text(value: object) -> str:
     return str(value or "")
 
 
-def _normalize_found_games(found_games: Sequence[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
-    return tuple(found_games or ())
-
-
-def _normalize_selected_game_index(value: object) -> int | None:
-    if value is None:
-        return None
-    return int(value)
-
-
-def _resolve_selected_game(
-    found_games: tuple[Mapping[str, Any], ...],
-    selected_game_index: int | None,
-) -> Mapping[str, Any] | None:
-    if selected_game_index is None:
-        return None
-    if selected_game_index < 0 or selected_game_index >= len(found_games):
-        return None
-    return found_games[selected_game_index]
-
-
 def _build_selected_game_header_text(selected_game: Mapping[str, Any], lang: str) -> str:
     if str(lang or "").lower() == "ko":
         return _normalize_text(
@@ -81,9 +60,11 @@ def build_selected_game_snapshot(
     selected_game_index: int | None,
     lang: str,
 ) -> SelectedGameSnapshot:
-    normalized_games = _normalize_found_games(found_games)
-    normalized_selected_index = _normalize_selected_game_index(selected_game_index)
-    selected_game = _resolve_selected_game(normalized_games, normalized_selected_index)
+    normalized_games = tuple(found_games or ())
+    normalized_selected_index = None if selected_game_index is None else int(selected_game_index)
+    selected_game = None
+    if normalized_selected_index is not None and 0 <= normalized_selected_index < len(normalized_games):
+        selected_game = normalized_games[normalized_selected_index]
     if selected_game is None:
         return SelectedGameSnapshot(
             found_games=normalized_games,

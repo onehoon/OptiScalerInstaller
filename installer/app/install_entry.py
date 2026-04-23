@@ -16,36 +16,6 @@ def _reject(code: str, *, detail: str = "") -> "InstallEntryDecision":
     )
 
 
-def _resolve_selected_game(state: "InstallEntryState") -> Mapping[str, Any] | None:
-    if state.selected_game_index is None:
-        return None
-
-    selected_index = int(state.selected_game_index)
-    if selected_index < 0 or selected_index >= len(state.found_games):
-        return None
-    return state.found_games[selected_index]
-
-
-def _build_success_decision(
-    state: "InstallEntryState",
-    *,
-    selected_game: Mapping[str, Any],
-    fsr4_required: bool,
-) -> "InstallEntryDecision":
-    return InstallEntryDecision(
-        ok=True,
-        selected_game=selected_game,
-        source_archive=_normalize_text(state.opti_source_archive),
-        resolved_dll_name=_normalize_text(state.install_precheck_dll_name),
-        fsr4_required=bool(fsr4_required),
-        fsr4_source_archive=_normalize_text(state.fsr4_source_archive) if fsr4_required else "",
-        ual_cached_archive=_normalize_text(state.ual_cached_archive),
-        optipatcher_cached_archive=_normalize_text(state.optipatcher_cached_archive),
-        specialk_cached_archive=_normalize_text(state.specialk_cached_archive),
-        unreal5_cached_archive=_normalize_text(state.unreal5_cached_archive),
-    )
-
-
 @dataclass(frozen=True)
 class InstallEntryState:
     multi_gpu_blocked: bool
@@ -116,7 +86,12 @@ def validate_install_entry(
     if not state.optiscaler_archive_ready or not state.opti_source_archive:
         return _reject("optiscaler_archive_not_ready", detail=_normalize_text(state.optiscaler_archive_error))
 
-    selected_game = _resolve_selected_game(state)
+    selected_index = state.selected_game_index
+    selected_game = None
+    if selected_index is not None:
+        selected_index = int(selected_index)
+        if 0 <= selected_index < len(state.found_games):
+            selected_game = state.found_games[selected_index]
     if selected_game is None:
         return _reject("invalid_game_selection")
 
@@ -130,10 +105,17 @@ def validate_install_entry(
     if not state.game_popup_confirmed:
         return _reject("confirm_popup_required")
 
-    return _build_success_decision(
-        state,
+    return InstallEntryDecision(
+        ok=True,
         selected_game=selected_game,
-        fsr4_required=fsr4_required,
+        source_archive=_normalize_text(state.opti_source_archive),
+        resolved_dll_name=_normalize_text(state.install_precheck_dll_name),
+        fsr4_required=bool(fsr4_required),
+        fsr4_source_archive=_normalize_text(state.fsr4_source_archive) if fsr4_required else "",
+        ual_cached_archive=_normalize_text(state.ual_cached_archive),
+        optipatcher_cached_archive=_normalize_text(state.optipatcher_cached_archive),
+        specialk_cached_archive=_normalize_text(state.specialk_cached_archive),
+        unreal5_cached_archive=_normalize_text(state.unreal5_cached_archive),
     )
 
 

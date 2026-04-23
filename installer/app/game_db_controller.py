@@ -29,7 +29,6 @@ class GameDbLoadResult:
     error: Exception | None
     module_download_links: dict[str, Any] = field(default_factory=dict)
     game_db_vendor: str = "default"
-    startup_warning_text: str = ""
 
 
 @dataclass(frozen=True)
