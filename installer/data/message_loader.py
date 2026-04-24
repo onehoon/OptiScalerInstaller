@@ -15,6 +15,12 @@ from installer.data.game_db_keys import (
 
 
 _file_session = get_shared_retry_session()
+_BOUND_POPUP_KEY_SPECS = (
+    ("install_pre", "ko", INSTALL_PRE_KR_KEY),
+    ("install_pre", "en", INSTALL_PRE_EN_KEY),
+    ("install_post", "ko", INSTALL_POST_KR_KEY),
+    ("install_post", "en", INSTALL_POST_EN_KEY),
+)
 
 
 @dataclass(frozen=True)
@@ -227,20 +233,18 @@ def materialize_bound_messages_into_game_db(
         game = dict(raw_game or {})
         game_id = _normalize_text(game.get("game_id"))
         if game_id:
-            popup_ko = resolve_stage_popup_text(repo, stage="install_pre", game_id=game_id, gpu_vendor=gpu_vendor, lang="ko")
-            popup_en = resolve_stage_popup_text(repo, stage="install_pre", game_id=game_id, gpu_vendor=gpu_vendor, lang="en")
-            after_popup_ko = resolve_stage_popup_text(repo, stage="install_post", game_id=game_id, gpu_vendor=gpu_vendor, lang="ko")
-            after_popup_en = resolve_stage_popup_text(repo, stage="install_post", game_id=game_id, gpu_vendor=gpu_vendor, lang="en")
-            guide_url = resolve_stage_guide_url(repo, game_id=game_id, gpu_vendor=gpu_vendor)
+            for stage, lang, output_key in _BOUND_POPUP_KEY_SPECS:
+                popup_text = resolve_stage_popup_text(
+                    repo,
+                    stage=stage,
+                    game_id=game_id,
+                    gpu_vendor=gpu_vendor,
+                    lang=lang,
+                )
+                if popup_text:
+                    game[output_key] = popup_text
 
-            if popup_ko:
-                game[INSTALL_PRE_KR_KEY] = popup_ko
-            if popup_en:
-                game[INSTALL_PRE_EN_KEY] = popup_en
-            if after_popup_ko:
-                game[INSTALL_POST_KR_KEY] = after_popup_ko
-            if after_popup_en:
-                game[INSTALL_POST_EN_KEY] = after_popup_en
+            guide_url = resolve_stage_guide_url(repo, game_id=game_id, gpu_vendor=gpu_vendor)
             if guide_url:
                 game[GUIDE_URL_KEY] = guide_url
 

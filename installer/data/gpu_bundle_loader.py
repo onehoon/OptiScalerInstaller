@@ -19,6 +19,17 @@ from .game_db_keys import (
 _SCRIPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{20,}$")
 _GPU_BUNDLE_SESSION = build_retry_session(total=4, backoff_factor=0.6)
 _GPU_BUNDLE_CONNECT_TIMEOUT_SECONDS = 5.0
+_INSTALL_PROFILE_BOOL_FIELDS = (
+    "ultimate_asi_loader",
+    "optipatcher",
+    "specialk",
+    "unreal5",
+    "rtss_overlay",
+)
+_INSTALL_PROFILE_TEXT_FIELDS = (
+    "optiscaler_dll_name",
+    "reframework_url",
+)
 
 
 def _normalize_apps_script_base_url(base_url_or_key: str) -> str:
@@ -252,21 +263,13 @@ def _materialize_ini_settings(rows: list[dict[str, Any]]) -> dict[str, str]:
 
 
 def _apply_install_profile(game_entry: dict[str, Any], install_profile: Mapping[str, Any]) -> None:
-    if "optiscaler_dll_name" in install_profile:
-        game_entry["optiscaler_dll_name"] = str(install_profile.get("optiscaler_dll_name") or "").strip()
+    for field_name in _INSTALL_PROFILE_TEXT_FIELDS:
+        if field_name in install_profile:
+            game_entry[field_name] = str(install_profile.get(field_name) or "").strip()
 
-    if "ultimate_asi_loader" in install_profile:
-        game_entry["ultimate_asi_loader"] = _to_bool(install_profile.get("ultimate_asi_loader"), False)
-    if "optipatcher" in install_profile:
-        game_entry["optipatcher"] = _to_bool(install_profile.get("optipatcher"), False)
-    if "specialk" in install_profile:
-        game_entry["specialk"] = _to_bool(install_profile.get("specialk"), False)
-    if "reframework_url" in install_profile:
-        game_entry["reframework_url"] = str(install_profile.get("reframework_url") or "").strip()
-    if "unreal5" in install_profile:
-        game_entry["unreal5"] = _to_bool(install_profile.get("unreal5"), False)
-    if "rtss_overlay" in install_profile:
-        game_entry["rtss_overlay"] = _to_bool(install_profile.get("rtss_overlay"), False)
+    for field_name in _INSTALL_PROFILE_BOOL_FIELDS:
+        if field_name in install_profile:
+            game_entry[field_name] = _to_bool(install_profile.get(field_name), False)
 
 
 def merge_gpu_bundle_into_game_db(
