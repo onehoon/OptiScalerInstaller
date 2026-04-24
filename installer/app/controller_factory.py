@@ -13,6 +13,15 @@ from installer.install import services as installer_services
 from installer.system import gpu_service
 
 from . import gpu_notice
+from .app_runtime_actions import (
+    apply_install_selection_state,
+    pump_poster_queue,
+    set_folder_select_enabled,
+    set_game_folder,
+    shutdown_app,
+    start_game_db_load_async,
+    start_manual_scan_from_folder,
+)
 from .app_actions_controller import AppActionCallbacks, AppActionsController
 from .app_shutdown_controller import AppShutdownCallbacks, AppShutdownController, AppShutdownStep
 from .archive_controller import ArchivePreparationCallbacks, ArchivePreparationController
@@ -31,6 +40,10 @@ from .card_render_controller import CardRenderCallbacks, CardRenderController
 from .game_db_controller import GameDbControllerCallbacks, GameDbLoadController
 from .gpu_flow_controller import GpuFlowCallbacks, GpuFlowController
 from .install_flow import InstallFlowController, create_install_flow_controller
+from .install_runtime_actions import (
+    is_game_supported_for_current_gpu,
+    update_install_button_state,
+)
 from .install_selection_controller import InstallSelectionCallbacks, InstallSelectionController
 from .notice_controller import AppNoticeController
 from .scan_controller import ScanController, ScanControllerCallbacks
@@ -150,8 +163,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
             ),
             set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
             update_sheet_status=lambda: update_sheet_status(app),
-            update_install_button_state=app._update_install_button_state,
-            start_game_db_load=app._start_game_db_load_async,
+            update_install_button_state=lambda: update_install_button_state(app),
+            start_game_db_load=lambda: start_game_db_load_async(app),
         ),
         root=app.root,
         strings=app.txt,
@@ -161,7 +174,7 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
         root=app.root,
         callbacks=ScanFeedbackCallbacks(
             set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
-            set_select_folder_enabled=app._set_folder_select_enabled,
+            set_select_folder_enabled=lambda enabled: set_folder_select_enabled(app, enabled),
             set_information_text=lambda text="": set_information_text(app, text),
             enqueue_startup_popup=app._startup_flow.enqueue_popup,
             run_next_startup_popup=app._startup_flow.run_next_popup,
@@ -182,20 +195,20 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
             reset_scan_results=lambda: reset_scan_results_for_new_scan(app),
             add_game_card=lambda game: add_game_card_incremental(app, game),
             finish_scan_ui=scan_feedback.finish_scan_ui,
-            pump_poster_queue=app._pump_poster_queue,
+            pump_poster_queue=lambda: pump_poster_queue(app),
             show_auto_scan_empty_popup=scan_feedback.enqueue_initial_auto_scan_empty_popup,
             show_manual_scan_empty_popup=scan_feedback.show_manual_scan_empty_popup,
             show_select_game_hint=scan_feedback.show_select_game_hint,
         ),
         get_game_db=lambda: app.sheet_state.game_db,
         get_lang=lambda: app.lang,
-        is_game_supported=app._is_game_supported_for_current_gpu,
+        is_game_supported=lambda game_data: is_game_supported_for_current_gpu(app, game_data),
     )
     scan_entry = _build_scan_entry_controller(
         callbacks=ScanEntryCallbacks(
             ask_directory=filedialog.askdirectory,
-            set_selected_folder=app._set_game_folder,
-            start_manual_scan=app._start_manual_scan_from_folder,
+            set_selected_folder=lambda folder_path: set_game_folder(app, folder_path),
+            start_manual_scan=lambda folder_path: start_manual_scan_from_folder(app, folder_path),
         ),
     )
     install_flow = _build_install_flow_controller(app, config)
@@ -214,8 +227,8 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
                     dialogs_strings=app.txt.dialogs,
                 ),
             ),
-            apply_ui_state=app._apply_install_selection_state,
-            update_install_button_state=app._update_install_button_state,
+            apply_ui_state=lambda state: apply_install_selection_state(app, state),
+            update_install_button_state=lambda: update_install_button_state(app),
             run_precheck=lambda game: run_install_precheck(app, game),
             get_selection_popup_message=lambda game: _build_selection_popup_message(
                 game=game,
@@ -238,7 +251,7 @@ def build_app_controllers(app: Any, config: AppControllerFactoryConfig) -> AppCo
             fit_cards_to_visible_width=viewport.fit_cards_to_visible_width,
             restore_selection=lambda index, game: restore_rendered_selection(app, index, game),
             schedule_scrollregion_refresh=viewport.schedule_games_scrollregion_refresh,
-            pump_poster_queue=app._pump_poster_queue,
+            pump_poster_queue=lambda: pump_poster_queue(app),
         ),
     )
     return AppControllers(
@@ -299,7 +312,7 @@ def _build_app_actions_controller(app: Any) -> AppActionsController:
                 app.txt.common.warning,
                 app.txt.dialogs.close_while_installing_body,
             ),
-            perform_shutdown=app._shutdown_app,
+            perform_shutdown=lambda: shutdown_app(app),
             check_for_update=lambda module_download_links, blocked: app._app_update_manager.check_for_update(
                 module_download_links,
                 blocked=blocked,

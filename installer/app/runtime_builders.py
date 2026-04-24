@@ -9,6 +9,17 @@ from typing import Any, Callable
 from installer import app_update
 from installer.i18n import pick_module_message
 
+from .app_runtime_actions import (
+    apply_install_selection_state,
+    clear_cards_placeholder,
+    clear_found_games,
+    format_gpu_label_text,
+    is_scan_in_progress,
+    request_close,
+    set_folder_select_enabled,
+    set_gpu_label_text,
+    start_auto_scan,
+)
 from .card_runtime_actions import (
     apply_loaded_poster,
     configure_card_columns,
@@ -26,6 +37,11 @@ from .controller_factory import (
     AppControllers,
     bind_app_controllers,
     build_app_controllers,
+)
+from .install_runtime_actions import (
+    is_multi_gpu_block_active,
+    should_apply_fsr4_for_game,
+    update_install_button_state,
 )
 from .path_config import AppPathConfig
 from .poster_queue import PosterQueueController
@@ -294,7 +310,7 @@ def initialize_app_infra(
         poster_target_width=app._poster_target_width,
         poster_target_height=app._poster_target_height,
         get_visible_indices=lambda: visible_game_indices(app),
-        is_scan_in_progress=app._is_scan_in_progress,
+        is_scan_in_progress=lambda: is_scan_in_progress(app),
         on_image_ready=lambda index, label, pil_img: apply_loaded_poster(app, index, label, pil_img),
     )
     app._poster_loader = poster_infra.poster_loader
@@ -306,15 +322,15 @@ def initialize_app_infra(
         app_version=app_version,
         strings=app.txt,
         start_archive_prepare=lambda: app._startup_runtime_coordinator.start_optiscaler_archive_prepare(),
-        start_auto_scan=app._start_auto_scan,
+        start_auto_scan=lambda: start_auto_scan(app),
         show_startup_warning_popup=lambda warning_text, on_close=None: app._app_notice_controller.show_startup_warning_popup(
             warning_text,
             on_close=on_close,
         ),
-        is_multi_gpu_blocked=app._is_multi_gpu_block_active,
+        is_multi_gpu_blocked=lambda: is_multi_gpu_block_active(app),
         get_startup_warning_text=lambda: pick_module_message(app.sheet_state.module_download_links, "warning", app.lang),
-        on_busy_state_changed=app._update_install_button_state,
-        on_exit_requested=app._on_close,
+        on_busy_state_changed=lambda: update_install_button_state(app),
+        on_exit_requested=lambda: request_close(app),
         logger=shared_logger,
     )
     app._startup_flow = startup_update_infra.startup_flow
@@ -489,28 +505,28 @@ def build_app_startup_runtime_coordinator_deps(app: Any, *, logger=None) -> Star
         unreal5_cache_dir=app.unreal5_cache_dir,
         manifest_root=app.manifest_root,
         callbacks=StartupRuntimeCallbacks(
-            format_gpu_label_text=app._format_gpu_label_text,
-            set_gpu_label_text=app._set_gpu_label_text,
+            format_gpu_label_text=lambda gpu_info: format_gpu_label_text(app, gpu_info),
+            set_gpu_label_text=lambda text: set_gpu_label_text(app, text),
             refresh_archive_info_ui=lambda: refresh_optiscaler_archive_info_ui(app),
-            update_install_button_state=app._update_install_button_state,
+            update_install_button_state=lambda: update_install_button_state(app),
             update_sheet_status=lambda: update_sheet_status(app),
             run_post_sheet_startup=app._startup_flow.run_post_sheet_startup,
             mark_post_sheet_startup_done=app._startup_flow.mark_post_sheet_startup_done,
             set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
-            clear_cards=app._clear_cards,
+            clear_cards=lambda: clear_cards_placeholder(app),
             set_information_text=lambda text="": set_information_text(app, text),
             update_selected_game_header=lambda: update_selected_game_header(app),
-            apply_install_selection_state=app._apply_install_selection_state,
-            set_folder_select_enabled=app._set_folder_select_enabled,
+            apply_install_selection_state=lambda state: apply_install_selection_state(app, state),
+            set_folder_select_enabled=lambda enabled: set_folder_select_enabled(app, enabled),
             check_app_update=lambda: bool(
                 app._app_actions_controller.check_app_update(
                     app.sheet_state.module_download_links,
                     blocked=bool(app.gpu_state.multi_gpu_blocked),
                 )
             ),
-            should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
+            should_apply_fsr4_for_game=lambda game=None: should_apply_fsr4_for_game(app, game),
             get_archive_controller=lambda: app._archive_controller,
-            clear_found_games=app._clear_found_games,
+            clear_found_games=lambda: clear_found_games(app),
         ),
         unknown_gpu_text=app.txt.main.unknown_gpu,
         logger=logger or logging.getLogger(),
@@ -560,7 +576,7 @@ def bind_app_root_events(
     logger=None,
 ) -> None:
     app.root.bind("<Configure>", app._card_viewport_controller.on_root_resize)
-    app.root.protocol("WM_DELETE_WINDOW", app._on_close)
+    app.root.protocol("WM_DELETE_WINDOW", lambda: request_close(app))
     if app._startup_window_workaround_active:
         app.root.after_idle(
             lambda: apply_app_startup_window_workaround(

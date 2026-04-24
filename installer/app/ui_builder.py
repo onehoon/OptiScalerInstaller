@@ -5,6 +5,8 @@ from typing import Any
 
 import customtkinter as ctk
 
+from .app_runtime_actions import apply_selected_install, format_gpu_label_text, select_game_folder
+from .install_runtime_actions import update_install_button_state
 from .ui_shell_actions import (
     apply_information_text_shift,
     open_supported_games_wiki,
@@ -72,7 +74,7 @@ def _build_header(app: Any, theme: MainUiTheme) -> None:
 
     app.gpu_lbl = ctk.CTkLabel(
         sub_frame,
-        text=app._format_gpu_label_text(app.gpu_state.gpu_info),
+        text=format_gpu_label_text(app, app.gpu_state.gpu_info),
         font=ctk.CTkFont(family=theme.font_ui, size=11),
         text_color="#C5CFDB",
         anchor="w",
@@ -140,7 +142,7 @@ def _build_scan_row(app: Any, theme: MainUiTheme) -> None:
         hover_color=theme.browse_button_hover_color,
         text_color="#F1F5F9",
         font=ctk.CTkFont(family=theme.font_ui, size=11, weight="bold"),
-        command=app.select_game_folder,
+        command=lambda: select_game_folder(app),
     )
     app.btn_select_folder.grid(row=0, column=1, padx=4, pady=(8, 8), sticky="w")
 
@@ -267,7 +269,7 @@ def _build_bottom_bar(app: Any, theme: MainUiTheme) -> None:
         border_color=theme.install_button_border_disabled_color,
         font=ctk.CTkFont(family=theme.font_ui, size=14, weight="bold"),
         state="disabled",
-        command=app.apply_optiscaler,
+        command=lambda: apply_selected_install(app),
     )
     app.apply_btn.grid(row=0, column=1, padx=(10, 0), pady=(0, 0))
 
@@ -286,4 +288,4 @@ def _build_bottom_bar(app: Any, theme: MainUiTheme) -> None:
     apply_information_text_shift(app)
     refresh_optiscaler_archive_info_ui(app)
     set_information_text(app, app.txt.main.select_game_hint)
-    app._update_install_button_state()
+    update_install_button_state(app)

@@ -5,14 +5,17 @@ from typing import Any
 
 from installer.i18n import build_install_information_text
 
+from .app_runtime_actions import apply_install_selection_state
 from .install_selection_controller import InstallSelectionPrecheckOutcome, InstallSelectionUiState
+from .install_runtime_actions import update_install_button_state
 from .startup_window import get_ctk_scale
 from .ui_shell_actions import set_information_text, update_selected_game_header
 
 
 def reset_selected_game_state(app: Any) -> None:
     app.card_ui_state.selected_game_index = None
-    app._apply_install_selection_state(
+    apply_install_selection_state(
+        app,
         InstallSelectionUiState(
             popup_confirmed=False,
             precheck_running=False,
@@ -45,7 +48,7 @@ def clear_cards(app: Any, keep_selection: bool = False) -> None:
     if not keep_selection:
         reset_selected_game_state(app)
     update_selected_game_header(app)
-    app._update_install_button_state()
+    update_install_button_state(app)
 
 
 def reset_scan_results_for_new_scan(app: Any) -> None:

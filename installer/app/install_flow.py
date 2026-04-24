@@ -13,6 +13,7 @@ from installer.i18n import build_install_information_text
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
+from .install_runtime_actions import should_apply_fsr4_for_game, update_install_button_state
 from .install_selection_controller import InstallSelectionPrecheckOutcome
 from .install_state import build_install_entry_state, build_selected_game_snapshot
 from .runtime_state import (
@@ -355,8 +356,8 @@ def create_install_flow_controller(
         callbacks=InstallFlowCallbacks(
             get_found_games=lambda: tuple(app.found_exe_list),
             get_lang=lambda: app.lang,
-            should_apply_fsr4_for_game=app._should_apply_fsr4_for_game,
-            update_install_button_state=app._update_install_button_state,
+            should_apply_fsr4_for_game=lambda game_data: should_apply_fsr4_for_game(app, game_data),
+            update_install_button_state=lambda: update_install_button_state(app),
             show_after_install_popup=_show_after_install_popup,
             set_information_text=lambda text="": set_information_text(app, text),
             show_info=messagebox.showinfo,
