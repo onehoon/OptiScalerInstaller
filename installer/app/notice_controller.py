@@ -164,11 +164,6 @@ class AppNoticeController:
 
         self.show_selection_popup(resolved_message, on_confirm=_on_confirm_open_guide)
 
-    def _schedule_callback(self, callback: Optional[Callable[[], None]]) -> Optional[Callable[[], None]]:
-        if not callable(callback):
-            return None
-        return lambda: self._schedule_idle(callback)
-
     def _resolve_popup_on_close(
         self,
         callback: Optional[Callable[[], None]],
@@ -179,7 +174,7 @@ class AppNoticeController:
             return None
         if not schedule_on_close:
             return callback
-        return self._schedule_callback(callback)
+        return lambda: self._schedule_idle(callback)
 
 
 __all__ = ["AppNoticeController"]

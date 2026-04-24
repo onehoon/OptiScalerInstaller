@@ -98,6 +98,13 @@ def _split_line_ending(line):
     return line, ""
 
 
+def _log_exception(logger, message: str, *args) -> None:
+    if logger:
+        logger.exception(message, *args)
+    else:
+        logging.exception(message, *args)
+
+
 def _split_ini_value_and_comment(rest: str) -> tuple[str, str, str]:
     leading_ws_len = len(rest) - len(rest.lstrip())
     leading_ws = rest[:leading_ws_len]
@@ -307,10 +314,7 @@ def apply_ini_settings(
         ini_text, ini_encoding = _read_ini_text_with_fallback(p, logger=logger)
         lines = ini_text.splitlines(keepends=True)
     except Exception:
-        if logger:
-            logger.exception("Failed to read INI for in-place update")
-        else:
-            logging.exception("Failed to read INI for in-place update")
+        _log_exception(logger, "Failed to read INI for in-place update")
         return
 
     section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$")
@@ -420,10 +424,7 @@ def apply_ini_settings(
         try:
             _write_ini_text_with_encoding(p, "".join(updated_lines), ini_encoding)
         except Exception:
-            if logger:
-                logger.exception("Failed to write updated INI file")
-            else:
-                logging.exception("Failed to write updated INI file")
+            _log_exception(logger, "Failed to write updated INI file")
             return
 
     if missing_section_map:
@@ -461,10 +462,7 @@ def apply_unreal_ini_settings(ini_path, settings, logger=None):
         ini_text, ini_encoding = _read_ini_text_with_fallback(p, logger=logger)
         lines = ini_text.splitlines(keepends=True)
     except Exception:
-        if logger:
-            logger.exception("Failed to read Unreal INI for in-place update")
-        else:
-            logging.exception("Failed to read Unreal INI for in-place update")
+        _log_exception(logger, "Failed to read Unreal INI for in-place update")
         return
 
     section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$")
@@ -546,10 +544,7 @@ def apply_unreal_ini_settings(ini_path, settings, logger=None):
     try:
         _write_ini_text_with_encoding(p, "".join(updated_lines), ini_encoding)
     except Exception:
-        if logger:
-            logger.exception("Failed to write updated Unreal INI file")
-        else:
-            logging.exception("Failed to write updated Unreal INI file")
+        _log_exception(logger, "Failed to write updated Unreal INI file")
         return
 
 
@@ -594,10 +589,7 @@ def upsert_ini_entries(
                 else:
                     logging.info("Created missing INI file for upsert: %s", ini_path)
             except Exception:
-                if logger:
-                    logger.exception("Failed to create missing INI file: %s", ini_path)
-                else:
-                    logging.exception("Failed to create missing INI file: %s", ini_path)
+                _log_exception(logger, "Failed to create missing INI file: %s", ini_path)
                 return False
 
         try:
@@ -608,16 +600,10 @@ def upsert_ini_entries(
         try:
             text, ini_encoding = _read_ini_text_with_fallback(ini_path, logger=logger)
         except Exception:
-            if logger:
-                logger.exception("Failed to read INI for upsert: %s", ini_path)
-            else:
-                logging.exception("Failed to read INI for upsert: %s", ini_path)
+            _log_exception(logger, "Failed to read INI for upsert: %s", ini_path)
             return False
     except Exception:
-        if logger:
-            logger.exception("Unexpected error preparing INI for upsert: %s", ini_path)
-        else:
-            logging.exception("Unexpected error preparing INI for upsert: %s", ini_path)
+        _log_exception(logger, "Unexpected error preparing INI for upsert: %s", ini_path)
         return False
 
     lines = text.splitlines(keepends=True)
@@ -735,10 +721,7 @@ def upsert_ini_entries(
         try:
             _write_ini_text_with_encoding(ini_path, "".join(lines), ini_encoding)
         except Exception:
-            if logger:
-                logger.exception("Failed to write updated INI: %s", ini_path)
-            else:
-                logging.exception("Failed to write updated INI: %s", ini_path)
+            _log_exception(logger, "Failed to write updated INI: %s", ini_path)
             return False
     return modified
 

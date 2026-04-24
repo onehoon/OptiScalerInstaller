@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
-from .install_entry import InstallEntryState
+from .install_entry import InstallEntryState, _normalize_text
 from .install_ui_state import InstallButtonStateInputs
 
 
@@ -13,10 +13,6 @@ Fsr4Predicate = Callable[[Mapping[str, Any]], bool]
 
 def _normalize_bool(value: object) -> bool:
     return bool(value)
-
-
-def _normalize_text(value: object) -> str:
-    return str(value or "")
 
 
 def _build_selected_game_header_text(selected_game: Mapping[str, Any], lang: str) -> str:
