@@ -82,6 +82,22 @@ def _get_line_ending(line: str, default: str = "") -> str:
     return default
 
 
+def _norm(s):
+    if s is None:
+        return s
+    return "".join(str(s).split()).lower()
+
+
+def _split_line_ending(line):
+    if line.endswith("\r\n"):
+        return line[:-2], "\r\n"
+    if line.endswith("\n"):
+        return line[:-1], "\n"
+    if line.endswith("\r"):
+        return line[:-1], "\r"
+    return line, ""
+
+
 def _split_ini_value_and_comment(rest: str) -> tuple[str, str, str]:
     leading_ws_len = len(rest) - len(rest.lstrip())
     leading_ws = rest[:leading_ws_len]
@@ -261,11 +277,6 @@ def apply_ini_settings(
     if not p.exists():
         return
 
-    def _norm(s):
-        if s is None:
-            return s
-        return "".join(str(s).split()).lower()
-
     def _strip_wrapping_quotes(s):
         text = str(s).strip()
         if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
@@ -306,15 +317,6 @@ def apply_ini_settings(
     key_value_pattern = re.compile(r"^(\s*)([^=;#\r\n]+?)(\s*)=(.*)$")
     key_colon_pattern = re.compile(r"^(\s*)([^:\r\n]+?)(\s*):(.*)$")
     xefg_section_norm = _norm("XeFG")
-
-    def _split_line_ending(line):
-        if line.endswith("\r\n"):
-            return line[:-2], "\r\n"
-        if line.endswith("\n"):
-            return line[:-1], "\n"
-        if line.endswith("\r"):
-            return line[:-1], "\r"
-        return line, ""
 
     updated_lines = []
     applied = []
@@ -444,11 +446,6 @@ def apply_unreal_ini_settings(ini_path, settings, logger=None):
     if not p.exists():
         return
 
-    def _norm(s):
-        if s is None:
-            return s
-        return "".join(str(s).split()).lower()
-
     grouped_targets: dict[tuple[str, str], list[tuple[str, str]]] = {}
     for target, value in settings.items():
         if not isinstance(target, (list, tuple)) or len(target) != 3:
@@ -473,15 +470,6 @@ def apply_unreal_ini_settings(ini_path, settings, logger=None):
     section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$")
     key_value_pattern = re.compile(r"^(\s*)([^=;#\r\n]+?)(\s*)=(.*)$")
     key_colon_pattern = re.compile(r"^(\s*)([^:\r\n]+?)(\s*):(.*)$")
-
-    def _split_line_ending(line):
-        if line.endswith("\r\n"):
-            return line[:-2], "\r\n"
-        if line.endswith("\n"):
-            return line[:-1], "\n"
-        if line.endswith("\r"):
-            return line[:-1], "\r"
-        return line, ""
 
     updated_lines = []
     applied = []
