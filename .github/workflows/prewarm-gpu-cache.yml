@@ -2,22 +2,6 @@ name: Prewarm GPU Bundle Cache
 
 on:
   workflow_dispatch:
-    inputs:
-      force:                                      
-        description: "Force cache overwrite (force=1)"
-        required: false
-        type: boolean
-        default: true       
-      debug:
-        description: "Pass debug=1 to the Apps Script endpoint"
-        required: false
-        type: boolean
-        default: true
-      delay:
-        description: "Delay between requests in seconds"
-        required: false
-        type: string
-        default: "3"
   schedule:
     - cron: "37 */2 * * *"
 
@@ -47,8 +31,6 @@ jobs:
       - name: Prewarm Apps Script cache
         env:
           OPTISCALER_GPU_BUNDLE_URL: ${{ secrets.OPTISCALER_GPU_BUNDLE_URL }}
-          WORKFLOW_DEBUG: ${{ inputs.debug }}
-          WORKFLOW_DELAY: ${{ inputs.delay }}
         run: |
           if [ -z "$OPTISCALER_GPU_BUNDLE_URL" ]; then
             echo "OPTISCALER_GPU_BUNDLE_URL secret is not configured." >&2
