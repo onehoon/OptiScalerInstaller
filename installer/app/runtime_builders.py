@@ -293,6 +293,15 @@ def build_startup_update_infra(
     )
 
 
+def _start_archive_prepare_after_startup_runtime_ready(app: Any) -> None:
+    # StartupFlowController is created before StartupRuntimeCoordinator; resolve
+    # this dependency lazily when post-sheet startup actually runs.
+    coordinator = getattr(app, "_startup_runtime_coordinator", None)
+    if coordinator is None:
+        raise RuntimeError("Startup runtime coordinator is not initialized.")
+    coordinator.start_optiscaler_archive_prepare()
+
+
 def initialize_app_infra(
     app: Any,
     *,
@@ -320,7 +329,7 @@ def initialize_app_infra(
         root=app.root,
         app_version=app_version,
         strings=app.txt,
-        start_archive_prepare=lambda: app._startup_runtime_coordinator.start_optiscaler_archive_prepare(),
+        start_archive_prepare=lambda: _start_archive_prepare_after_startup_runtime_ready(app),
         start_auto_scan=lambda: start_auto_scan(app),
         show_startup_warning_popup=lambda warning_text, on_close=None: app._app_notice_controller.show_startup_warning_popup(
             warning_text,

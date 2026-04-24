@@ -2,6 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .install_button_reason_codes import (
+    INSTALL_BUTTON_REASON_APP_UPDATE_IN_PROGRESS,
+    INSTALL_BUTTON_REASON_CONFIRM_POPUP_REQUIRED,
+    INSTALL_BUTTON_REASON_FSR4_NOT_READY,
+    INSTALL_BUTTON_REASON_GPU_SELECTION_PENDING,
+    INSTALL_BUTTON_REASON_INSTALL_IN_PROGRESS,
+    INSTALL_BUTTON_REASON_INSTALL_PRECHECK_RUNNING,
+    INSTALL_BUTTON_REASON_MULTI_GPU_BLOCKED,
+    INSTALL_BUTTON_REASON_NO_GAME_SELECTED,
+    INSTALL_BUTTON_REASON_OPTISCALER_ARCHIVE_DOWNLOADING,
+    INSTALL_BUTTON_REASON_OPTISCALER_ARCHIVE_NOT_READY,
+    INSTALL_BUTTON_REASON_PRECHECK_INCOMPLETE,
+    INSTALL_BUTTON_REASON_SHEET_LOADING,
+    INSTALL_BUTTON_REASON_SHEET_NOT_READY,
+    INSTALL_BUTTON_REASON_UNSUPPORTED_GPU,
+)
+
 
 @dataclass(frozen=True)
 class InstallButtonStateInputs:
@@ -32,20 +49,20 @@ def _iter_install_button_checks(inputs: InstallButtonStateInputs):
     # UI gate: includes loading/update/GPU readiness states so the user cannot
     # start installation from the button while the app is still preparing.
     return (
-        ("multi_gpu_blocked", not inputs.multi_gpu_blocked),
-        ("gpu_selection_pending", not inputs.gpu_selection_pending),
-        ("sheet_loading", not inputs.sheet_loading),
-        ("sheet_not_ready", inputs.sheet_ready),
-        ("install_in_progress", not inputs.install_in_progress),
-        ("app_update_in_progress", not inputs.app_update_in_progress),
-        ("no_game_selected", inputs.has_valid_game),
-        ("install_precheck_running", not inputs.install_precheck_running),
-        ("precheck_incomplete", inputs.install_precheck_ok),
-        ("optiscaler_archive_downloading", not inputs.optiscaler_archive_downloading),
-        ("optiscaler_archive_not_ready", inputs.optiscaler_archive_ready),
-        ("fsr4_not_ready", inputs.fsr4_ready),
-        ("unsupported_gpu", inputs.has_supported_gpu),
-        ("confirm_popup_required", inputs.game_popup_confirmed),
+        (INSTALL_BUTTON_REASON_MULTI_GPU_BLOCKED, not inputs.multi_gpu_blocked),
+        (INSTALL_BUTTON_REASON_GPU_SELECTION_PENDING, not inputs.gpu_selection_pending),
+        (INSTALL_BUTTON_REASON_SHEET_LOADING, not inputs.sheet_loading),
+        (INSTALL_BUTTON_REASON_SHEET_NOT_READY, inputs.sheet_ready),
+        (INSTALL_BUTTON_REASON_INSTALL_IN_PROGRESS, not inputs.install_in_progress),
+        (INSTALL_BUTTON_REASON_APP_UPDATE_IN_PROGRESS, not inputs.app_update_in_progress),
+        (INSTALL_BUTTON_REASON_NO_GAME_SELECTED, inputs.has_valid_game),
+        (INSTALL_BUTTON_REASON_INSTALL_PRECHECK_RUNNING, not inputs.install_precheck_running),
+        (INSTALL_BUTTON_REASON_PRECHECK_INCOMPLETE, inputs.install_precheck_ok),
+        (INSTALL_BUTTON_REASON_OPTISCALER_ARCHIVE_DOWNLOADING, not inputs.optiscaler_archive_downloading),
+        (INSTALL_BUTTON_REASON_OPTISCALER_ARCHIVE_NOT_READY, inputs.optiscaler_archive_ready),
+        (INSTALL_BUTTON_REASON_FSR4_NOT_READY, inputs.fsr4_ready),
+        (INSTALL_BUTTON_REASON_UNSUPPORTED_GPU, inputs.has_supported_gpu),
+        (INSTALL_BUTTON_REASON_CONFIRM_POPUP_REQUIRED, inputs.game_popup_confirmed),
     )
 
 

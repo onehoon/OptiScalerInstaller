@@ -8,6 +8,7 @@ from typing import Mapping
 from urllib.parse import urlparse
 
 from .. import services as installer_services
+from ..archive_source import resolve_cached_archive_path
 from ._link_utils import extract_module_url
 
 
@@ -30,13 +31,6 @@ def _resolve_ual_representative_name(dll_names: tuple[str, ...]) -> str:
         if name.lower() == ULTIMATE_ASI_LOADER_DLL_NAME:
             return name
     return sorted(dll_names, key=str.lower)[0] if dll_names else ULTIMATE_ASI_LOADER_DLL_NAME
-
-
-def _resolve_cached_archive(cached_archive_path: str) -> Path | None:
-    if not cached_archive_path:
-        return None
-    cached = Path(str(cached_archive_path).strip())
-    return cached if cached.is_file() else None
 
 
 def _resolve_download_archive_path(tmpdir_path: Path, url: str, *, logger=None) -> Path:
@@ -89,7 +83,7 @@ def install_ultimate_asi_loader(
 
     links = module_download_links if isinstance(module_download_links, Mapping) else {}
     url = extract_module_url(links, "ultimateasiloader")
-    cached = _resolve_cached_archive(cached_archive_path)
+    cached = resolve_cached_archive_path(cached_archive_path)
     use_cache = cached is not None
 
     if ual_detected_names is not None:

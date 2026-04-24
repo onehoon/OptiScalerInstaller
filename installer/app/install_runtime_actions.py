@@ -7,6 +7,7 @@ from installer.system import gpu_service
 
 from .bootstrap_runtime import MAX_SUPPORTED_GPU_COUNT
 from .game_support_policy import is_game_supported_for_vendor
+from .install_button_reason_codes import INSTALL_BUTTON_REASON_SHEET_LOADING
 from .install_state import (
     build_install_button_state_inputs as build_install_button_state_inputs_bundle,
     build_selected_game_snapshot,
@@ -82,7 +83,7 @@ def tick_loading_blink(app: Any) -> None:
     if not hasattr(app, "apply_btn"):
         return
     button_state = compute_install_button_state(build_install_button_state_inputs(app))
-    if button_state.reason_code != "sheet_loading":
+    if button_state.reason_code != INSTALL_BUTTON_REASON_SHEET_LOADING:
         return
     loading_text = app.txt.main.loading_button
     current_text = app.apply_btn.cget("text")
@@ -96,7 +97,7 @@ def update_install_button_state(app: Any) -> None:
 
     button_state = compute_install_button_state(build_install_button_state_inputs(app))
     can_install = bool(button_state.enabled)
-    is_sheet_loading = button_state.reason_code == "sheet_loading"
+    is_sheet_loading = button_state.reason_code == INSTALL_BUTTON_REASON_SHEET_LOADING
 
     blink_job = getattr(app, "_loading_blink_job", None)
     if blink_job is not None:

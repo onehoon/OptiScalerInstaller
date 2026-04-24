@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 from ..common.network_utils import get_shared_retry_session
 from ..common.process_utils import subprocess_no_window_kwargs
+from .archive_source import resolve_cached_archive_path
 
 try:
     import py7zr
@@ -633,8 +634,8 @@ def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
     plugins_dir.mkdir(parents=True, exist_ok=True)
     destination_path = plugins_dir / OPTIPATCHER_PLUGIN_NAME
 
-    cached = Path(str(cached_archive_path or "").strip()) if cached_archive_path else None
-    use_cache = cached is not None and cached.is_file()
+    cached = resolve_cached_archive_path(cached_archive_path)
+    use_cache = cached is not None
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
@@ -668,8 +669,8 @@ def install_specialk(target_path, final_dll_name, url="", logger=None, cached_ar
     plugins_dir.mkdir(parents=True, exist_ok=True)
     destination_path = plugins_dir / normalized_final_name
 
-    cached = Path(str(cached_archive_path or "").strip()) if cached_archive_path else None
-    use_cache = cached is not None and cached.is_file()
+    cached = resolve_cached_archive_path(cached_archive_path)
+    use_cache = cached is not None
     normalized_url = str(url or "").strip()
 
     if not use_cache and not normalized_url:
@@ -702,8 +703,8 @@ def install_specialk(target_path, final_dll_name, url="", logger=None, cached_ar
 
 
 def install_unreal5_from_url(url, target_path, logger=None, cached_archive_path=""):
-    cached = Path(str(cached_archive_path or "").strip()) if cached_archive_path else None
-    use_cache = cached is not None and cached.is_file()
+    cached = resolve_cached_archive_path(cached_archive_path)
+    use_cache = cached is not None
 
     if not use_cache:
         parsed = urlparse(url)
