@@ -10,10 +10,10 @@ def install_unreal5_patch(
     target_path: str,
     game_data: Mapping[str, object],
     module_download_links: Mapping[str, object],
-    gpu_info,
     logger=None,
     cached_archive_path: str = "",
 ) -> bool:
+    """Return True when the Unreal5 patch archive was actually installed."""
     if not bool(game_data.get("unreal5")):
         return False
 

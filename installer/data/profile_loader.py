@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 from ..common.network_utils import get_shared_retry_session
+from .game_db_keys import GPU_PROFILE_ID_KEY
 
 
 _PROFILE_SESSION = get_shared_retry_session()
@@ -145,7 +146,7 @@ def attach_profile_catalogs_to_game_db(
     attached: dict[str, dict[str, Any]] = {}
     for game_key, raw_game_entry in dict(game_db or {}).items():
         game_entry = dict(raw_game_entry)
-        profile_id = _normalize_profile_id(game_entry.get("__gpu_profile_id__"))
+        profile_id = _normalize_profile_id(game_entry.get(GPU_PROFILE_ID_KEY))
         game_entry["game_ini_profile"] = _get_profile_rows(catalogs.game_ini_profile, profile_id)
         game_entry["game_unreal_ini_profile"] = _get_profile_rows(catalogs.game_unreal_ini_profile, profile_id)
         game_entry["engine_ini_profile"] = _get_profile_rows(catalogs.engine_ini_profile, profile_id)

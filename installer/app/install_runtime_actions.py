@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from installer.data.game_db_keys import GPU_BUNDLE_LOADED_KEY, GPU_BUNDLE_SUPPORTED_KEY
 from installer.system import gpu_service
 
 from .bootstrap_runtime import MAX_SUPPORTED_GPU_COUNT
@@ -33,8 +34,8 @@ def is_vendor_allowed_by_game_flags(app: Any, game_data: Mapping[str, Any]) -> b
 def is_game_supported_for_current_gpu(app: Any, game_data: Mapping[str, Any]) -> bool:
     if not is_vendor_allowed_by_game_flags(app, game_data):
         return False
-    if bool(game_data.get("__gpu_bundle_loaded__", False)):
-        return bool(game_data.get("__gpu_bundle_supported__", False))
+    if bool(game_data.get(GPU_BUNDLE_LOADED_KEY, False)):
+        return bool(game_data.get(GPU_BUNDLE_SUPPORTED_KEY, False))
     return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), app.gpu_state.gpu_info)
 
 

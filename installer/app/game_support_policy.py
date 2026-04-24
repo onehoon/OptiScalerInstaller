@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ..common.flag_parser import parse_bool_token
+from ..data.game_db_keys import GPU_BUNDLE_LOADED_KEY, GPU_BUNDLE_SUPPORTED_KEY
 from ..system import gpu_service
 
 
@@ -44,8 +45,8 @@ def is_game_supported_for_vendor(
     if not parse_support_flag(game_data.get("enabled", True), native_xefg_means_false=False):
         return False
 
-    if bool(game_data.get("__gpu_bundle_loaded__", False)):
-        return bool(game_data.get("__gpu_bundle_supported__", False))
+    if bool(game_data.get(GPU_BUNDLE_LOADED_KEY, False)):
+        return bool(game_data.get(GPU_BUNDLE_SUPPORTED_KEY, False))
 
     normalized_vendor = str(vendor or "").strip().lower()
     if normalized_vendor in {"intel", "amd", "nvidia"}:

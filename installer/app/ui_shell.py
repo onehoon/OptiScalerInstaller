@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
+from installer.data.game_db_keys import GUIDE_URL_KEY, INSTALLED_PROXY_NAME_KEY
 from installer.i18n import pick_sheet_text
 from installer.i18n import pick_bound_message
 
@@ -145,7 +146,7 @@ class AppUiShell:
         if controller is None:
             return
         normalized_game = dict(game or {})
-        installed_file_name = str(normalized_game.get("__installed_proxy_name__") or "").strip()
+        installed_file_name = str(normalized_game.get(INSTALLED_PROXY_NAME_KEY) or "").strip()
         completion_template = str(
             getattr(getattr(self._txt, "dialogs", None), "installation_completed_with_name_template", "") or ""
         ).strip()
@@ -158,7 +159,7 @@ class AppUiShell:
         combined_message = "[P]".join(part for part in (completion_message, game_message) if part)
         controller.show_after_install_popup(
             combined_message,
-            guide_url=str(normalized_game.get("__guide_url__") or ""),
+            guide_url=str(normalized_game.get(GUIDE_URL_KEY) or ""),
             guide_context=str(normalized_game.get("display", "<unknown>") or "<unknown>"),
         )
 

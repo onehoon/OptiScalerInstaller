@@ -13,6 +13,7 @@ def install_optipatcher(
     logger=None,
     cached_archive_path: str = "",
 ) -> dict[str, str]:
+    """Install OptiPatcher and return OptiScaler INI overrides to merge."""
     if not bool(game_data.get("optipatcher")):
         return {}
 

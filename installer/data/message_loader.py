@@ -5,6 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from installer.common.network_utils import get_shared_retry_session
+from installer.data.game_db_keys import (
+    GUIDE_URL_KEY,
+    INSTALL_POST_EN_KEY,
+    INSTALL_POST_KR_KEY,
+    INSTALL_PRE_EN_KEY,
+    INSTALL_PRE_KR_KEY,
+)
 
 
 _file_session = get_shared_retry_session()
@@ -227,15 +234,15 @@ def materialize_bound_messages_into_game_db(
             guide_url = resolve_stage_guide_url(repo, game_id=game_id, gpu_vendor=gpu_vendor)
 
             if popup_ko:
-                game["__install_pre_kr__"] = popup_ko
+                game[INSTALL_PRE_KR_KEY] = popup_ko
             if popup_en:
-                game["__install_pre_en__"] = popup_en
+                game[INSTALL_PRE_EN_KEY] = popup_en
             if after_popup_ko:
-                game["__install_post_kr__"] = after_popup_ko
+                game[INSTALL_POST_KR_KEY] = after_popup_ko
             if after_popup_en:
-                game["__install_post_en__"] = after_popup_en
+                game[INSTALL_POST_EN_KEY] = after_popup_en
             if guide_url:
-                game["__guide_url__"] = guide_url
+                game[GUIDE_URL_KEY] = guide_url
 
         result[match_key] = game
     return result

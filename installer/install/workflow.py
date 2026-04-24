@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from ..data.game_db_keys import INSTALLED_PROXY_NAME_KEY
 from ..config import ini_utils
 from ..app import rtss_notice
 from . import services as installer_services
@@ -204,7 +205,6 @@ def run_install_workflow(
         install_ctx.target_path,
         install_ctx.game_data,
         module_download_links,
-        gpu_info,
         logger=logger,
         cached_archive_path=unreal5_cached_archive,
     )
@@ -221,7 +221,7 @@ def run_install_workflow(
 
     logger.info("Install completed")
     installed_game = dict(install_ctx.game_data)
-    installed_game["__installed_proxy_name__"] = str(install_ctx.final_dll_name or "")
+    installed_game[INSTALLED_PROXY_NAME_KEY] = str(install_ctx.final_dll_name or "")
     return installed_game
 
 

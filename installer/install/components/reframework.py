@@ -6,6 +6,7 @@ from .. import services as installer_services
 
 
 def install_reframework_dinput8(target_path: str, game_data: Mapping[str, object], logger=None) -> bool:
+    """Return True only when REFramework dinput8.dll was requested and installed."""
     url = str(game_data.get("reframework_url", "") or "").strip()
     if not url:
         return False

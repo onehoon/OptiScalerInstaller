@@ -8,6 +8,12 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from ..common.flag_parser import parse_bool_token
 from ..common.network_utils import build_retry_session
+from .game_db_keys import (
+    GPU_BUNDLE_LOADED_KEY,
+    GPU_BUNDLE_SUPPORTED_KEY,
+    GPU_BUNDLE_VENDOR_KEY,
+    GPU_PROFILE_ID_KEY,
+)
 
 
 _SCRIPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{20,}$")
@@ -276,8 +282,8 @@ def merge_gpu_bundle_into_game_db(
 
     game_id_index: dict[str, list[str]] = {}
     for game_key, game_entry in merged.items():
-        game_entry["__gpu_bundle_loaded__"] = True
-        game_entry["__gpu_bundle_supported__"] = False
+        game_entry[GPU_BUNDLE_LOADED_KEY] = True
+        game_entry[GPU_BUNDLE_SUPPORTED_KEY] = False
 
         game_id = str(game_entry.get("game_id") or "").strip().casefold()
         if game_id:
@@ -293,12 +299,12 @@ def merge_gpu_bundle_into_game_db(
 
         for target_key in target_keys:
             game_entry = merged[target_key]
-            game_entry["__gpu_bundle_loaded__"] = True
-            game_entry["__gpu_bundle_supported__"] = bool(is_enabled)
-            game_entry["__gpu_profile_id__"] = str(bundle_entry.get("profile_id") or "").strip()
+            game_entry[GPU_BUNDLE_LOADED_KEY] = True
+            game_entry[GPU_BUNDLE_SUPPORTED_KEY] = bool(is_enabled)
+            game_entry[GPU_PROFILE_ID_KEY] = str(bundle_entry.get("profile_id") or "").strip()
             normalized_vendor = _normalize_gpu_vendor(bundle_entry.get("bundle_gpu_vendor"))
             if normalized_vendor:
-                game_entry["__gpu_bundle_vendor__"] = normalized_vendor
+                game_entry[GPU_BUNDLE_VENDOR_KEY] = normalized_vendor
 
             _apply_install_profile(game_entry, install_profile)
 

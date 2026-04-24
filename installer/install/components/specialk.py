@@ -13,6 +13,7 @@ def install_specialk(
     logger=None,
     cached_archive_path: str = "",
 ) -> None:
+    """Install Special K for side effects only; callers do not use a return value."""
     url = extract_module_url(module_download_links, "specialk")
     installer_services.install_specialk(
         target_path,

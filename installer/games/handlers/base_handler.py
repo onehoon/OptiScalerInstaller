@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
+from ...data.game_db_keys import GUIDE_URL_KEY
 from ...i18n import lang_from_bool, pick_bound_message, translate_default_precheck_error
 from ...install import services as installer_services
 
@@ -79,7 +80,7 @@ class BaseGameHandler:
         return pick_bound_message(game_data, "install_post", lang_from_bool(use_korean))
 
     def get_after_install_guide_url(self, game_data: Mapping[str, Any]) -> str:
-        return str(game_data.get("__guide_url__", "") or "").strip()
+        return str(game_data.get(GUIDE_URL_KEY, "") or "").strip()
 
     def format_precheck_notice(self, precheck: InstallPrecheckResult, use_korean: bool) -> str:
         return build_mod_conflict_notice(precheck.conflict_findings, use_korean)
