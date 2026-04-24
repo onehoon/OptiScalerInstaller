@@ -34,8 +34,6 @@ def _group_paths_by_drive(paths: list[str], max_groups: int) -> list[list[str]]:
         buckets[i % max_groups].extend(group)
     return [b for b in buckets if b]
 
-
-
 LangProvider = Callable[[], Lang]
 GameDbProvider = Callable[[], dict[str, dict[str, Any]]]
 GameSupportPredicate = Callable[[dict[str, Any]], bool]

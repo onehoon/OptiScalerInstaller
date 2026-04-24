@@ -6,6 +6,7 @@ build.py
 installer/_generated_build_config.py
 .vscode/
 docs/getSupportedGameBundle.gs
+AGENTS.md
 
 # Python & PyInstaller artifacts
 __pycache__/

@@ -12,6 +12,7 @@ from .components import (
 from .file_steps import (
     apply_optional_engine_ini_settings,
     apply_optional_ingame_ini_settings,
+    apply_optional_json_settings,
     apply_optional_registry_settings,
     create_install_workflow_callbacks,
     install_base_payload,
@@ -34,6 +35,7 @@ __all__ = [
     "OPTISCALER_ASI_NAME",
     "apply_optional_engine_ini_settings",
     "apply_optional_ingame_ini_settings",
+    "apply_optional_json_settings",
     "apply_optional_registry_settings",
     "build_install_context",
     "create_install_workflow_callbacks",

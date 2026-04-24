@@ -70,6 +70,7 @@ def is_scan_in_progress(app: Any) -> bool:
 def clear_found_games(app: Any) -> None:
     app.found_exe_list = []
 
+
 def pump_poster_queue(app: Any) -> None:
     app._poster_queue.pump()
 

@@ -755,9 +755,3 @@ def upsert_ini_entries(
     return modified
 
 
-# Backward-compatible aliases for internal/private call sites that may still exist.
-_ensure_file_writable = ensure_file_writable
-_set_file_readonly = set_file_readonly
-_upsert_ini_entries = upsert_ini_entries
-
-

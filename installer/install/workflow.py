@@ -110,7 +110,6 @@ def run_install_workflow(
     app: Any,
     install_ctx: InstallContext,
     module_download_links: Mapping[str, object],
-    gpu_info: Any = None,
     callbacks: InstallWorkflowCallbacks | None = None,
     logger=None,
     *,

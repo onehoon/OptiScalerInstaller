@@ -7,11 +7,24 @@ import os
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
+from installer.data.game_db_keys import (
+    INSTALL_POST_EN_KEY,
+    INSTALL_POST_KR_KEY,
+    INSTALL_PRE_EN_KEY,
+    INSTALL_PRE_KR_KEY,
+)
+
 
 Lang = Literal["ko", "en"]
 UI_LANGUAGE_ENV = "FORCE_UI_LANGUAGE"
 _NO_AVAILABLE_DLL_PREFIX = "No available OptiScaler DLL names for installation. "
 _CHECKED_PREFIX = "Checked: "
+_BOUND_MESSAGE_KEY_MAP = {
+    ("install_pre", "ko"): INSTALL_PRE_KR_KEY,
+    ("install_pre", "en"): INSTALL_PRE_EN_KEY,
+    ("install_post", "ko"): INSTALL_POST_KR_KEY,
+    ("install_post", "en"): INSTALL_POST_EN_KEY,
+}
 
 
 @dataclass(frozen=True)
@@ -364,9 +377,22 @@ def pick_sheet_text(source: Mapping[str, object], base_key: str, lang: Lang) -> 
     key = f"{base_key}_{_sheet_lang_suffix(lang)}"
     return str(source.get(key, "") or "").strip()
 
-def pick_bound_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
-    key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
+
+def _pick_internal_lang_key(
+    source: Mapping[str, object],
+    base_key: str,
+    lang: Lang,
+    *,
+    key_map: Mapping[tuple[str, Lang], str] | None = None,
+) -> str:
+    key = key_map.get((base_key, lang)) if key_map is not None else None
+    if key is None:
+        key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
     return str(source.get(key, "") or "").strip()
+
+
+def pick_bound_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
+    return _pick_internal_lang_key(source, base_key, lang, key_map=_BOUND_MESSAGE_KEY_MAP)
 
 
 def build_install_information_text(
@@ -403,8 +429,7 @@ def build_install_selection_popup_text(
 
 
 def pick_module_message(source: Mapping[str, object], base_key: str, lang: Lang) -> str:
-    key = f"__{base_key}_{_sheet_lang_suffix(lang)}__"
-    return str(source.get(key, "") or "").strip()
+    return _pick_internal_lang_key(source, base_key, lang)
 
 
 def translate_default_precheck_error(raw_error: str, lang: Lang) -> str:
@@ -451,6 +476,7 @@ __all__ = [
     "AppStrings",
     "Lang",
     "UI_LANGUAGE_ENV",
+    "build_install_information_text",
     "build_install_selection_popup_text",
     "build_mod_conflict_finding_text",
     "build_mod_conflict_notice_text",

@@ -39,8 +39,8 @@ def is_game_supported_for_current_gpu(app: Any, game_data: Mapping[str, Any]) ->
     return gpu_service.matches_gpu_rule(str(game_data.get("supported_gpu", "") or ""), app.gpu_state.gpu_info)
 
 
-def matches_fsr4_skip_rule(app: Any, rule_text: str) -> bool:
-    return gpu_service.matches_gpu_rule(app._app_paths.fsr4_skip_gpu_rule, rule_text)
+def matches_fsr4_skip_rule(app: Any, target_text: str) -> bool:
+    return gpu_service.matches_gpu_rule(app._app_paths.fsr4_skip_gpu_rule, target_text)
 
 
 def should_apply_fsr4_for_game(app: Any, game_data: Mapping[str, Any] | None = None) -> bool:

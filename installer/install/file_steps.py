@@ -217,7 +217,6 @@ def _normalize_profile_scalar(value: object, *, value_type: str = "") -> str:
 def _apply_existing_file_settings(
     file_path: Path,
     *,
-    logger,
     apply_callback: Callable[[], None],
     restore_original_readonly: bool,
 ) -> None:
@@ -246,7 +245,6 @@ def _apply_optional_existing_file_settings(
     try:
         _apply_existing_file_settings(
             file_path,
-            logger=logger,
             apply_callback=apply_callback,
             restore_original_readonly=True,
         )

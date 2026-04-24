@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from concurrent.futures import Executor
 from dataclasses import dataclass
 from tkinter import messagebox
@@ -22,7 +22,6 @@ from .install_selection_controller import InstallSelectionPrecheckOutcome
 from .install_state import build_install_entry_state, resolve_ready_cached_archive_path
 from .runtime_state import (
     ArchiveRuntimeState,
-    CardUiRuntimeState,
     GpuRuntimeState,
     InstallRuntimeState,
     SheetRuntimeState,
@@ -31,7 +30,6 @@ from .runtime_state import (
 
 @dataclass(frozen=True)
 class InstallFlowCallbacks:
-    get_found_games: Callable[[], Sequence[Mapping[str, Any]]]
     get_lang: Callable[[], str]
     should_apply_fsr4_for_game: Callable[[Mapping[str, Any]], bool]
     update_install_button_state: Callable[[], None]
@@ -54,7 +52,6 @@ class InstallFlowController:
         gpu_state: GpuRuntimeState,
         sheet_state: SheetRuntimeState,
         install_state: InstallRuntimeState,
-        card_ui_state: CardUiRuntimeState,
         callbacks: InstallFlowCallbacks,
         create_prefixed_logger: Callable[[str], Any],
     ) -> None:
@@ -66,7 +63,6 @@ class InstallFlowController:
         self._gpu_state = gpu_state
         self._sheet_state = sheet_state
         self._install_state = install_state
-        self._card_ui_state = card_ui_state
         self._callbacks = callbacks
         self._create_prefixed_logger = create_prefixed_logger
 
@@ -280,7 +276,6 @@ class InstallFlowController:
                 self._app_ref,
                 install_ctx,
                 self._sheet_state.module_download_links,
-                self._gpu_state.gpu_info,
                 create_install_workflow_callbacks(),
                 logger,
                 ual_cached_archive=ual_cached_archive,
@@ -349,9 +344,7 @@ def create_install_flow_controller(
         gpu_state=app.gpu_state,
         sheet_state=app.sheet_state,
         install_state=app.install_state,
-        card_ui_state=app.card_ui_state,
         callbacks=InstallFlowCallbacks(
-            get_found_games=lambda: tuple(app.found_exe_list),
             get_lang=lambda: app.lang,
             should_apply_fsr4_for_game=lambda game_data: should_apply_fsr4_for_game(app, game_data),
             update_install_button_state=lambda: update_install_button_state(app),

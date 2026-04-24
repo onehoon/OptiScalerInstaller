@@ -168,7 +168,7 @@ def _normalize_optional_url(value):
     low = raw.lower()
     if low.startswith("http://") or low.startswith("https://"):
         return raw
-    if " " in raw or "\n" in raw or low in {"null", "none", "na", "n/a", "-"}:
+    if " " in raw or "\n" in raw:
         return ""
     if "." in raw:
         candidate = raw
