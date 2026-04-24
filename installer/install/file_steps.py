@@ -128,28 +128,41 @@ def _collect_game_ini_profile_targets(
     return ini_targets
 
 
+def _apply_existing_then_add_missing_ini_settings(
+    file_path: Path,
+    section_map: dict[str, dict[str, str]],
+    *,
+    logger,
+) -> None:
+    settings = {
+        (section_name, key_name): value
+        for section_name, key_values in section_map.items()
+        for key_name, value in key_values.items()
+    }
+    ini_utils.apply_ini_settings(
+        str(file_path),
+        settings,
+        logger=logger,
+    )
+    ini_utils.upsert_ini_entries(
+        file_path,
+        section_map,
+        logger=logger,
+        create_missing_file=False,
+        allow_edit_existing=False,
+        allow_add_key=True,
+        allow_add_section=False,
+    )
+
+
 def _apply_game_ini_profile_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
     ini_targets = _collect_game_ini_profile_targets(target_path, game_data, logger=logger)
     for file_path, section_map in ini_targets.items():
         def _apply_ini(file_path: Path = file_path, section_map: dict[str, dict[str, str]] = section_map) -> None:
-            settings = {
-                (section_name, key_name): value
-                for section_name, key_values in section_map.items()
-                for key_name, value in key_values.items()
-            }
-            ini_utils.apply_ini_settings(
-                str(file_path),
-                settings,
-                logger=logger,
-            )
-            ini_utils.upsert_ini_entries(
+            _apply_existing_then_add_missing_ini_settings(
                 file_path,
                 section_map,
                 logger=logger,
-                create_missing_file=False,
-                allow_edit_existing=False,
-                allow_add_key=True,
-                allow_add_section=False,
             )
             logger.info("Applied game_ini_profile settings to %s", file_path)
 

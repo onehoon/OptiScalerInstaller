@@ -131,6 +131,7 @@ def run_install_workflow(
         specialk_requested
         and install_ctx.final_dll_name.lower() == OPTISCALER_ASI_NAME.lower()
     )
+    should_install_specialk = specialk_requested and not specialk_skipped_for_asi
     if specialk_skipped_for_asi:
         logger.info(
             "Special K install skipped: OptiScaler.asi install mode does not support plugins/%s loading",
@@ -158,7 +159,7 @@ def run_install_workflow(
             cached_archive_path=ual_cached_archive,
         )
 
-    if specialk_requested and not specialk_skipped_for_asi:
+    if should_install_specialk:
         install_specialk(
             install_ctx.target_path,
             install_ctx.final_dll_name,
@@ -185,7 +186,7 @@ def run_install_workflow(
         allow_add_key=True,
         allow_add_section=True,
     )
-    if specialk_requested and not specialk_skipped_for_asi:
+    if should_install_specialk:
         ini_utils.apply_ini_settings(
             ini_path,
             {"Plugins:LoadAsiPlugins": "true"},

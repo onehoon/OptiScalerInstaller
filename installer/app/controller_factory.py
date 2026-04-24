@@ -22,26 +22,14 @@ from .app_shutdown_controller import AppShutdownCallbacks, AppShutdownController
 from .archive_controller import ArchivePreparationCallbacks, ArchivePreparationController
 from .card_runtime_actions import (
     append_found_game,
-    apply_selected_game_index,
     clear_cards,
     create_and_place_card,
     hide_empty_label,
     restore_rendered_selection,
 )
 from .card_render_controller import CardRenderCallbacks, CardRenderController
-from .controller_factories.install import (
-    _build_install_flow_controller,
-    _build_install_selection_controller,
-    _build_selection_popup_message,
-    _resolve_rtss_game_overlay_notice,
-    build_install_controllers,
-)
-from .controller_factories.scan import (
-    _build_scan_controller,
-    _build_scan_entry_controller,
-    _build_scan_feedback_controller,
-    build_scan_controllers,
-)
+from .controller_factories.install import build_install_controllers
+from .controller_factories.scan import build_scan_controllers
 from .game_db_controller import GameDbControllerCallbacks, GameDbLoadController
 from .gpu_flow_controller import GpuFlowCallbacks, GpuFlowController
 from .install_flow import InstallFlowController

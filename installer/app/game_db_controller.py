@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Executor
 from dataclasses import dataclass, field
 import logging
-from typing import Any
+from typing import Any, Protocol
 
 from ..data import gpu_bundle_loader, message_loader, profile_loader
 
@@ -15,11 +15,30 @@ ModuleLinksLoader = Callable[[], dict[str, Any]]
 MessageCenterLoader = Callable[[str], dict[str, message_loader.MessageTemplate]]
 MessageBindingLoader = Callable[[str], tuple[message_loader.MessageBinding, ...]]
 MessageRepoBuilder = Callable[[dict[str, message_loader.MessageTemplate], tuple[message_loader.MessageBinding, ...]], message_loader.MessageRepository]
-MessageMaterializer = Callable[[dict[str, dict[str, Any]], message_loader.MessageRepository], dict[str, dict[str, Any]]]
-GpuBundleLoader = Callable[[str, str, str], dict[str, dict[str, Any]]]
 GpuBundleMerger = Callable[[dict[str, dict[str, Any]], dict[str, dict[str, Any]]], dict[str, dict[str, Any]]]
 ProfileCatalogLoader = Callable[[str, str, str, str, str, str], profile_loader.ProfileCatalogs]
 ProfileCatalogAttacher = Callable[[dict[str, dict[str, Any]], profile_loader.ProfileCatalogs], dict[str, dict[str, Any]]]
+
+
+class MessageMaterializer(Protocol):
+    def __call__(
+        self,
+        game_db: dict[str, dict[str, Any]],
+        repository: message_loader.MessageRepository,
+        *,
+        gpu_vendor: str = "",
+    ) -> dict[str, dict[str, Any]]:
+        ...
+
+
+class GpuBundleLoader(Protocol):
+    def __call__(
+        self,
+        base_url_or_key: str,
+        gpu_vendor: str,
+        gpu_model: str,
+    ) -> dict[str, dict[str, Any]]:
+        ...
 
 
 @dataclass(frozen=True)

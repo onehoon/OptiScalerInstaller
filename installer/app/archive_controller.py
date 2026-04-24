@@ -23,6 +23,8 @@ DownloadToFile = Callable[..., None]
 ArchiveStateCallback = Callable[["ArchivePreparationState"], None]
 
 _ARCHIVE_SUFFIXES = {".7z", ".zip", ".rar", ".tar", ".gz", ".xz", ".bz2", ".asi"}
+ARCHIVE_ASSET_UAL_STATE_KEY = "ual"
+ARCHIVE_ASSET_UAL_ENTRY_KEY = "ultimateasiloader"
 
 
 @dataclass(frozen=True)
@@ -223,7 +225,7 @@ class ArchivePreparationController:
             entry=entry,
             cache_dir=cache_dir,
             manifest_root=manifest_root or self._manifest_root,
-            asset_key="ultimateasiloader",
+            asset_key=ARCHIVE_ASSET_UAL_ENTRY_KEY,
             asset_label="Ultimate ASI Loader archive",
         )
 
@@ -435,7 +437,7 @@ class ArchivePreparationController:
 
             self._logger.info("[APP] %s download completed", asset_label)
             if cleanup_stale:
-                self._cleanup_stale_archives(cache_dir, filename, label="OptiScaler archive cache")
+                self._cleanup_stale_archives(cache_dir, filename, label=f"{asset_label} cache")
             if manifest_root and version:
                 try:
                     write_manifest_entry(manifest_root, asset_key, version)
@@ -517,7 +519,9 @@ class ArchivePreparationController:
         if asset_key == "specialk":
             self._callbacks.on_specialk_state_changed(state)
             return
-        if asset_key in ("ual", "ultimateasiloader"):
+        # Startup runtime uses the compact state key, while resource data uses
+        # the historical module entry key. Keep both callback aliases valid.
+        if asset_key in (ARCHIVE_ASSET_UAL_STATE_KEY, ARCHIVE_ASSET_UAL_ENTRY_KEY):
             self._callbacks.on_ual_state_changed(state)
             return
         if asset_key == "unreal5":
