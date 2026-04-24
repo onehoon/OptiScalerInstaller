@@ -29,6 +29,8 @@ class InstallButtonState:
 
 
 def _iter_install_button_checks(inputs: InstallButtonStateInputs):
+    # UI gate: includes loading/update/GPU readiness states so the user cannot
+    # start installation from the button while the app is still preparing.
     return (
         ("multi_gpu_blocked", not inputs.multi_gpu_blocked),
         ("gpu_selection_pending", not inputs.gpu_selection_pending),

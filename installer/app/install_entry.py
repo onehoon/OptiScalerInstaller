@@ -62,6 +62,9 @@ def validate_install_entry(
     state: InstallEntryState,
     should_apply_fsr4: Callable[[Mapping[str, Any]], bool],
 ) -> InstallEntryDecision:
+    # Worker gate: validate only the install-start invariants that still matter
+    # after the button has been pressed. UI-only loading/update states stay in
+    # compute_install_button_state().
     if state.multi_gpu_blocked:
         return _reject("multi_gpu_blocked")
 
