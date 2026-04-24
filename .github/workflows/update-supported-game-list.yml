@@ -21,7 +21,7 @@ jobs:
       WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
       TARGET_WIKI_PAGE_FILE: Supported-Game-List.md
       BASELINE_WIKI_PAGE_FILE: Supported-Game-List.md
-      NEW_GAMES_RETENTION_DAYS: "0"
+      NEW_GAMES_RETENTION_DAYS: "15"
 
     steps:
       - name: Check out repository
