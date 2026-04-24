@@ -127,31 +127,34 @@ class ScanController:
         path_groups = _group_paths_by_drive(normalized_paths, _SCAN_MAX_WORKERS)
         game_db = dict(self._get_game_db() or {})
         lang = self._get_lang()
-        submitted_workers = 0
 
         try:
             for group in path_groups:
-                self._executor.submit(
-                    self._run_scan_worker,
-                    generation,
-                    tuple(group),
-                    game_db,
-                    lang,
-                )
-                submitted_workers += 1
+                # Count the worker before submit so a very fast worker cannot
+                # finish and decrement the counter before the main thread
+                # records it as pending.
+                with self._pending_lock:
+                    self._pending_workers += 1
+                try:
+                    self._executor.submit(
+                        self._run_scan_worker,
+                        generation,
+                        tuple(group),
+                        game_db,
+                        lang,
+                    )
+                except Exception:
+                    with self._pending_lock:
+                        self._pending_workers -= 1
+                    raise
         except Exception:
             self._logger.exception("Failed to submit scan worker")
             self._scan_generation += 1
             self._scan_in_progress = False
             self._auto_scan_active = False
-            with self._pending_lock:
-                self._pending_workers = submitted_workers
             self._callbacks.finish_scan_ui()
             self._callbacks.pump_poster_queue()
             return False
-
-        with self._pending_lock:
-            self._pending_workers = submitted_workers
 
         return True
 

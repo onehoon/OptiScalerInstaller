@@ -54,16 +54,20 @@ def should_apply_fsr4_for_game(app: Any, game_data: Mapping[str, Any] | None = N
     return True
 
 
+def build_selected_game_snapshot_from_runtime(app: Any):
+    return build_selected_game_snapshot(
+        app.found_exe_list,
+        app.card_ui_state.selected_game_index,
+        getattr(app, "lang", "en"),
+    )
+
+
 def build_install_button_state_inputs(app: Any) -> InstallButtonStateInputs:
     gpu_state = app.gpu_state
     sheet_state = app.sheet_state
     install_state = app.install_state
     archive_state = app.archive_state
-    selection = build_selected_game_snapshot(
-        app.found_exe_list,
-        app.card_ui_state.selected_game_index,
-        getattr(app, "lang", "en"),
-    )
+    selection = build_selected_game_snapshot_from_runtime(app)
     app_update_manager = getattr(app, "_app_update_manager", None)
     return build_install_button_state_inputs_bundle(
         selection=selection,
@@ -141,6 +145,7 @@ def update_install_button_state(app: Any) -> None:
 
 
 __all__ = [
+    "build_selected_game_snapshot_from_runtime",
     "build_install_button_state_inputs",
     "is_game_supported_for_current_gpu",
     "is_multi_gpu_block_active",

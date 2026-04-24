@@ -13,9 +13,13 @@ from installer.i18n import build_install_information_text
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
-from .install_runtime_actions import should_apply_fsr4_for_game, update_install_button_state
+from .install_runtime_actions import (
+    build_selected_game_snapshot_from_runtime,
+    should_apply_fsr4_for_game,
+    update_install_button_state,
+)
 from .install_selection_controller import InstallSelectionPrecheckOutcome
-from .install_state import build_install_entry_state, build_selected_game_snapshot
+from .install_state import build_install_entry_state, resolve_ready_cached_archive_path
 from .runtime_state import (
     ArchiveRuntimeState,
     CardUiRuntimeState,
@@ -128,15 +132,8 @@ class InstallFlowController:
                 error=str(exc),
             )
 
-    def _resolve_cached_archive(self, ready: bool, archive_path: str) -> str:
-        return archive_path if ready else ""
-
     def build_install_entry_state(self) -> InstallEntryState:
-        selection = build_selected_game_snapshot(
-            self._callbacks.get_found_games(),
-            self._card_ui_state.selected_game_index,
-            self._callbacks.get_lang(),
-        )
+        selection = build_selected_game_snapshot_from_runtime(self._app_ref)
         archive = self._archive_state
         predownload_in_progress = bool(
             archive.optipatcher_downloading
@@ -162,16 +159,16 @@ class InstallFlowController:
             fsr4_archive_error=archive.fsr4_error,
             game_popup_confirmed=self._install_state.popup_confirmed,
             predownload_in_progress=predownload_in_progress,
-            ual_cached_archive=self._resolve_cached_archive(archive.ual_ready, archive.ual_source_archive),
-            optipatcher_cached_archive=self._resolve_cached_archive(
+            ual_cached_archive=resolve_ready_cached_archive_path(archive.ual_ready, archive.ual_source_archive),
+            optipatcher_cached_archive=resolve_ready_cached_archive_path(
                 archive.optipatcher_ready,
                 archive.optipatcher_source_archive,
             ),
-            specialk_cached_archive=self._resolve_cached_archive(
+            specialk_cached_archive=resolve_ready_cached_archive_path(
                 archive.specialk_ready,
                 archive.specialk_source_archive,
             ),
-            unreal5_cached_archive=self._resolve_cached_archive(
+            unreal5_cached_archive=resolve_ready_cached_archive_path(
                 archive.unreal5_ready,
                 archive.unreal5_source_archive,
             ),

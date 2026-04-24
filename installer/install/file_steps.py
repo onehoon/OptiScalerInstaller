@@ -234,6 +234,26 @@ def _apply_existing_file_settings(
             ini_utils.set_file_readonly(file_path)
 
 
+def _apply_optional_existing_file_settings(
+    file_path: Path,
+    *,
+    logger,
+    profile_name: str,
+    apply_callback: Callable[[], None],
+) -> None:
+    # Optional profile application is best-effort. Log failures and keep the
+    # main install workflow running instead of changing install success/failure.
+    try:
+        _apply_existing_file_settings(
+            file_path,
+            logger=logger,
+            apply_callback=apply_callback,
+            restore_original_readonly=True,
+        )
+    except Exception:
+        logger.exception("Failed to apply %s settings to %s", profile_name, file_path)
+
+
 def _collect_unreal_ini_profile_targets(
     target_path: str,
     game_data: dict[str, Any],
@@ -315,11 +335,11 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             )
             logger.info("Applied game_ini_profile settings to %s", file_path)
 
-        _apply_existing_file_settings(
+        _apply_optional_existing_file_settings(
             file_path,
             logger=logger,
+            profile_name="game_ini_profile",
             apply_callback=_apply_ini,
-            restore_original_readonly=True,
         )
 
     unreal_ini_targets = _collect_unreal_ini_profile_targets(target_path, game_data, logger=logger)
@@ -332,11 +352,11 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             )
             logger.info("Applied game_unreal_ini_profile settings to %s", file_path)
 
-        _apply_existing_file_settings(
+        _apply_optional_existing_file_settings(
             file_path,
             logger=logger,
+            profile_name="game_unreal_ini_profile",
             apply_callback=_apply_unreal_ini,
-            restore_original_readonly=True,
         )
 
     xml_targets: dict[Path, dict[str | tuple[str, ...], str]] = {}
@@ -371,11 +391,11 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             )
             logger.info("Applied game_xml_profile settings to %s", file_path)
 
-        _apply_existing_file_settings(
+        _apply_optional_existing_file_settings(
             file_path,
             logger=logger,
+            profile_name="game_xml_profile",
             apply_callback=_apply_xml,
-            restore_original_readonly=True,
         )
 
 
@@ -451,11 +471,11 @@ def apply_optional_json_settings(target_path: str, game_data: dict[str, Any], lo
             if changed:
                 logger.info("Applied game_json_profile settings to %s", Path(file_path).name)
 
-        _apply_existing_file_settings(
+        _apply_optional_existing_file_settings(
             file_path,
             logger=logger,
+            profile_name="game_json_profile",
             apply_callback=_apply_json,
-            restore_original_readonly=True,
         )
 
 
@@ -491,6 +511,8 @@ def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
     rows = _dedupe_registry_rows(rows)
 
     for row in rows:
+        # Registry profile rows are optional post-install tweaks. Log failures
+        # per row and continue so they do not change overall install outcome.
         hive_name = str(row.get("hive") or "").strip().casefold()
         key_path = str(row.get("key_path") or "").strip()
         value_name = str(row.get("value_name") or "").strip()

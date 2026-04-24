@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from .app_runtime_actions import build_reset_install_selection_ui_state
 from . import rtss_notice
 from .archive_controller import ArchivePreparationController, ArchivePreparationState
 from .game_db_controller import GameDbLoadResult
@@ -30,7 +31,6 @@ class StartupRuntimeCallbacks:
     run_post_sheet_startup: Callable[[bool], None]
     mark_post_sheet_startup_done: Callable[[], None]
     set_scan_status_message: Callable[[str, str], None]
-    clear_cards: Callable[[], None]
     set_information_text: Callable[[str], None]
     update_selected_game_header: Callable[[], None]
     apply_install_selection_state: Callable[[InstallSelectionUiState], None]
@@ -176,7 +176,6 @@ class StartupRuntimeCoordinator:
 
     def handle_unsupported_gpu_block(self, scan_status_message: str, info_text: str) -> None:
         sheet_state = self._sheet_state
-        install_state = self._install_state
         card_ui_state = self._card_ui_state
 
         self._callbacks.mark_post_sheet_startup_done()
@@ -186,21 +185,11 @@ class StartupRuntimeCoordinator:
         sheet_state.module_download_links = {}
         self._callbacks.clear_found_games()
         card_ui_state.selected_game_index = None
-        install_state.popup_confirmed = False
-        install_state.precheck_running = False
-        install_state.precheck_ok = False
-        install_state.precheck_error = ""
-        install_state.precheck_dll_name = ""
         self._callbacks.apply_install_selection_state(
-            InstallSelectionUiState(
-                popup_confirmed=False,
-                precheck_running=False,
-                precheck_ok=False,
-            )
+            build_reset_install_selection_ui_state()
         )
         self._callbacks.set_folder_select_enabled(False)
         self._callbacks.set_scan_status_message(scan_status_message, "#FF8A8A")
-        self._callbacks.clear_cards()
         self._callbacks.set_information_text(info_text)
         self._callbacks.update_selected_game_header()
         self._callbacks.update_sheet_status()

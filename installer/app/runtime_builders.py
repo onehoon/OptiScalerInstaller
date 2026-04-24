@@ -11,7 +11,6 @@ from installer.i18n import pick_module_message
 
 from .app_runtime_actions import (
     apply_install_selection_state,
-    clear_cards_placeholder,
     clear_found_games,
     format_gpu_label_text,
     is_scan_in_progress,
@@ -513,7 +512,6 @@ def build_app_startup_runtime_coordinator_deps(app: Any, *, logger=None) -> Star
             run_post_sheet_startup=app._startup_flow.run_post_sheet_startup,
             mark_post_sheet_startup_done=app._startup_flow.mark_post_sheet_startup_done,
             set_scan_status_message=lambda text="", text_color=None: set_scan_status_message(app, text, text_color),
-            clear_cards=lambda: clear_cards_placeholder(app),
             set_information_text=lambda text="": set_information_text(app, text),
             update_selected_game_header=lambda: update_selected_game_header(app),
             apply_install_selection_state=lambda state: apply_install_selection_state(app, state),

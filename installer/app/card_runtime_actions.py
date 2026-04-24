@@ -5,8 +5,8 @@ from typing import Any
 
 from installer.i18n import build_install_information_text
 
-from .app_runtime_actions import apply_install_selection_state
-from .install_selection_controller import InstallSelectionPrecheckOutcome, InstallSelectionUiState
+from .app_runtime_actions import reset_install_selection_state
+from .install_selection_controller import InstallSelectionPrecheckOutcome
 from .install_runtime_actions import update_install_button_state
 from .startup_window import get_ctk_scale
 from .ui_shell_actions import set_information_text, update_selected_game_header
@@ -14,14 +14,7 @@ from .ui_shell_actions import set_information_text, update_selected_game_header
 
 def reset_selected_game_state(app: Any) -> None:
     app.card_ui_state.selected_game_index = None
-    apply_install_selection_state(
-        app,
-        InstallSelectionUiState(
-            popup_confirmed=False,
-            precheck_running=False,
-            precheck_ok=False,
-        )
-    )
+    reset_install_selection_state(app)
     set_information_text(app, "")
 
 

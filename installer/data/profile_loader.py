@@ -29,6 +29,11 @@ def _normalize_profile_id(value: object) -> str:
 def _derive_all_profile_id(profile_id: str) -> str:
     """Derive the _ALL wildcard profile id from a specific profile id.
 
+    This helper depends on the current data rule that raw game IDs never
+    contain '_'. That makes the first '_' the split point between game_id and
+    the vendor/profile suffix. If upstream game_id naming ever changes, review
+    this helper and the related profile-catalog validation together.
+
     Rule: game IDs never contain '_', so the first '_' separates game_id from
     the rest.  'kcd2_intel' → 'kcd2_all', 'kcd2_intel_igpu' → 'kcd2_all'.
     Returns '' when there is no '_' (bare game_id) or when profile_id already

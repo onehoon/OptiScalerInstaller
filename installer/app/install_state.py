@@ -43,6 +43,10 @@ def _is_fsr4_install_ready(
     return _normalize_bool(fsr4_archive_ready) and not _normalize_bool(fsr4_archive_downloading)
 
 
+def resolve_ready_cached_archive_path(ready: object, archive_path: object) -> str:
+    return _normalize_text(archive_path) if _normalize_bool(ready) else ""
+
+
 @dataclass(frozen=True)
 class SelectedGameSnapshot:
     found_games: tuple[Mapping[str, Any], ...]
@@ -181,4 +185,5 @@ __all__ = [
     "build_install_button_state_inputs",
     "build_install_entry_state",
     "build_selected_game_snapshot",
+    "resolve_ready_cached_archive_path",
 ]

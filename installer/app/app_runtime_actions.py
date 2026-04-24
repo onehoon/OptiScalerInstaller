@@ -70,11 +70,6 @@ def is_scan_in_progress(app: Any) -> bool:
 def clear_found_games(app: Any) -> None:
     app.found_exe_list = []
 
-
-def clear_cards_placeholder(app: Any) -> None:
-    del app
-
-
 def pump_poster_queue(app: Any) -> None:
     app._poster_queue.pump()
 
@@ -112,6 +107,35 @@ def apply_install_selection_state(app: Any, state: InstallSelectionUiState) -> N
     install_state.precheck_dll_name = str(state.precheck_dll_name or "")
 
 
+def build_reset_install_selection_ui_state(
+    *,
+    precheck_error: str = "",
+    precheck_dll_name: str = "",
+) -> InstallSelectionUiState:
+    return InstallSelectionUiState(
+        popup_confirmed=False,
+        precheck_running=False,
+        precheck_ok=False,
+        precheck_error=str(precheck_error or ""),
+        precheck_dll_name=str(precheck_dll_name or ""),
+    )
+
+
+def reset_install_selection_state(
+    app: Any,
+    *,
+    precheck_error: str = "",
+    precheck_dll_name: str = "",
+) -> None:
+    apply_install_selection_state(
+        app,
+        build_reset_install_selection_ui_state(
+            precheck_error=precheck_error,
+            precheck_dll_name=precheck_dll_name,
+        ),
+    )
+
+
 def build_scan_entry_state(app: Any) -> ScanEntryState:
     gpu_state = app.gpu_state
     sheet_state = app.sheet_state
@@ -141,13 +165,14 @@ def apply_selected_install(app: Any):
 __all__ = [
     "apply_install_selection_state",
     "apply_selected_install",
+    "build_reset_install_selection_ui_state",
     "build_scan_entry_state",
-    "clear_cards_placeholder",
     "clear_found_games",
     "format_gpu_label_text",
     "is_scan_in_progress",
     "pump_poster_queue",
     "request_close",
+    "reset_install_selection_state",
     "select_game_folder",
     "set_folder_select_enabled",
     "set_game_folder",
