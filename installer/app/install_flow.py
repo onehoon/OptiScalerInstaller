@@ -13,6 +13,20 @@ from installer.i18n import build_install_information_text
 from installer.install import build_install_context, create_install_workflow_callbacks, run_install_workflow
 
 from .install_entry import InstallEntryDecision, InstallEntryState, validate_install_entry
+from .install_rejection_codes import (
+    INSTALL_REJECT_CONFIRM_POPUP_REQUIRED,
+    INSTALL_REJECT_FSR4_ARCHIVE_DOWNLOADING,
+    INSTALL_REJECT_FSR4_NOT_READY,
+    INSTALL_REJECT_INSTALL_IN_PROGRESS,
+    INSTALL_REJECT_INSTALL_PRECHECK_RUNNING,
+    INSTALL_REJECT_INVALID_GAME_SELECTION,
+    INSTALL_REJECT_MULTI_GPU_BLOCKED,
+    INSTALL_REJECT_NO_GAME_SELECTED,
+    INSTALL_REJECT_OPTISCALER_ARCHIVE_DOWNLOADING,
+    INSTALL_REJECT_OPTISCALER_ARCHIVE_NOT_READY,
+    INSTALL_REJECT_PRECHECK_INCOMPLETE,
+    INSTALL_REJECT_PREDOWNLOAD_IN_PROGRESS,
+)
 from .install_runtime_actions import (
     build_selected_game_snapshot_from_runtime,
     should_apply_fsr4_for_game,
@@ -171,46 +185,50 @@ class InstallFlowController:
         )
 
     def show_install_entry_rejection(self, decision: InstallEntryDecision) -> None:
-        if decision.code in {"multi_gpu_blocked", "install_precheck_running", "install_in_progress"}:
+        if decision.code in {
+            INSTALL_REJECT_MULTI_GPU_BLOCKED,
+            INSTALL_REJECT_INSTALL_PRECHECK_RUNNING,
+            INSTALL_REJECT_INSTALL_IN_PROGRESS,
+        }:
             return
 
-        if decision.code == "predownload_in_progress":
+        if decision.code == INSTALL_REJECT_PREDOWNLOAD_IN_PROGRESS:
             self._callbacks.show_info(self._txt.dialogs.preparing_download_title, self._txt.dialogs.preparing_download_body)
             return
 
-        if decision.code == "no_game_selected":
+        if decision.code == INSTALL_REJECT_NO_GAME_SELECTED:
             self._callbacks.show_warning(self._txt.common.warning, self._txt.dialogs.select_game_card_body)
             return
 
-        if decision.code == "optiscaler_archive_downloading":
+        if decision.code == INSTALL_REJECT_OPTISCALER_ARCHIVE_DOWNLOADING:
             self._callbacks.show_info(self._txt.dialogs.preparing_archive_title, self._txt.dialogs.preparing_archive_body)
             return
 
-        if decision.code == "precheck_incomplete":
+        if decision.code == INSTALL_REJECT_PRECHECK_INCOMPLETE:
             detail = decision.detail or self._txt.dialogs.precheck_incomplete_body
             detail = f"{detail}\n\n{self._txt.dialogs.precheck_retry_mods_body}"
             self._callbacks.show_warning(self._txt.common.warning, detail)
             return
 
-        if decision.code == "optiscaler_archive_not_ready":
+        if decision.code == INSTALL_REJECT_OPTISCALER_ARCHIVE_NOT_READY:
             detail = decision.detail or self._txt.dialogs.optiscaler_archive_not_ready
             self._callbacks.show_warning(self._txt.common.warning, detail)
             return
 
-        if decision.code == "invalid_game_selection":
+        if decision.code == INSTALL_REJECT_INVALID_GAME_SELECTION:
             self._callbacks.show_warning(self._txt.common.warning, self._txt.dialogs.invalid_game_body)
             return
 
-        if decision.code == "fsr4_archive_downloading":
+        if decision.code == INSTALL_REJECT_FSR4_ARCHIVE_DOWNLOADING:
             self._callbacks.show_info(self._txt.dialogs.preparing_download_title, self._txt.dialogs.preparing_download_body)
             return
 
-        if decision.code == "fsr4_not_ready":
+        if decision.code == INSTALL_REJECT_FSR4_NOT_READY:
             detail = decision.detail or self._txt.dialogs.fsr4_not_ready
             self._callbacks.show_warning(self._txt.common.warning, detail)
             return
 
-        if decision.code == "confirm_popup_required":
+        if decision.code == INSTALL_REJECT_CONFIRM_POPUP_REQUIRED:
             self._callbacks.show_warning(self._txt.common.notice, self._txt.dialogs.confirm_popup_body)
 
     def apply_selected_install(self) -> None:

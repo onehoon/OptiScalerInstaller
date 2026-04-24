@@ -3,6 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from .install_rejection_codes import (
+    INSTALL_REJECT_CONFIRM_POPUP_REQUIRED,
+    INSTALL_REJECT_FSR4_ARCHIVE_DOWNLOADING,
+    INSTALL_REJECT_FSR4_NOT_READY,
+    INSTALL_REJECT_INSTALL_IN_PROGRESS,
+    INSTALL_REJECT_INSTALL_PRECHECK_RUNNING,
+    INSTALL_REJECT_INVALID_GAME_SELECTION,
+    INSTALL_REJECT_MULTI_GPU_BLOCKED,
+    INSTALL_REJECT_NO_GAME_SELECTED,
+    INSTALL_REJECT_OPTISCALER_ARCHIVE_DOWNLOADING,
+    INSTALL_REJECT_OPTISCALER_ARCHIVE_NOT_READY,
+    INSTALL_REJECT_PRECHECK_INCOMPLETE,
+    INSTALL_REJECT_PREDOWNLOAD_IN_PROGRESS,
+)
+
 
 def _normalize_text(value: object) -> str:
     return str(value or "")
@@ -66,28 +81,28 @@ def validate_install_entry(
     # after the button has been pressed. UI-only loading/update states stay in
     # compute_install_button_state().
     if state.multi_gpu_blocked:
-        return _reject("multi_gpu_blocked")
+        return _reject(INSTALL_REJECT_MULTI_GPU_BLOCKED)
 
     if state.install_in_progress:
-        return _reject("install_in_progress")
+        return _reject(INSTALL_REJECT_INSTALL_IN_PROGRESS)
 
     if state.predownload_in_progress:
-        return _reject("predownload_in_progress")
+        return _reject(INSTALL_REJECT_PREDOWNLOAD_IN_PROGRESS)
 
     if state.selected_game_index is None:
-        return _reject("no_game_selected")
+        return _reject(INSTALL_REJECT_NO_GAME_SELECTED)
 
     if state.optiscaler_archive_downloading:
-        return _reject("optiscaler_archive_downloading")
+        return _reject(INSTALL_REJECT_OPTISCALER_ARCHIVE_DOWNLOADING)
 
     if state.install_precheck_running:
-        return _reject("install_precheck_running")
+        return _reject(INSTALL_REJECT_INSTALL_PRECHECK_RUNNING)
 
     if not state.install_precheck_ok or not state.install_precheck_dll_name:
-        return _reject("precheck_incomplete", detail=_normalize_text(state.install_precheck_error))
+        return _reject(INSTALL_REJECT_PRECHECK_INCOMPLETE, detail=_normalize_text(state.install_precheck_error))
 
     if not state.optiscaler_archive_ready or not state.opti_source_archive:
-        return _reject("optiscaler_archive_not_ready", detail=_normalize_text(state.optiscaler_archive_error))
+        return _reject(INSTALL_REJECT_OPTISCALER_ARCHIVE_NOT_READY, detail=_normalize_text(state.optiscaler_archive_error))
 
     selected_index = state.selected_game_index
     selected_game = None
@@ -96,17 +111,17 @@ def validate_install_entry(
         if 0 <= selected_index < len(state.found_games):
             selected_game = state.found_games[selected_index]
     if selected_game is None:
-        return _reject("invalid_game_selection")
+        return _reject(INSTALL_REJECT_INVALID_GAME_SELECTION)
 
     fsr4_required = bool(should_apply_fsr4(selected_game))
     if fsr4_required and state.fsr4_archive_downloading:
-        return _reject("fsr4_archive_downloading")
+        return _reject(INSTALL_REJECT_FSR4_ARCHIVE_DOWNLOADING)
 
     if fsr4_required and (not state.fsr4_archive_ready or not state.fsr4_source_archive):
-        return _reject("fsr4_not_ready", detail=_normalize_text(state.fsr4_archive_error))
+        return _reject(INSTALL_REJECT_FSR4_NOT_READY, detail=_normalize_text(state.fsr4_archive_error))
 
     if not state.game_popup_confirmed:
-        return _reject("confirm_popup_required")
+        return _reject(INSTALL_REJECT_CONFIRM_POPUP_REQUIRED)
 
     return InstallEntryDecision(
         ok=True,

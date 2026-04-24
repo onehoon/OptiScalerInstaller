@@ -97,6 +97,70 @@ def _apply_optional_existing_file_settings(
         logger.exception("Failed to apply %s settings to %s", profile_name, file_path)
 
 
+def _collect_game_ini_profile_targets(
+    target_path: str,
+    game_data: dict[str, Any],
+    *,
+    logger,
+) -> dict[Path, dict[str, dict[str, str]]]:
+    ini_targets: dict[Path, dict[str, dict[str, str]]] = {}
+    for row in list(game_data.get("game_ini_profile") or []):
+        if not isinstance(row, Mapping):
+            continue
+        profile_path = str(row.get("path") or "").strip()
+        section = str(row.get("section") or "").strip()
+        key = str(row.get("key") or "").strip()
+        if not profile_path or not section or not key:
+            continue
+
+        resolved_path = _resolve_profile_path(
+            target_path,
+            profile_path,
+            require_existing=True,
+            logger=logger,
+        )
+        if resolved_path is None:
+            logger.info("Skipped game_ini_profile because target file was not found: %s", profile_path)
+            continue
+
+        section_map = ini_targets.setdefault(resolved_path, {})
+        section_map.setdefault(section, {})[key] = _normalize_profile_scalar(row.get("value"))
+    return ini_targets
+
+
+def _apply_game_ini_profile_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
+    ini_targets = _collect_game_ini_profile_targets(target_path, game_data, logger=logger)
+    for file_path, section_map in ini_targets.items():
+        def _apply_ini(file_path: Path = file_path, section_map: dict[str, dict[str, str]] = section_map) -> None:
+            settings = {
+                (section_name, key_name): value
+                for section_name, key_values in section_map.items()
+                for key_name, value in key_values.items()
+            }
+            ini_utils.apply_ini_settings(
+                str(file_path),
+                settings,
+                logger=logger,
+            )
+            ini_utils.upsert_ini_entries(
+                file_path,
+                section_map,
+                logger=logger,
+                create_missing_file=False,
+                allow_edit_existing=False,
+                allow_add_key=True,
+                allow_add_section=False,
+            )
+            logger.info("Applied game_ini_profile settings to %s", file_path)
+
+        _apply_optional_existing_file_settings(
+            file_path,
+            logger=logger,
+            profile_name="game_ini_profile",
+            apply_callback=_apply_ini,
+        )
+
+
 def _collect_unreal_ini_profile_targets(
     target_path: str,
     game_data: dict[str, Any],
@@ -131,63 +195,13 @@ def _collect_unreal_ini_profile_targets(
     return unreal_targets
 
 
-def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
-    ini_targets: dict[Path, dict[str, dict[str, str]]] = {}
-    for row in list(game_data.get("game_ini_profile") or []):
-        if not isinstance(row, Mapping):
-            continue
-        profile_path = str(row.get("path") or "").strip()
-        section = str(row.get("section") or "").strip()
-        key = str(row.get("key") or "").strip()
-        if not profile_path or not section or not key:
-            continue
-
-        resolved_path = _resolve_profile_path(
-            target_path,
-            profile_path,
-            require_existing=True,
-            logger=logger,
-        )
-        if resolved_path is None:
-            logger.info("Skipped game_ini_profile because target file was not found: %s", profile_path)
-            continue
-
-        section_map = ini_targets.setdefault(resolved_path, {})
-        section_map.setdefault(section, {})[key] = _normalize_profile_scalar(row.get("value"))
-
-    for file_path, section_map in ini_targets.items():
-        def _apply_ini() -> None:
-            settings = {
-                (section_name, key_name): value
-                for section_name, key_values in section_map.items()
-                for key_name, value in key_values.items()
-            }
-            ini_utils.apply_ini_settings(
-                str(file_path),
-                settings,
-                logger=logger,
-            )
-            ini_utils.upsert_ini_entries(
-                file_path,
-                section_map,
-                logger=logger,
-                create_missing_file=False,
-                allow_edit_existing=False,
-                allow_add_key=True,
-                allow_add_section=False,
-            )
-            logger.info("Applied game_ini_profile settings to %s", file_path)
-
-        _apply_optional_existing_file_settings(
-            file_path,
-            logger=logger,
-            profile_name="game_ini_profile",
-            apply_callback=_apply_ini,
-        )
-
+def _apply_game_unreal_ini_profile_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
     unreal_ini_targets = _collect_unreal_ini_profile_targets(target_path, game_data, logger=logger)
     for file_path, settings in unreal_ini_targets.items():
-        def _apply_unreal_ini() -> None:
+        def _apply_unreal_ini(
+            file_path: Path = file_path,
+            settings: dict[tuple[str, str, str], str] = settings,
+        ) -> None:
             ini_utils.apply_unreal_ini_settings(
                 str(file_path),
                 settings,
@@ -202,6 +216,13 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             apply_callback=_apply_unreal_ini,
         )
 
+
+def _collect_game_xml_profile_targets(
+    target_path: str,
+    game_data: dict[str, Any],
+    *,
+    logger,
+) -> dict[Path, dict[str | tuple[str, ...], str]]:
     xml_targets: dict[Path, dict[str | tuple[str, ...], str]] = {}
     for row in list(game_data.get("game_xml_profile") or []):
         if not isinstance(row, Mapping):
@@ -223,9 +244,16 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
 
         normalized_xml_path = xml_path[2:] if xml_path.startswith("./") else xml_path
         xml_targets.setdefault(resolved_path, {})[normalized_xml_path] = _normalize_profile_scalar(row.get("value"))
+    return xml_targets
 
+
+def _apply_game_xml_profile_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
+    xml_targets = _collect_game_xml_profile_targets(target_path, game_data, logger=logger)
     for file_path, settings in xml_targets.items():
-        def _apply_xml() -> None:
+        def _apply_xml(
+            file_path: Path = file_path,
+            settings: dict[str | tuple[str, ...], str] = settings,
+        ) -> None:
             xml_utils.apply_xml_settings(
                 str(file_path),
                 settings,
@@ -240,6 +268,12 @@ def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, An
             profile_name="game_xml_profile",
             apply_callback=_apply_xml,
         )
+
+
+def apply_optional_ingame_ini_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
+    _apply_game_ini_profile_settings(target_path, game_data, logger)
+    _apply_game_unreal_ini_profile_settings(target_path, game_data, logger)
+    _apply_game_xml_profile_settings(target_path, game_data, logger)
 
 
 def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, Any], logger) -> None:
