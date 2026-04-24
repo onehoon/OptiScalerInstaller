@@ -45,17 +45,23 @@ def is_game_supported_for_vendor(
     if not parse_support_flag(game_data.get("enabled", True), native_xefg_means_false=False):
         return False
 
-    if bool(game_data.get(GPU_BUNDLE_LOADED_KEY, False)):
-        return bool(game_data.get(GPU_BUNDLE_SUPPORTED_KEY, False))
-
     normalized_vendor = str(vendor or "").strip().lower()
+    has_vendor_support_flag = False
     if normalized_vendor in {"intel", "amd", "nvidia"}:
         support_key = f"support_{normalized_vendor}"
         if support_key in game_data:
-            return parse_support_flag(
+            has_vendor_support_flag = True
+            if not parse_support_flag(
                 game_data.get(support_key),
                 native_xefg_means_false=native_xefg_means_false,
-            )
+            ):
+                return False
+
+    if bool(game_data.get(GPU_BUNDLE_LOADED_KEY, False)):
+        return bool(game_data.get(GPU_BUNDLE_SUPPORTED_KEY, False))
+
+    if has_vendor_support_flag:
+        return True
 
     rule_text = _strip_trademark_markers(game_data.get("supported_gpu", ""))
     normalized_gpu_info = _strip_trademark_markers(gpu_info)

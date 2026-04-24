@@ -3,11 +3,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from installer.data.game_db_keys import GPU_BUNDLE_LOADED_KEY, GPU_BUNDLE_SUPPORTED_KEY
 from installer.system import gpu_service
 
 from .bootstrap_runtime import MAX_SUPPORTED_GPU_COUNT
-from .game_support_policy import _strip_trademark_markers, parse_support_flag
+from .game_support_policy import is_game_supported_for_vendor
 from .install_state import (
     build_install_button_state_inputs as build_install_button_state_inputs_bundle,
     build_selected_game_snapshot,
@@ -19,28 +18,12 @@ def is_multi_gpu_block_active(app: Any) -> bool:
     return app.gpu_state.gpu_count > MAX_SUPPORTED_GPU_COUNT
 
 
-def is_vendor_allowed_by_game_flags(app: Any, game_data: Mapping[str, Any]) -> bool:
-    vendor = str(app.sheet_state.active_vendor or "").strip().lower()
-    if vendor not in {"intel", "amd", "nvidia"}:
-        return True
-
-    support_key = f"support_{vendor}"
-    if support_key not in game_data:
-        return True
-
-    return parse_support_flag(game_data.get(support_key), native_xefg_means_false=True)
-
-
 def is_game_supported_for_current_gpu(app: Any, game_data: Mapping[str, Any]) -> bool:
-    if not parse_support_flag(game_data.get("enabled", True), native_xefg_means_false=False):
-        return False
-    if not is_vendor_allowed_by_game_flags(app, game_data):
-        return False
-    if bool(game_data.get(GPU_BUNDLE_LOADED_KEY, False)):
-        return bool(game_data.get(GPU_BUNDLE_SUPPORTED_KEY, False))
-    rule_text = _strip_trademark_markers(game_data.get("supported_gpu", ""))
-    normalized_gpu_info = _strip_trademark_markers(app.gpu_state.gpu_info)
-    return gpu_service.matches_gpu_rule(rule_text, normalized_gpu_info)
+    return is_game_supported_for_vendor(
+        game_data,
+        vendor=str(app.sheet_state.active_vendor or ""),
+        gpu_info=str(app.gpu_state.gpu_info or ""),
+    )
 
 
 def matches_fsr4_skip_rule(app: Any, target_text: str) -> bool:
@@ -154,7 +137,6 @@ __all__ = [
     "build_install_button_state_inputs",
     "is_game_supported_for_current_gpu",
     "is_multi_gpu_block_active",
-    "is_vendor_allowed_by_game_flags",
     "matches_fsr4_skip_rule",
     "should_apply_fsr4_for_game",
     "tick_loading_blink",
