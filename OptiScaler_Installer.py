@@ -44,6 +44,8 @@ except ModuleNotFoundError as e:
     ) from e
 
 try:
+    # Import at startup as an explicit dependency check; image loading is used
+    # by poster/UI code after the application is initialized.
     from PIL import Image
 except ModuleNotFoundError as e:
     raise ModuleNotFoundError(

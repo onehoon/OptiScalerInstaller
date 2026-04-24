@@ -289,11 +289,19 @@ class StartupRuntimeCoordinator:
     def _apply_archive_state_for_asset(self, asset_key: str, state: ArchivePreparationState) -> None:
         config = self._archive_assets[asset_key]
         archive_state = self._archive_state
-        setattr(archive_state, f"{config.state_prefix}_filename", str(state.filename or ""))
-        setattr(archive_state, f"{config.state_prefix}_ready", bool(state.ready))
-        setattr(archive_state, f"{config.state_prefix}_downloading", bool(state.downloading))
-        setattr(archive_state, f"{config.state_prefix}_error", str(state.error_message or ""))
-        setattr(archive_state, config.source_archive_field, str(state.archive_path or ""))
+        # Archive asset config prefixes must match ArchiveRuntimeState fields;
+        # fail fast instead of creating a stray dynamic attribute.
+        updates = {
+            f"{config.state_prefix}_filename": str(state.filename or ""),
+            f"{config.state_prefix}_ready": bool(state.ready),
+            f"{config.state_prefix}_downloading": bool(state.downloading),
+            f"{config.state_prefix}_error": str(state.error_message or ""),
+            config.source_archive_field: str(state.archive_path or ""),
+        }
+        for field_name, value in updates.items():
+            if not hasattr(archive_state, field_name):
+                raise AttributeError(f"ArchiveRuntimeState has no field for archive asset '{asset_key}': {field_name}")
+            setattr(archive_state, field_name, value)
 
     def _on_archive_state_changed(self, asset_key: str, state: ArchivePreparationState) -> None:
         self._apply_archive_state_for_asset(asset_key, state)

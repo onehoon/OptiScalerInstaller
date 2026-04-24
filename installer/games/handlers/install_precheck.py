@@ -52,17 +52,6 @@ class ModPrecheckState:
     ultimate_asi_loader: ModBinaryState
     renodx: RenoDxState
 
-    @property
-    def any_detected(self) -> bool:
-        return any(
-            (
-                self.reshade.detected,
-                self.special_k.detected,
-                self.ultimate_asi_loader.detected,
-                self.renodx.detected,
-            )
-        )
-
 
 @dataclass(frozen=True)
 class ModConflictFinding:

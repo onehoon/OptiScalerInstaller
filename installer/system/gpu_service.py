@@ -138,11 +138,6 @@ def get_graphics_adapter_snapshot() -> tuple[list[str], int, str]:
     return [], 0, "Unknown"
 
 
-def get_graphics_adapter_info() -> str:
-    """Return a user-friendly GPU name string for the current Windows machine."""
-    return get_graphics_adapter_snapshot()[2]
-
-
 def _normalize_text(text: str) -> str:
     return " ".join(str(text or "").split()).strip()
 

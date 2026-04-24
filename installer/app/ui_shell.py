@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 from installer.data.game_db_keys import GUIDE_URL_KEY, INSTALLED_PROXY_NAME_KEY
-from installer.i18n import pick_sheet_text
 from installer.i18n import pick_bound_message
 
 from .install_state import build_selected_game_snapshot
@@ -62,16 +61,6 @@ class AppUiShell:
         self._status_indicator_loading_color = status_indicator_loading_color
         self._status_indicator_online_color = status_indicator_online_color
         self._logger = logger or logging.getLogger()
-
-    def show_game_selection_popup(
-        self,
-        message_text: str,
-        on_confirm: Callable[[], None] | None = None,
-    ) -> None:
-        controller = self._get_notice_controller()
-        if controller is None:
-            return
-        controller.show_selection_popup(message_text, on_confirm=on_confirm)
 
     def show_precheck_popup(
         self,

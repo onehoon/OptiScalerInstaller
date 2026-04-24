@@ -334,6 +334,9 @@ def install_from_source_folder(source_folder, target_path, dll_name="", exclude_
             dst = os.path.join(dest_dir, fname)
             shutil.copy2(src, dst)
 
+    # This rename assumes resolve_proxy_dll_name() selected a safe proxy name
+    # and backup_existing_optiscaler_dlls() already moved any OptiScaler-owned
+    # destination out of the way.
     _rename_optiscaler_dll(target_path, dll_name, logger=logger)
 
 
@@ -480,6 +483,9 @@ def extract_archive(archive_path, target_path, logger=None):
 
 
 def _rename_optiscaler_dll(target_path, dll_name, logger=None):
+    # Contract: call only after the install precheck/proxy resolution and
+    # OptiScaler-managed backup steps. If dst exists here, it is expected to be
+    # an extracted OptiScaler-owned file or a backup-cleared target.
     if not dll_name:
         return
     src = os.path.join(target_path, OPTISCALER_DLL)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-import logging
 import os
 import shutil
 import stat
@@ -84,8 +83,10 @@ def _apply_optional_existing_file_settings(
     profile_name: str,
     apply_callback: Callable[[], None],
 ) -> None:
-    # Optional profile application is best-effort. Log failures and keep the
-    # main install workflow running instead of changing install success/failure.
+    # File-based optional profiles (INI/Unreal INI/XML/JSON) are best-effort.
+    # Log failures and keep the main install workflow running instead of
+    # changing install success/failure. Registry profiles follow the same
+    # policy in apply_optional_registry_settings().
     try:
         _apply_existing_file_settings(
             file_path,
@@ -278,6 +279,8 @@ def apply_optional_engine_ini_settings(target_path: str, game_data: dict[str, An
             logger.exception("Failed to apply engine_ini_profile settings to %s", engine_path)
         finally:
             if engine_path.exists():
+                # Engine.ini profile changes are intentionally locked after
+                # apply so launchers/games do not immediately overwrite them.
                 ini_utils.set_file_readonly(engine_path)
 
 
@@ -354,7 +357,8 @@ def apply_optional_registry_settings(game_data: dict[str, Any], logger) -> None:
 
     for row in rows:
         # Registry profile rows are optional post-install tweaks. Log failures
-        # per row and continue so they do not change overall install outcome.
+        # per row and continue so they follow the same best-effort policy as
+        # file-based optional profiles.
         hive_name = str(row.get("hive") or "").strip().casefold()
         key_path = str(row.get("key_path") or "").strip()
         value_name = str(row.get("value_name") or "").strip()
@@ -394,7 +398,7 @@ def install_fsr4_dll(target_path: str, fsr4_source_archive: str, logger) -> Path
         raise FileNotFoundError("FSR4 is not ready")
 
     with tempfile_module.TemporaryDirectory() as tmpdir:
-        installer_services.extract_archive(fsr4_source_archive, tmpdir, logger=None)
+        installer_services.extract_archive(fsr4_source_archive, tmpdir, logger=logger)
         dll_candidates = [path for path in Path(tmpdir).rglob("*.dll") if path.is_file()]
         if not dll_candidates:
             raise FileNotFoundError("No DLL found inside FSR4 zip")

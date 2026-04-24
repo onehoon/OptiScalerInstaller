@@ -317,21 +317,3 @@ def iter_scan_game_folders(
                 dirs[:] = []
 
 
-def scan_game_folders(
-    game_folders: Iterable[str],
-    game_db: dict[str, GameDbEntry],
-    *,
-    lang: Lang = "en",
-    is_game_supported: GameSupportPredicate | None = None,
-    logger=None,
-) -> list[GameRecord]:
-    """Walk folders and return matched game entries in discovery order."""
-    return list(
-        iter_scan_game_folders(
-            game_folders,
-            game_db,
-            lang=lang,
-            is_game_supported=is_game_supported,
-            logger=logger,
-        )
-    )

@@ -257,6 +257,13 @@ def load_game_master() -> dict[str, dict[str, Any]]:
         game_id = normalize_text(raw_game.get("game_id"))
         if not game_id:
             continue
+        if "_" in game_id:
+            # game_id deliberately does not support underscores; profile IDs
+            # reserve '_' for game/vendor/profile suffix splitting.
+            raise RuntimeError(
+                "game_master.json game_id values must not contain '_' because "
+                f"profile _all fallback splitting depends on that invariant: {game_id}"
+            )
         if is_test_game_title(raw_game.get("game_name_kr"), raw_game.get("game_name_en")):
             continue
         games[game_id] = dict(raw_game)
