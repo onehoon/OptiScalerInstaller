@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 import logging
 from typing import Any
 
+from ..common import schedule_safely
+
 
 SchedulerCallback = Callable[[Callable[[], None]], Any]
 
@@ -91,8 +93,10 @@ class InstallSelectionController:
             part for part in (popup_message, mod_notice_message) if part
         ).strip()
         if precheck_popup_message and not outcome.ok:
-            self._schedule_callback(
+            schedule_safely(
+                self._schedule,
                 lambda msg=precheck_popup_message: self._callbacks.show_precheck_popup(msg),
+                self._logger,
                 description="install precheck popup",
             )
 
@@ -101,7 +105,8 @@ class InstallSelectionController:
 
         selection_popup_message = str(self._callbacks.get_selection_popup_message(game) or "").strip()
         if mod_notice_message and selection_popup_message:
-            self._schedule_callback(
+            schedule_safely(
+                self._schedule,
                 lambda mod_msg=mod_notice_message, game_msg=selection_popup_message, state=completed_state: self._callbacks.show_selection_popup(
                     mod_msg,
                     lambda msg=game_msg, state_snapshot=state: self._callbacks.show_selection_popup(
@@ -109,26 +114,31 @@ class InstallSelectionController:
                         lambda final_state=state_snapshot: self._confirm_selection(final_state),
                     ),
                 ),
+                self._logger,
                 description="install mod notice popup",
             )
             return
 
         if mod_notice_message:
-            self._schedule_callback(
+            schedule_safely(
+                self._schedule,
                 lambda msg=mod_notice_message, state=completed_state: self._callbacks.show_selection_popup(
                     msg,
                     lambda state_snapshot=state: self._confirm_selection(state_snapshot),
                 ),
+                self._logger,
                 description="install mod notice popup",
             )
             return
 
         if selection_popup_message:
-            self._schedule_callback(
+            schedule_safely(
+                self._schedule,
                 lambda msg=selection_popup_message, state=completed_state: self._callbacks.show_selection_popup(
                     msg,
                     lambda state_snapshot=state: self._confirm_selection(state_snapshot),
                 ),
+                self._logger,
                 description="install selection popup",
             )
             return
@@ -141,12 +151,6 @@ class InstallSelectionController:
     def _apply_state(self, state: InstallSelectionUiState) -> None:
         self._callbacks.apply_ui_state(state)
         self._callbacks.update_install_button_state()
-
-    def _schedule_callback(self, callback: Callable[[], None], *, description: str) -> None:
-        try:
-            self._schedule(callback)
-        except Exception:
-            self._logger.exception("Failed to schedule %s", description)
 
 
 __all__ = [

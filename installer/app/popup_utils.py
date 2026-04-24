@@ -56,6 +56,30 @@ def present_modal_popup(
         fade_controller.start_fade_in()
 
 
+def resolve_popup_font_size(
+    popup: ctk.CTkToplevel,
+    size: Optional[int],
+    *,
+    log_message: str = "Failed to resolve popup font scaling",
+) -> Optional[int]:
+    if size is None:
+        return None
+
+    logical_size = int(size)
+    if logical_size < 0:
+        return logical_size
+
+    try:
+        if hasattr(popup, "_get_window_scaling"):
+            scale = float(popup._get_window_scaling())
+            if scale > 0:
+                return -max(1, int(round(logical_size * scale)))
+    except Exception:
+        logging.debug(log_message, exc_info=True)
+
+    return -max(1, logical_size)
+
+
 class PopupFadeController:
     def __init__(
         self,

@@ -183,10 +183,6 @@ class OptiManagerApp:
 
 
 if __name__ == "__main__":
-    if "--edit-engine-ini" in sys.argv:
-        logging.warning("--edit-engine-ini no longer supports Google Sheet source and has been disabled.")
-        sys.exit(0)
-
     request_foreground = has_startup_foreground_request(sys.argv[1:])
     root = ctk.CTk()
     app = OptiManagerApp(root)

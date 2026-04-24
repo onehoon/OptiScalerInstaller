@@ -34,10 +34,14 @@ def load_game_db_from_remote_json(source_url: str, *, timeout_seconds: float = 1
     normalized = str(source_url or "").strip()
     if not normalized:
         raise ValueError("Game master URL is empty")
-    response = _file_session.get(normalized, timeout=timeout_seconds)
-    response.raise_for_status()
-    rows = json.loads(response.content.decode("utf-8-sig"))
+    rows = _load_remote_json(normalized, timeout_seconds=timeout_seconds)
     return _build_game_db_from_rows(rows)
+
+
+def _load_remote_json(source_url: str, *, timeout_seconds: float) -> object:
+    response = _file_session.get(source_url, timeout=timeout_seconds)
+    response.raise_for_status()
+    return json.loads(response.content.decode("utf-8-sig"))
 
 
 def _build_game_db_from_rows(rows: object) -> dict[str, dict[str, object]]:
@@ -101,9 +105,7 @@ def load_module_download_links_from_remote_json(source_url: str, *, timeout_seco
     normalized = str(source_url or "").strip()
     if not normalized:
         raise ValueError("Resource master URL is empty")
-    response = _file_session.get(normalized, timeout=timeout_seconds)
-    response.raise_for_status()
-    rows = json.loads(response.content.decode("utf-8-sig"))
+    rows = _load_remote_json(normalized, timeout_seconds=timeout_seconds)
     return _build_module_download_links_from_rows(rows)
 
 

@@ -171,11 +171,13 @@ class ScanController:
                 is_game_supported=self._is_game_supported,
                 logger=self._logger,
             ):
-                self._schedule_callback(
+                schedule_safely(
+                    self._schedule,
                     lambda game_record=game, scheduled_generation=generation: self._on_game_found(
                         scheduled_generation,
                         game_record,
                     ),
+                    self._logger,
                     description="found-game callback",
                 )
         except Exception:
@@ -186,13 +188,12 @@ class ScanController:
                 is_last = self._pending_workers == 0
 
             if is_last:
-                self._schedule_callback(
+                schedule_safely(
+                    self._schedule,
                     lambda scheduled_generation=generation: self._on_scan_complete(scheduled_generation),
+                    self._logger,
                     description="scan completion callback",
                 )
-
-    def _schedule_callback(self, callback: Callable[[], None], *, description: str) -> None:
-        schedule_safely(self._schedule, callback, self._logger, description=description)
 
     def _on_game_found(self, generation: int, game: dict[str, Any]) -> None:
         if generation != self._scan_generation:

@@ -92,13 +92,12 @@ class GpuFlowController:
                 selected_model_name="",
             )
 
-        self._schedule_callback(
+        schedule_safely(
+            self._schedule,
             lambda detected_context=gpu_context: self._on_gpu_context_detected(detected_context),
+            self._logger,
             description="GPU flow update callback",
         )
-
-    def _schedule_callback(self, callback: Callable[[], None], *, description: str) -> None:
-        schedule_safely(self._schedule, callback, self._logger, description=description)
 
     def _normalize_gpu_info_text(self, value: object) -> str:
         text = str(value or "").strip()

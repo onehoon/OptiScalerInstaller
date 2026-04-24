@@ -6,7 +6,13 @@ from typing import Optional, Sequence, TYPE_CHECKING
 
 import customtkinter as ctk
 from .popup_markup import create_popup_markup_text, estimate_wrapped_text_lines
-from .popup_utils import PopupFadeController, close_modal_popup, create_modal_popup, present_modal_popup
+from .popup_utils import (
+    PopupFadeController,
+    close_modal_popup,
+    create_modal_popup,
+    present_modal_popup,
+    resolve_popup_font_size,
+)
 from ..i18n import AppStrings
 
 if TYPE_CHECKING:
@@ -83,25 +89,6 @@ def _get_vendor_button_theme(vendor: str, theme: GpuNoticeTheme) -> GpuVendorBut
     )
 
 
-def _resolve_popup_font_size(popup: ctk.CTkToplevel, size: Optional[int]) -> Optional[int]:
-    if size is None:
-        return None
-
-    logical_size = int(size)
-    if logical_size < 0:
-        return logical_size
-
-    try:
-        if hasattr(popup, "_get_window_scaling"):
-            scale = float(popup._get_window_scaling())
-            if scale > 0:
-                return -max(1, int(round(logical_size * scale)))
-    except Exception:
-        logging.debug("Failed to resolve GPU popup font scaling", exc_info=True)
-
-    return -max(1, logical_size)
-
-
 def _center_gpu_popup_on_root(
     root: ctk.CTk,
     popup: ctk.CTkToplevel,
@@ -164,7 +151,11 @@ def show_unsupported_gpu_notice(
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
-        base_font_size=_resolve_popup_font_size(popup, 13),
+        base_font_size=resolve_popup_font_size(
+            popup,
+            13,
+            log_message="Failed to resolve GPU popup font scaling",
+        ),
         emphasis_color=theme.warning_text_color,
     )
     message_widget = message_block.widget
@@ -239,7 +230,11 @@ def select_dual_gpu_adapter(
         background_color=theme.surface_color,
         body_text_color=theme.body_text_color,
         font_family=theme.font_ui,
-        base_font_size=_resolve_popup_font_size(popup, 13),
+        base_font_size=resolve_popup_font_size(
+            popup,
+            13,
+            log_message="Failed to resolve GPU popup font scaling",
+        ),
         emphasis_color=theme.warning_text_color,
     )
     message_widget = message_block.widget
