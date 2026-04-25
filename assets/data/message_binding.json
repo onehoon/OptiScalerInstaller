@@ -540,7 +540,7 @@
     "gpu_vendor": "ALL",
     "stage": "install_pre",
     "message_id": "install_pre_CD",
-    "priority": 70,
+    "priority": 110,
     "memo": ""
   },
   {
@@ -572,7 +572,7 @@
     "gpu_vendor": "NVIDIA",
     "stage": "install_post",
     "message_id": "install_post.dlss_relaunch",
-    "priority": 90,
+    "priority": 100,
     "memo": ""
   },
   {
