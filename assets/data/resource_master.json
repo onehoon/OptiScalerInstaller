@@ -89,10 +89,10 @@
     "variant": "latest",
     "resource_type": "installer",
     "name": "OptiScaler Installer",
-    "url": "https://github.com/onehoon/OptiScalerInstaller/releases/download/v0.4.0/OptiScaler_Installer_v0.4.0.exe",
+    "url": "https://github.com/onehoon/OptiScalerInstaller/releases/download/v0.4.1/OptiScaler_Installer_v0.4.1.exe",
     "filename": "OptiScaler_Installer_v0.3.9.exe",
-    "version": "v0.4.0",
-    "display_version": "v0.4.0",
+    "version": "v0.4.1",
+    "display_version": "v0.4.1",
     "sha256": "",
     "platform": "windows",
     "homepage_url": ""
