@@ -30,7 +30,6 @@ def build_install_controllers(
             build_information_text=lambda game: build_install_information_text(
                 game,
                 lang=app.lang,
-                stage="install_pre",
                 rtss_game_overlay_notice=_resolve_rtss_game_overlay_notice(
                     game=game,
                     install_state=app.install_state,

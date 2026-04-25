@@ -87,8 +87,9 @@ class InstallFlowController:
         self._install_state.precheck_ual_detected_names = ()
         try:
             logger.info("Running install precheck with handler: %s", getattr(handler, "handler_key", "default"))
-            precheck = handler.run_install_precheck(game_data, self._is_korean(), logger)
-            notice_message = handler.format_precheck_notice(precheck, self._is_korean())
+            use_korean = self._is_korean()
+            precheck = handler.run_install_precheck(game_data, use_korean, logger)
+            notice_message = handler.format_precheck_notice(precheck, use_korean)
             conflict_findings = tuple(getattr(precheck, "conflict_findings", ()) or ())
             if not conflict_findings:
                 logger.info("[MOD] No MOD detected")
@@ -126,8 +127,8 @@ class InstallFlowController:
                     resolved_dll_name=resolved_dll_name,
                     mod_notice_message=notice_message,
                 )
-            formatted_error = handler.format_precheck_error(precheck, self._is_korean())
-            popup_message = handler.get_precheck_popup_message(precheck, self._is_korean())
+            formatted_error = handler.format_precheck_error(precheck, use_korean)
+            popup_message = handler.get_precheck_popup_message(precheck, use_korean)
             logger.warning("Install precheck failed: %s", precheck.raw_error_message)
             return InstallSelectionPrecheckOutcome(
                 ok=False,
@@ -327,7 +328,6 @@ class InstallFlowController:
                 build_install_information_text(
                     game,
                     lang=self._callbacks.get_lang(),
-                    stage="install_post",
                 )
             )
             self._root.after_idle(lambda g=dict(game): self._callbacks.show_after_install_popup(g))

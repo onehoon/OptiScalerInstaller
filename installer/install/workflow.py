@@ -111,7 +111,7 @@ def _install_additional_files(
     unreal5_cached_archive: str,
 ) -> _AdditionalFileInstallState:
     logger.info("Install stage: additional files")
-    should_install_specialk = _should_install_specialk(install_ctx, logger)
+    specialk_required = _should_install_specialk(install_ctx, logger)
     should_install_optipatcher = _is_optipatcher_requested_with_source(
         install_ctx.game_data,
         module_download_links,
@@ -128,7 +128,7 @@ def _install_additional_files(
             cached_archive_path=ual_cached_archive,
         )
 
-    if should_install_specialk:
+    if specialk_required:
         install_specialk(
             install_ctx.target_path,
             install_ctx.final_dll_name,
@@ -159,7 +159,7 @@ def _install_additional_files(
         logger.info("Skipped FSR4 install for current GPU/game selection")
 
     return _AdditionalFileInstallState(
-        specialk_installed=should_install_specialk,
+        specialk_installed=specialk_required,
         optipatcher_requested_with_source=should_install_optipatcher,
     )
 
