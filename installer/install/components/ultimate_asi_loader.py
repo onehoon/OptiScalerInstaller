@@ -17,6 +17,17 @@ ULTIMATE_ASI_LOADER_DLL_NAME = "dinput8.dll"
 _ULTIMATE_ASI_LOADER_SIGNATURE = "ultimate asi loader"
 
 
+class _SuppressInfoLogger:
+    def __init__(self, logger) -> None:
+        self._logger = logger
+
+    def info(self, *args, **kwargs) -> None:
+        return None
+
+    def __getattr__(self, name: str):
+        return getattr(self._logger, name)
+
+
 def is_ultimate_asi_loader_dinput8(file_path: Path) -> bool:
     version_info = installer_services.read_windows_version_strings(file_path)
     return any(_ULTIMATE_ASI_LOADER_SIGNATURE in str(value).lower() for value in version_info.values())
@@ -43,7 +54,8 @@ def _resolve_download_archive_path(tmpdir_path: Path, url: str, *, logger=None) 
 
 def _extract_ual_payload_dll(archive_path: Path, tmpdir_path: Path, *, logger=None) -> Path:
     extract_path = tmpdir_path / "payload"
-    installer_services.extract_archive(str(archive_path), str(extract_path), logger=logger)
+    extract_logger = _SuppressInfoLogger(logger) if logger is not None else None
+    installer_services.extract_archive(str(archive_path), str(extract_path), logger=extract_logger)
 
     dll_candidates = [
         candidate
@@ -107,8 +119,6 @@ def install_ultimate_asi_loader(
                 if old_path.exists() and old_path.is_file():
                     installer_services.ensure_writable(old_path)
                     old_path.unlink()
-                    if logger:
-                        logger.info("Removed existing UAL file: %s", detected_name)
 
             destination_path = target_dir / representative_name
             shutil.copy2(payload_dll, destination_path)
