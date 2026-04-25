@@ -564,18 +564,6 @@
     "support_nvidia": false
   },
   {
-    "game_id": "Cronos",
-    "match_exe": "",
-    "game_name_kr": "크로노스: 더 뉴 던",
-    "game_name_en": "Cronos: The New Dawn",
-    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/2101960/ef86c5e6a7b2c129010dd11b5cff22cd88064928/library_600x900_2x.jpg?t=1761589453",
-    "cover_filename": "Cronos The New Dawn.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
-  },
-  {
     "game_id": "DeadSpace",
     "match_exe": "",
     "game_name_kr": "데드 스페이스 (2023)",
@@ -594,18 +582,6 @@
     "game_name_en": "Hell is Us",
     "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1620730/e3cb527066ddee13371bc3f65e2c00dbadd624dc/library_600x900_2x.jpg?t=1756972116",
     "cover_filename": "Hell is Us.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
-  },
-  {
-    "game_id": "Hogwarts",
-    "match_exe": "",
-    "game_name_kr": "호그와트 레거시",
-    "game_name_en": "Hogwarts Legacy",
-    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/990080/941d5ed2debf633890dc5d9af39f2e22b404c177/library_600x900_2x.jpg?t=1753912686",
-    "cover_filename": "Hogwarts Legacy.webp",
     "enabled": false,
     "support_intel": false,
     "support_amd": false,
@@ -668,18 +644,6 @@
     "cover_filename": "Star Wars Outlaws.webp",
     "enabled": false,
     "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
-  },
-  {
-    "game_id": "TOW2",
-    "match_exe": "",
-    "game_name_kr": "아우터 월드 2",
-    "game_name_en": "The Outer Worlds 2",
-    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/1449110/71710d0ac331340ac2b639d1221224c5c6944acb/library_600x900_2x.jpg?t=1761736439",
-    "cover_filename": "The Outer Worlds 2.webp",
-    "enabled": false,
-    "support_intel": "Native XeFG",
     "support_amd": false,
     "support_nvidia": false
   },
