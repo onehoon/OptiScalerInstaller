@@ -16,6 +16,7 @@ from .components import (
     install_ultimate_asi_loader,
     install_unreal5_patch,
 )
+from .components._link_utils import extract_module_url
 
 
 @dataclass(frozen=True)
@@ -41,9 +42,166 @@ class InstallWorkflowCallbacks:
     install_fsr4_dll: Callable[[str, str, Any], Any]
 
 
+@dataclass(frozen=True)
+class _AdditionalFileInstallState:
+    specialk_installed: bool
+    optipatcher_requested_with_source: bool
+
+
 def resolve_install_exclude_patterns(module_download_links: Mapping[str, object]) -> list[str]:
     exclude_raw = str(module_download_links.get("__exclude_list__", "")).strip()
     return [token.strip() for token in exclude_raw.split("|") if token.strip()]
+
+
+def _should_install_specialk(install_ctx: InstallContext, logger) -> bool:
+    specialk_requested = bool(install_ctx.game_data.get("specialk"))
+    specialk_skipped_for_asi = (
+        specialk_requested
+        and install_ctx.final_dll_name.lower() == OPTISCALER_ASI_NAME.lower()
+    )
+    if specialk_skipped_for_asi:
+        logger.info(
+            "Special K install skipped: OptiScaler.asi install mode does not support plugins/%s loading",
+            install_ctx.final_dll_name,
+        )
+    return specialk_requested and not specialk_skipped_for_asi
+
+
+def _is_optipatcher_requested_with_source(
+    game_data: Mapping[str, Any],
+    module_download_links: Mapping[str, object],
+    cached_archive_path: str,
+) -> bool:
+    if not bool(game_data.get("optipatcher")):
+        return False
+    return bool(extract_module_url(module_download_links, "optipatcher") or cached_archive_path)
+
+
+def _install_core_files(
+    install_ctx: InstallContext,
+    module_download_links: Mapping[str, object],
+    callbacks: InstallWorkflowCallbacks,
+    logger,
+) -> str:
+    logger.info("Install stage: OptiScaler Core files")
+    exclude_patterns = resolve_install_exclude_patterns(module_download_links)
+    callbacks.install_base_payload(
+        install_ctx.source_archive,
+        install_ctx.target_path,
+        install_ctx.final_dll_name,
+        exclude_patterns,
+        logger,
+    )
+
+    ini_path = os.path.join(install_ctx.target_path, "OptiScaler.ini")
+    if not os.path.exists(ini_path):
+        raise FileNotFoundError("OptiScaler.ini not found after installation")
+    return ini_path
+
+
+def _install_additional_files(
+    install_ctx: InstallContext,
+    module_download_links: Mapping[str, object],
+    callbacks: InstallWorkflowCallbacks,
+    logger,
+    *,
+    ual_cached_archive: str,
+    optipatcher_cached_archive: str,
+    specialk_cached_archive: str,
+    unreal5_cached_archive: str,
+) -> _AdditionalFileInstallState:
+    logger.info("Install stage: additional files")
+    should_install_specialk = _should_install_specialk(install_ctx, logger)
+    should_install_optipatcher = _is_optipatcher_requested_with_source(
+        install_ctx.game_data,
+        module_download_links,
+        optipatcher_cached_archive,
+    )
+
+    if install_ctx.use_ultimate_asi_loader:
+        ual_names = install_ctx.ual_detected_names if install_ctx.ual_detected_names else None
+        install_ultimate_asi_loader(
+            install_ctx.target_path,
+            module_download_links,
+            ual_detected_names=ual_names,
+            logger=logger,
+            cached_archive_path=ual_cached_archive,
+        )
+
+    if should_install_specialk:
+        install_specialk(
+            install_ctx.target_path,
+            install_ctx.final_dll_name,
+            module_download_links,
+            logger=logger,
+            cached_archive_path=specialk_cached_archive,
+        )
+
+    install_reframework_dinput8(install_ctx.target_path, install_ctx.game_data, logger=logger)
+    install_optipatcher(
+        install_ctx.target_path,
+        install_ctx.game_data,
+        module_download_links,
+        logger=logger,
+        cached_archive_path=optipatcher_cached_archive,
+    )
+    install_unreal5_patch(
+        install_ctx.target_path,
+        install_ctx.game_data,
+        module_download_links,
+        logger=logger,
+        cached_archive_path=unreal5_cached_archive,
+    )
+
+    if install_ctx.fsr4_required:
+        callbacks.install_fsr4_dll(install_ctx.target_path, install_ctx.fsr4_source_archive, logger)
+    else:
+        logger.info("Skipped FSR4 install for current GPU/game selection")
+
+    return _AdditionalFileInstallState(
+        specialk_installed=should_install_specialk,
+        optipatcher_requested_with_source=should_install_optipatcher,
+    )
+
+
+def _apply_install_settings(
+    install_ctx: InstallContext,
+    ini_path: str,
+    file_state: _AdditionalFileInstallState,
+    callbacks: InstallWorkflowCallbacks,
+    logger,
+) -> None:
+    logger.info("Install stage: settings")
+    merged_ini_settings = dict(install_ctx.game_data.get("ini_settings", {}))
+    if file_state.optipatcher_requested_with_source:
+        merged_ini_settings["LoadAsiPlugins"] = "True"
+
+    ini_utils.apply_ini_settings(
+        ini_path,
+        merged_ini_settings,
+        logger=logger,
+        allow_add_key=True,
+        allow_add_section=True,
+    )
+    if file_state.specialk_installed:
+        ini_utils.apply_ini_settings(
+            ini_path,
+            {"Plugins:LoadAsiPlugins": "true"},
+            logger=logger,
+            allow_add_key=True,
+            allow_add_section=True,
+        )
+    logger.info("Applied OptiScaler INI")
+
+    callbacks.apply_optional_ingame_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
+    callbacks.apply_optional_json_settings(install_ctx.target_path, install_ctx.game_data, logger)
+    callbacks.apply_optional_engine_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
+    callbacks.apply_optional_registry_settings(install_ctx.game_data, logger)
+
+
+def _apply_rtss_settings(install_ctx: InstallContext, logger) -> None:
+    rtss_notice.apply_rtss_global_settings_if_needed(logger=logger)
+    rtss_notice.apply_rtss_game_profile_overlay_if_needed(install_ctx.game_data, logger=logger)
 
 
 def build_install_context(
@@ -125,99 +283,20 @@ def run_install_workflow(
         logger = logging.getLogger()
 
     logger.info("Install started: target=%s", install_ctx.target_path)
-    exclude_patterns = resolve_install_exclude_patterns(module_download_links)
-    specialk_requested = bool(install_ctx.game_data.get("specialk"))
-    specialk_skipped_for_asi = (
-        specialk_requested
-        and install_ctx.final_dll_name.lower() == OPTISCALER_ASI_NAME.lower()
-    )
-    should_install_specialk = specialk_requested and not specialk_skipped_for_asi
-    if specialk_skipped_for_asi:
-        logger.info(
-            "Special K install skipped: OptiScaler.asi install mode does not support plugins/%s loading",
-            install_ctx.final_dll_name,
-        )
-    callbacks.install_base_payload(
-        install_ctx.source_archive,
-        install_ctx.target_path,
-        install_ctx.final_dll_name,
-        exclude_patterns,
-        logger,
-    )
-
-    ini_path = os.path.join(install_ctx.target_path, "OptiScaler.ini")
-    if not os.path.exists(ini_path):
-        raise FileNotFoundError("OptiScaler.ini not found after installation")
-
-    if install_ctx.use_ultimate_asi_loader:
-        ual_names = install_ctx.ual_detected_names if install_ctx.ual_detected_names else None
-        install_ultimate_asi_loader(
-            install_ctx.target_path,
-            module_download_links,
-            ual_detected_names=ual_names,
-            logger=logger,
-            cached_archive_path=ual_cached_archive,
-        )
-
-    if should_install_specialk:
-        install_specialk(
-            install_ctx.target_path,
-            install_ctx.final_dll_name,
-            module_download_links,
-            logger=logger,
-            cached_archive_path=specialk_cached_archive,
-        )
-
-    merged_ini_settings = dict(install_ctx.game_data.get("ini_settings", {}))
-    install_reframework_dinput8(install_ctx.target_path, install_ctx.game_data, logger=logger)
-    merged_ini_settings.update(
-        install_optipatcher(
-            install_ctx.target_path,
-            install_ctx.game_data,
-            module_download_links,
-            logger=logger,
-            cached_archive_path=optipatcher_cached_archive,
-        )
-    )
-    ini_utils.apply_ini_settings(
-        ini_path,
-        merged_ini_settings,
-        logger=logger,
-        allow_add_key=True,
-        allow_add_section=True,
-    )
-    if should_install_specialk:
-        ini_utils.apply_ini_settings(
-            ini_path,
-            {"Plugins:LoadAsiPlugins": "true"},
-            logger=logger,
-            allow_add_key=True,
-            allow_add_section=True,
-        )
-    logger.info("Applied OptiScaler INI")
-
-    callbacks.apply_optional_ingame_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
-    callbacks.apply_optional_json_settings(install_ctx.target_path, install_ctx.game_data, logger)
-    callbacks.apply_optional_engine_ini_settings(install_ctx.target_path, install_ctx.game_data, logger)
-    callbacks.apply_optional_registry_settings(install_ctx.game_data, logger)
-
-    install_unreal5_patch(
-        install_ctx.target_path,
-        install_ctx.game_data,
+    ini_path = _install_core_files(install_ctx, module_download_links, callbacks, logger)
+    file_state = _install_additional_files(
+        install_ctx,
         module_download_links,
-        logger=logger,
-        cached_archive_path=unreal5_cached_archive,
+        callbacks,
+        logger,
+        ual_cached_archive=ual_cached_archive,
+        optipatcher_cached_archive=optipatcher_cached_archive,
+        specialk_cached_archive=specialk_cached_archive,
+        unreal5_cached_archive=unreal5_cached_archive,
     )
-
-    if install_ctx.fsr4_required:
-        callbacks.install_fsr4_dll(install_ctx.target_path, install_ctx.fsr4_source_archive, logger)
-    else:
-        logger.info("Skipped FSR4 install for current GPU/game selection")
-
+    _apply_install_settings(install_ctx, ini_path, file_state, callbacks, logger)
     install_ctx.handler.finalize_install(app, install_ctx.game_data, install_ctx.target_path, logger)
-
-    rtss_notice.apply_rtss_global_settings_if_needed(logger=logger)
-    rtss_notice.apply_rtss_game_profile_overlay_if_needed(install_ctx.game_data, logger=logger)
+    _apply_rtss_settings(install_ctx, logger)
 
     logger.info("Install completed")
     installed_game = dict(install_ctx.game_data)

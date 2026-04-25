@@ -44,7 +44,6 @@ OPTISCALER_LEGACY_REMOVE_NAMES = {
 }
 OPTISCALER_PROXY_FALLBACK_NAMES = ("winmm.dll", "version.dll")
 OPTIPATCHER_PLUGIN_NAME = "OptiPatcher.asi"
-OPTIPATCHER_ARCHIVE_EXTENSIONS = {".zip", ".7z"}
 SPECIALK64_DLL_NAME = "SpecialK64.dll"
 SPECIALK_ARCHIVE_EXTENSIONS = {".zip", ".7z"}
 
@@ -96,34 +95,6 @@ def _ensure_writable(file_path: Path) -> None:
 
 def ensure_writable(file_path) -> None:
     _ensure_writable(Path(file_path))
-
-
-def _is_optipatcher_asi_name(file_name: str) -> bool:
-    normalized = Path(str(file_name or "").strip()).name.lower()
-    return normalized.endswith(".asi") and "optipatcher" in normalized
-
-
-def _select_single_optipatcher_payload(candidates: list[Path], extract_dir: Path) -> Path | None:
-    if not candidates:
-        return None
-    if len(candidates) == 1:
-        return candidates[0]
-
-    exact_matches = [
-        candidate
-        for candidate in candidates
-        if candidate.name.lower() == OPTIPATCHER_PLUGIN_NAME.lower()
-    ]
-    if len(exact_matches) == 1:
-        return exact_matches[0]
-
-    normalized_candidates = ", ".join(
-        sorted(str(candidate.relative_to(extract_dir)).replace("\\", "/") for candidate in candidates)
-    )
-    raise RuntimeError(
-        "Multiple OptiPatcher payload candidates were found inside the archive: "
-        f"{normalized_candidates}"
-    )
 
 
 def _read_windows_version_strings(file_path: Path) -> dict[str, str]:
@@ -532,12 +503,6 @@ def download_to_file(url, dest_path, timeout=60, logger=None):
         raise
 
 
-def _resolve_optipatcher_download_name(url: str) -> str:
-    parsed = urlparse(str(url or "").strip())
-    file_name = os.path.basename(parsed.path).strip()
-    return file_name or OPTIPATCHER_PLUGIN_NAME
-
-
 def _resolve_specialk_download_name(url: str) -> str:
     parsed = urlparse(str(url or "").strip())
     file_name = os.path.basename(parsed.path).strip()
@@ -545,32 +510,6 @@ def _resolve_specialk_download_name(url: str) -> str:
     if file_name and (suffix in SPECIALK_ARCHIVE_EXTENSIONS or file_name.lower() == SPECIALK64_DLL_NAME.lower()):
         return file_name
     return "SpecialK.7z"
-
-
-def _resolve_optipatcher_payload(download_path: Path, extract_dir: Path, logger=None) -> Path:
-    if download_path.suffix.lower() not in OPTIPATCHER_ARCHIVE_EXTENSIONS:
-        return download_path
-
-    extract_archive(str(download_path), str(extract_dir), logger=logger)
-    preferred_candidates = [
-        candidate
-        for candidate in extract_dir.rglob("*")
-        if candidate.is_file() and _is_optipatcher_asi_name(candidate.name)
-    ]
-    payload_path = _select_single_optipatcher_payload(preferred_candidates, extract_dir)
-    if payload_path is not None:
-        return payload_path
-
-    fallback_candidates = [
-        candidate
-        for candidate in extract_dir.rglob("*")
-        if candidate.is_file() and candidate.suffix.lower() == ".asi"
-    ]
-    payload_path = _select_single_optipatcher_payload(fallback_candidates, extract_dir)
-    if payload_path is not None:
-        return payload_path
-
-    raise FileNotFoundError("OptiPatcher .asi payload was not found inside the downloaded archive")
 
 
 def _resolve_specialk_payload(download_path: Path, extract_dir: Path, logger=None) -> Path:
@@ -595,65 +534,10 @@ def _resolve_specialk_payload(download_path: Path, extract_dir: Path, logger=Non
     return candidates[0]
 
 
-def _remove_existing_optipatcher_plugins(plugins_dir: Path, logger=None) -> None:
-    if not plugins_dir.is_dir():
-        return
-
-    for plugin_path in sorted(
-        (
-            child
-            for child in plugins_dir.iterdir()
-            if child.is_file() and _is_optipatcher_asi_name(child.name)
-        ),
-        key=lambda path: path.name.lower(),
-    ):
-        _ensure_writable(plugin_path)
-        try:
-            plugin_path.unlink()
-        except OSError as exc:
-            message = f"Failed to remove existing OptiPatcher plugin: {plugin_path.name}"
-            if logger:
-                logger.error("%s (%s)", message, exc)
-            else:
-                logging.error("%s (%s)", message, exc)
-            raise RuntimeError(message) from exc
-
-        message = f"Removed existing OptiPatcher plugin: {plugin_path.name}"
-        if logger:
-            logger.info(message)
-        else:
-            logging.info(message)
-
-
 def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
-    target_dir = Path(str(target_path or "").strip())
-    if not target_dir.is_dir():
-        raise ValueError(f"Invalid target folder: {target_path}")
+    from .components.optipatcher import install_optipatcher_payload
 
-    plugins_dir = target_dir / "plugins"
-    plugins_dir.mkdir(parents=True, exist_ok=True)
-    destination_path = plugins_dir / OPTIPATCHER_PLUGIN_NAME
-
-    cached = resolve_cached_archive_path(cached_archive_path)
-    use_cache = cached is not None
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir_path = Path(tmpdir)
-        if use_cache:
-            download_path = cached
-        else:
-            download_name = _resolve_optipatcher_download_name(url)
-            download_path = tmpdir_path / download_name
-            download_to_file(url, str(download_path), timeout=30, logger=logger)
-
-        extract_dir = tmpdir_path / "payload"
-        payload_path = _resolve_optipatcher_payload(download_path, extract_dir, logger=logger)
-
-        _remove_existing_optipatcher_plugins(plugins_dir, logger=logger)
-
-        if destination_path.exists():
-            _ensure_writable(destination_path)
-        shutil.copy2(payload_path, destination_path)
+    install_optipatcher_payload(target_path, url, logger=logger, cached_archive_path=cached_archive_path)
 
 
 def install_specialk(target_path, final_dll_name, url="", logger=None, cached_archive_path=""):
