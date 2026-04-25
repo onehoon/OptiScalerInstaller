@@ -110,5 +110,4 @@ def install_specialk(
         cached_archive_path=cached_archive_path,
     )
     if logger:
-        source = cached_archive_path or url
-        logger.info("Installed Special K from %s to %s", source, target_path)
+        logger.info("Installed Special K")
