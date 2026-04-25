@@ -142,6 +142,7 @@ def configure_logging(*, app_version: str, source_root: Path) -> None:
         root.addHandler(stream_handler)
 
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 
     try:
         init_file_logger(app_version=app_version, source_root=source_root)
