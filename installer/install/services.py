@@ -4,16 +4,13 @@ import os
 import shutil
 import subprocess
 import tempfile
-import uuid
 import zipfile
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
-from urllib.parse import urlparse
 
 from ..common.network_utils import get_shared_retry_session
 from ..common.process_utils import subprocess_no_window_kwargs
-from .archive_source import resolve_cached_archive_path
 
 try:
     import py7zr
@@ -503,37 +500,6 @@ def download_to_file(url, dest_path, timeout=60, logger=None):
         raise
 
 
-def _resolve_specialk_download_name(url: str) -> str:
-    parsed = urlparse(str(url or "").strip())
-    file_name = os.path.basename(parsed.path).strip()
-    suffix = Path(file_name).suffix.lower()
-    if file_name and (suffix in SPECIALK_ARCHIVE_EXTENSIONS or file_name.lower() == SPECIALK64_DLL_NAME.lower()):
-        return file_name
-    return "SpecialK.7z"
-
-
-def _resolve_specialk_payload(download_path: Path, extract_dir: Path, logger=None) -> Path:
-    if download_path.suffix.lower() not in SPECIALK_ARCHIVE_EXTENSIONS:
-        if download_path.name.lower() != SPECIALK64_DLL_NAME.lower():
-            raise FileNotFoundError(f"Special K payload must be {SPECIALK64_DLL_NAME}: {download_path.name}")
-        return download_path
-
-    extract_archive(str(download_path), str(extract_dir), logger=logger)
-    candidates = [
-        candidate
-        for candidate in extract_dir.rglob("*")
-        if candidate.is_file() and candidate.name.lower() == SPECIALK64_DLL_NAME.lower()
-    ]
-    if not candidates:
-        raise FileNotFoundError(f"{SPECIALK64_DLL_NAME} was not found inside the Special K archive")
-    if len(candidates) > 1:
-        normalized_candidates = ", ".join(
-            sorted(str(candidate.relative_to(extract_dir)).replace("\\", "/") for candidate in candidates)
-        )
-        raise RuntimeError(f"Multiple {SPECIALK64_DLL_NAME} payload candidates were found: {normalized_candidates}")
-    return candidates[0]
-
-
 def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
     from .components.optipatcher import install_optipatcher_payload
 
@@ -541,101 +507,24 @@ def install_optipatcher(target_path, url, logger=None, cached_archive_path=""):
 
 
 def install_specialk(target_path, final_dll_name, url="", logger=None, cached_archive_path=""):
-    target_dir = Path(str(target_path or "").strip())
-    if not target_dir.is_dir():
-        raise ValueError(f"Invalid target folder: {target_path}")
+    from .components.specialk import install_specialk_payload
 
-    normalized_final_name = Path(str(final_dll_name or "").strip()).name
-    if not normalized_final_name:
-        raise RuntimeError("Special K install requires the final OptiScaler DLL name.")
-
-    plugins_dir = target_dir / "plugins"
-    plugins_dir.mkdir(parents=True, exist_ok=True)
-    destination_path = plugins_dir / normalized_final_name
-
-    cached = resolve_cached_archive_path(cached_archive_path)
-    use_cache = cached is not None
-    normalized_url = str(url or "").strip()
-
-    if not use_cache and not normalized_url:
-        raise FileNotFoundError("Special K download link is not configured")
-
-    tmpdir_path = target_dir / f".optiscaler_specialk_tmp_{uuid.uuid4().hex}"
-    tmpdir_path.mkdir(parents=False, exist_ok=False)
-    try:
-        if use_cache:
-            download_path = cached
-        else:
-            download_name = _resolve_specialk_download_name(normalized_url)
-            download_path = tmpdir_path / download_name
-            download_to_file(normalized_url, str(download_path), timeout=60, logger=logger)
-
-        extract_dir = tmpdir_path / "payload"
-        payload_path = _resolve_specialk_payload(download_path, extract_dir, logger=logger)
-
-        if destination_path.exists():
-            if not destination_path.is_file():
-                raise RuntimeError(f"Existing Special K plugin destination is not a file: {destination_path}")
-            _ensure_writable(destination_path)
-        shutil.copy2(payload_path, destination_path)
-    finally:
-        shutil.rmtree(tmpdir_path, ignore_errors=True)
-
-    if logger:
-        logger.info("Special K installed to %s", destination_path)
-    return True
+    return install_specialk_payload(
+        target_path,
+        final_dll_name,
+        url=url,
+        logger=logger,
+        cached_archive_path=cached_archive_path,
+    )
 
 
 def install_unreal5_from_url(url, target_path, logger=None, cached_archive_path=""):
-    cached = resolve_cached_archive_path(cached_archive_path)
-    use_cache = cached is not None
+    from .components.unreal5 import install_unreal5_payload
 
-    if not use_cache:
-        parsed = urlparse(url)
-        file_name = os.path.basename(parsed.path)
-        ext = os.path.splitext(file_name)[1].lower()
-        if ext not in {".zip", ".7z"}:
-            msg = f"Unreal5 URL must point to .zip or .7z archive: {url}"
-            if logger:
-                logger.error(msg)
-            raise ValueError(msg)
-
-    if target_has_filename(target_path, "dxgi.dll"):
-        return False
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        if use_cache:
-            archive_path = str(cached)
-        else:
-            archive_path = str(Path(tmpdir) / (file_name or f"unreal5_patch{ext}"))
-            download_to_file(url, archive_path, timeout=60, logger=logger)
-        extract_archive(archive_path, target_path, logger=logger)
-    return True
+    return install_unreal5_payload(url, target_path, logger=logger, cached_archive_path=cached_archive_path)
 
 
 def install_reframework_dinput8_from_url(url, target_path, logger=None):
-    parsed = urlparse(url)
-    file_name = os.path.basename(parsed.path) or "reframework.zip"
+    from .components.reframework import install_reframework_dinput8_payload
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        archive_path = str(Path(tmpdir) / file_name)
-        download_to_file(url, archive_path, timeout=60, logger=logger)
-
-        with zipfile.ZipFile(archive_path, "r") as z:
-            dll_member = next(
-                (
-                    m for m in z.namelist()
-                    if not m.endswith("/") and os.path.basename(m).lower() == "dinput8.dll"
-                ),
-                None,
-            )
-
-            if not dll_member:
-                msg = "dinput8.dll not found inside reframework zip"
-                if logger:
-                    logger.error(msg)
-                raise FileNotFoundError(msg)
-
-            dst = os.path.join(target_path, "dinput8.dll")
-            with z.open(dll_member, "r") as src_fp, open(dst, "wb") as dst_fp:
-                shutil.copyfileobj(src_fp, dst_fp)
+    return install_reframework_dinput8_payload(url, target_path, logger=logger)
