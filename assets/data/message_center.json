@@ -128,6 +128,14 @@
     "memo": "붉은사막"
   },
   {
+    "message_id": "install_pre_CD_INTEL",
+    "category": "popup",
+    "ko": "[red]최신버전에서 XeSS 수정되어 옵티스케일러 없이 인게임 XeSS+XeFG 사용해도 됩니다.[end[",
+    "en": "[red]Xess+XeFG fixed on the latest game patch. OptiScaler not needed[end]",
+    "url": "",
+    "memo": "붉은사막"
+  },
+  {
     "message_id": "install_pre_RDR2",
     "category": "popup",
     "ko": "[red]배틀아이 안티치트는 꺼주세요.[br]설치로 인해 발생하는 모든 문제에 대한 책임은 사용자에게 있습니다.[br]설치 전 경계없는 창모드, 고급그래픽설정 DX12로 설정하세요[end]",
