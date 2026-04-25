@@ -20,7 +20,7 @@ def install_unreal5_payload(url, target_path, logger=None, cached_archive_path="
         file_name = os.path.basename(parsed.path)
         ext = os.path.splitext(file_name)[1].lower()
         if ext not in {".zip", ".7z"}:
-            msg = f"Unreal5 URL must point to .zip or .7z archive: {url}"
+            msg = "Unreal5 URL must point to .zip or .7z archive"
             if logger:
                 logger.error(msg)
             raise ValueError(msg)
@@ -58,7 +58,7 @@ def install_unreal5_patch(
     ))
     if logger:
         if unreal_installed:
-            logger.info("Installed Unreal5 patch from %s to %s", cached_archive_path or unreal_url, target_path)
+            logger.info("Installed Unreal5 patch")
         else:
             logger.info("Skipped Unreal5 patch because dxgi.dll is already present in %s", target_path)
     return unreal_installed

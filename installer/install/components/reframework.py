@@ -46,5 +46,5 @@ def install_reframework_dinput8(target_path: str, game_data: Mapping[str, object
 
     installer_services.install_reframework_dinput8_from_url(url, target_path, logger=logger)
     if logger:
-        logger.info("Installed REFramework dinput8.dll from %s to %s", url, target_path)
+        logger.info("Installed REFramework dinput8.dll")
     return True

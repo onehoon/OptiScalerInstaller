@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from tkinter import messagebox
 from typing import Any
 
+from installer.common.log_sanitizer import redact_text
 from .ui_shell_actions import set_information_text
 
 from installer.games.handlers import get_game_handler
@@ -137,7 +138,7 @@ class InstallFlowController:
                 mod_notice_message=notice_message,
             )
         except Exception as exc:
-            logger.exception("Install precheck failed unexpectedly: %s", exc)
+            logger.error("Install precheck failed unexpectedly: %s", redact_text(exc))
             return InstallSelectionPrecheckOutcome(
                 ok=False,
                 error=str(exc),
@@ -312,7 +313,7 @@ class InstallFlowController:
                 lambda err=exc, game=dict(game_data): self.on_install_finished(False, str(err), game),
             )
         except Exception as exc:
-            logger.exception("Install failed: %s", exc)
+            logger.error("Install failed: %s", redact_text(exc))
             self._root.after(
                 0,
                 lambda err=exc, game=dict(game_data): self.on_install_finished(False, str(err), game),

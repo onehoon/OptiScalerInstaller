@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from ..common.log_sanitizer import redact_text
 from .app_runtime_actions import build_reset_install_selection_ui_state
 from . import rtss_notice
 from .archive_controller import ArchivePreparationController, ArchivePreparationState
@@ -221,7 +222,7 @@ class StartupRuntimeCoordinator:
             self._logger.error(
                 "[APP] Failed to load Game DB for vendor=%s: %s",
                 sheet_state.active_vendor,
-                result.error,
+                redact_text(result.error),
             )
 
         self._callbacks.update_install_button_state()

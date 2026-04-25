@@ -10,6 +10,7 @@ from ctypes import wintypes
 from pathlib import Path
 
 from ..common.network_utils import get_shared_retry_session
+from ..common.log_sanitizer import redact_text
 from ..common.process_utils import subprocess_no_window_kwargs
 
 try:
@@ -488,7 +489,7 @@ def download_to_file(url, dest_path, timeout=60, logger=None):
                     f.write(chunk)
         tmp_path.replace(p)
         if logger:
-            logger.info("Downloaded file from %s to %s", url, dest_path)
+            logger.info("Downloaded file")
     except Exception as e:
         try:
             if tmp_path and tmp_path.exists():
@@ -496,7 +497,7 @@ def download_to_file(url, dest_path, timeout=60, logger=None):
         except Exception:
             logging.debug("Failed to remove temp download file: %s", tmp_path)
         if logger:
-            logger.error("Failed to download %s to %s: %s", url, dest_path, e)
+            logger.error("Failed to download file: %s", redact_text(e))
         raise
 
 

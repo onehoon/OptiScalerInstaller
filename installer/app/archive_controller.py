@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 import zipfile
 
 from ..common.download_manifest import is_update_needed, write_manifest_entry
+from ..common.log_sanitizer import redact_text
 from .optiscaler_payload_cache import (
     is_valid_optiscaler_payload_cache,
     prepare_optiscaler_payload_cache,
@@ -75,10 +76,9 @@ class ArchivePreparationController:
 
         if not url or not filename:
             self._logger.warning(
-                "[APP] OptiScaler payload cache preparation skipped: missing metadata (url=%r, filename=%r, entry=%r)",
-                url,
+                "[APP] OptiScaler payload cache preparation skipped: missing metadata (has_url=%s, filename=%r)",
+                bool(url),
                 filename,
-                normalized_entry,
             )
             return ArchivePreparationState(
                 filename=filename,
@@ -259,8 +259,8 @@ class ArchivePreparationController:
 
         if not url or not filename:
             self._logger.warning(
-                "[APP] %s preparation skipped: missing metadata (url=%r, filename=%r)",
-                asset_label, url, filename,
+                "[APP] %s preparation skipped: missing metadata (has_url=%s, filename=%r)",
+                asset_label, bool(url), filename,
             )
             return ArchivePreparationState(
                 filename=filename,
@@ -451,7 +451,7 @@ class ArchivePreparationController:
                 error_message="",
             )
         except Exception as exc:
-            self._logger.error("[APP] %s download failed: %s", asset_label, exc)
+            self._logger.error("[APP] %s download failed: %s", asset_label, redact_text(exc))
             state = ArchivePreparationState(
                 filename=filename,
                 archive_path="",
@@ -484,7 +484,7 @@ class ArchivePreparationController:
                 error_message="",
             )
         except Exception as exc:
-            self._logger.error("[APP] OptiScaler payload cache preparation failed: %s", exc)
+            self._logger.error("[APP] OptiScaler payload cache preparation failed: %s", redact_text(exc))
             state = ArchivePreparationState(
                 filename=filename,
                 archive_path="",

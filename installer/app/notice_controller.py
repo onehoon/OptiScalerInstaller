@@ -7,6 +7,7 @@ from typing import Optional
 
 from tkinter import messagebox
 
+from ..common.log_sanitizer import redact_text
 from . import message_popup
 
 
@@ -133,8 +134,12 @@ class AppNoticeController:
         try:
             if not self._open_url(self._wiki_url):
                 raise RuntimeError("webbrowser.open returned False")
-        except Exception:
-            self._logger.exception("Failed to open supported games wiki URL: %s", self._wiki_url)
+        except Exception as exc:
+            self._logger.error(
+                "Failed to open supported games wiki URL: %s (%s)",
+                redact_text(self._wiki_url),
+                redact_text(exc),
+            )
             self._show_error(self._error_title, self._wiki_open_failed_detail)
             return False
 
@@ -159,8 +164,12 @@ class AppNoticeController:
                         "No guide URL provided for after-install popup for game: %s",
                         guide_context or "<unknown>",
                     )
-            except Exception:
-                self._logger.exception("Failed to open guide URL: %s", normalized_guide_url)
+            except Exception as exc:
+                self._logger.error(
+                    "Failed to open guide URL: %s (%s)",
+                    redact_text(normalized_guide_url),
+                    redact_text(exc),
+                )
 
         self.show_selection_popup(resolved_message, on_confirm=_on_confirm_open_guide)
 

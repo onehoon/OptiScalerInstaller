@@ -5,6 +5,8 @@ from concurrent.futures import Executor, Future
 from dataclasses import dataclass, replace
 from typing import Any, Callable, Optional
 
+from ..common.log_sanitizer import redact_text
+
 
 @dataclass(slots=True)
 class PosterQueueJob:
@@ -193,7 +195,7 @@ class PosterQueueController:
                 if load_result.should_retry:
                     self._schedule_delayed_retry(job)
             except Exception as exc:
-                logging.warning("Poster download failed (will retry): %s", exc)
+                logging.warning("Poster download failed (will retry): %s", redact_text(exc))
                 if job.generation == self._render_generation:
                     self._failed_jobs[job.index] = job
 

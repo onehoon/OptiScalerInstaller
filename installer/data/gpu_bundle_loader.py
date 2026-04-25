@@ -44,7 +44,7 @@ def _normalize_apps_script_base_url(base_url_or_key: str) -> str:
     if _SCRIPT_ID_RE.fullmatch(raw):
         return f"https://script.google.com/macros/s/{raw}/exec"
 
-    raise ValueError(f"Invalid GPU bundle URL or Apps Script key: {raw}")
+    raise ValueError("Invalid GPU bundle URL or Apps Script key")
 
 
 def build_gpu_bundle_request_url(

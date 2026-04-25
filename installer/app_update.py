@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import webbrowser
 import zipfile
 
+from .common.log_sanitizer import redact_text
 from .common.update_launch import build_updated_installer_launch_command
 from .i18n import AppStrings
 from .install import services as installer_services
@@ -192,7 +193,7 @@ class InstallerUpdateManager:
                     self._open_latest_release_page()
                     return self.start_update(latest_info)
         except Exception as exc:
-            logging.warning("[APP] Version check failed: %s", exc)
+            logging.warning("[APP] Version check failed: %s", redact_text(exc))
         return False
 
     def start_update(self, latest_info: Mapping[str, object]) -> bool:
@@ -203,9 +204,9 @@ class InstallerUpdateManager:
         download_url = str(latest_info.get("url") or latest_info.get("link") or "").strip()
         if not latest_version or not download_url:
             logging.warning(
-                "[APP] Skipping installer update: missing latest_installer_dl metadata (version=%r, url=%r)",
+                "[APP] Skipping installer update: missing latest_installer_dl metadata (version=%r, has_url=%s)",
                 latest_version,
-                download_url,
+                bool(download_url),
             )
             return False
 
@@ -213,9 +214,8 @@ class InstallerUpdateManager:
         source_ext = Path(source_name).suffix.lower()
         if source_ext not in {".zip", ".exe"}:
             logging.warning(
-                "[APP] Skipping installer update: unsupported asset type %r from %s",
+                "[APP] Skipping installer update: unsupported asset type %r",
                 source_ext or "<none>",
-                download_url,
             )
             return False
 
@@ -227,7 +227,7 @@ class InstallerUpdateManager:
         download_path = runtime_dir / Path(target_name).name
 
         self._set_in_progress(True)
-        logging.info("[APP] Starting installer self-update to version %s from %s", latest_version, download_url)
+        logging.info("[APP] Starting installer self-update to version %s", latest_version)
         self._executor.submit(
             self._update_worker,
             latest_version,
@@ -272,7 +272,7 @@ class InstallerUpdateManager:
                 lambda path=str(launch_path), version=latest_version: self._on_update_ready(path, version, None),
             )
         except Exception as exc:
-            logging.exception("[APP] Installer self-update failed")
+            logging.error("[APP] Installer self-update failed: %s", redact_text(exc))
             self.root.after(
                 0,
                 lambda err=str(exc), version=latest_version: self._on_update_ready("", version, err),
@@ -283,7 +283,7 @@ class InstallerUpdateManager:
         if not target.exists():
             raise FileNotFoundError(f"Updated installer not found: {target}")
 
-        logging.info("[APP] Launching updated installer v%s from %s", latest_version, target)
+        logging.info("[APP] Launching updated installer v%s", latest_version)
         command = build_updated_installer_launch_command(target)
         process = subprocess.Popen(
             command,
@@ -301,7 +301,7 @@ class InstallerUpdateManager:
         self._set_in_progress(False)
 
         if error_message:
-            logging.error("[APP] Installer update to v%s failed: %s", latest_version, error_message)
+            logging.error("[APP] Installer update to v%s failed: %s", latest_version, redact_text(error_message))
             if callable(self._on_update_failed):
                 self._on_update_failed()
             return
@@ -309,8 +309,7 @@ class InstallerUpdateManager:
         try:
             self._launch_updated_installer(launch_path, latest_version)
         except Exception as exc:
-            logging.exception("[APP] Failed to launch updated installer")
-            logging.error("[APP] Updated installer launch failed for v%s: %s", latest_version, exc)
+            logging.error("[APP] Updated installer launch failed for v%s: %s", latest_version, redact_text(exc))
             if callable(self._on_update_failed):
                 self._on_update_failed()
             return

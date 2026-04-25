@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ..common.cover_utils import normalize_cover_filename
 from ..common.flag_parser import parse_bool_token
+from ..common.log_sanitizer import redact_text
 from ..common.network_utils import get_shared_retry_session
 
 
@@ -200,6 +201,6 @@ def _normalize_download_url(value):
             if file_id:
                 return f"https://drive.google.com/uc?export=download&id={file_id}"
     except Exception:
-        logging.debug("Failed to normalize download URL: %s", normalized, exc_info=True)
+        logging.debug("Failed to normalize download URL: %s", redact_text(normalized), exc_info=True)
 
     return normalized

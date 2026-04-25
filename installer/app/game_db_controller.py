@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 import logging
 from typing import Any, Protocol
 
+from ..common.log_sanitizer import redact_text
 from ..data import gpu_bundle_loader, message_loader, profile_loader
 
 
@@ -201,7 +202,7 @@ class GameDbLoadController:
             bundle = self._load_gpu_bundle(self._gpu_bundle_url, game_db_vendor, gpu_model)
             return self._merge_gpu_bundle(game_db, bundle)
         except Exception as bundle_err:
-            self._logger.error("Failed to load GPU bundle: %s", bundle_err)
+            self._logger.error("Failed to load GPU bundle: %s", redact_text(bundle_err))
             raise RuntimeError("GPU bundle load failed") from bundle_err
 
     def _should_load_gpu_bundle(self, game_db_vendor: str) -> bool:
@@ -225,7 +226,7 @@ class GameDbLoadController:
             )
             return self._attach_profile_catalogs(game_db, catalogs)
         except Exception as profile_err:
-            self._logger.error("Failed to load profile catalogs: %s", profile_err)
+            self._logger.error("Failed to load profile catalogs: %s", redact_text(profile_err))
             raise RuntimeError("Profile catalog load failed") from profile_err
 
     def _should_attach_profile_catalogs(self) -> bool:
