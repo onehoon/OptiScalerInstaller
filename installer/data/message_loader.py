@@ -164,7 +164,7 @@ def _binding_matches(binding: MessageBinding, *, stage: str, game_id: str, gpu_v
 def _binding_sort_key(binding: MessageBinding, *, game_id: str, gpu_vendor: str) -> tuple[int, int, int]:
     game_exact_rank = 0 if _normalize_key(binding.game_id) == _normalize_key(game_id) else 1
     vendor_exact_rank = 0 if _normalize_key(binding.gpu_vendor) == _normalize_key(gpu_vendor) else 1
-    return (game_exact_rank, vendor_exact_rank, int(binding.priority))
+    return (int(binding.priority), game_exact_rank, vendor_exact_rank)
 
 
 def _resolve_template_text(template: MessageTemplate, *, lang: str) -> str:
