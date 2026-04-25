@@ -93,7 +93,6 @@ def restore_rendered_selection(app: Any, index: int, game: Mapping[str, Any]) ->
         build_install_information_text(
             game,
             lang=app.lang,
-            stage="install_pre",
         ),
     )
 
