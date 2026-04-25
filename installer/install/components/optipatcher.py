@@ -155,7 +155,4 @@ def install_optipatcher(
 
     install_optipatcher_payload(target_path, url=opti_url, logger=logger, cached_archive_path=cached_archive_path)
     if logger:
-        if cached_archive_path:
-            logger.info("Installed OptiPatcher from cached archive %s to %s", cached_archive_path, target_path)
-        else:
-            logger.info("Installed OptiPatcher from %s to %s", opti_url, target_path)
+        logger.info("Installed OptiPatcher")

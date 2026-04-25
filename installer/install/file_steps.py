@@ -36,6 +36,17 @@ _REGISTRY_TYPE_MAP = {
 }
 
 
+class _SuppressInfoLogger:
+    def __init__(self, logger) -> None:
+        self._logger = logger
+
+    def info(self, *args, **kwargs) -> None:
+        return None
+
+    def __getattr__(self, name: str):
+        return getattr(self._logger, name)
+
+
 def resolve_ingame_ini_path(target_path: str, ingame_ini_name: str, logger=None) -> str | None:
     resolved = _resolve_profile_path(target_path, ingame_ini_name, require_existing=True, logger=logger)
     return str(resolved) if resolved is not None else None
@@ -445,7 +456,8 @@ def install_fsr4_dll(target_path: str, fsr4_source_archive: str, logger) -> Path
         raise FileNotFoundError("FSR4 is not ready")
 
     with tempfile_module.TemporaryDirectory() as tmpdir:
-        installer_services.extract_archive(fsr4_source_archive, tmpdir, logger=logger)
+        extract_logger = _SuppressInfoLogger(logger) if logger is not None else None
+        installer_services.extract_archive(fsr4_source_archive, tmpdir, logger=extract_logger)
         dll_candidates = [path for path in Path(tmpdir).rglob("*.dll") if path.is_file()]
         if not dll_candidates:
             raise FileNotFoundError("No DLL found inside FSR4 zip")
