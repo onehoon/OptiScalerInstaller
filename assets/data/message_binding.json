@@ -537,6 +537,22 @@
   },
   {
     "game_id": "CrimsonDesert",
+    "gpu_vendor": "ALL",
+    "stage": "install_pre",
+    "message_id": "install_pre_CD",
+    "priority": 70,
+    "memo": ""
+  },
+  {
+    "game_id": "CrimsonDesert",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre_CD_INTEL",
+    "priority": 80,
+    "memo": ""
+  },
+  {
+    "game_id": "CrimsonDesert",
     "gpu_vendor": "INTEL",
     "stage": "install_pre",
     "message_id": "install_pre.borderless_fsr3_required",
