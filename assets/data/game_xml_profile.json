@@ -33,7 +33,7 @@
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
     "xml_path": "DLSSUpscalingQuality@value",
-    "value": 5
+    "value": 3
   },
   {
     "profile_id": "RDR1_ALL",
@@ -46,6 +46,12 @@
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
     "xml_path": "TripleBuffer@value",
     "value": "false"
+  },
+  {
+    "profile_id": "RDR1_ALL",
+    "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
+    "xml_path": "aaAntiAliasing@value",
+    "value": 3
   },
   {
     "profile_id": "RDR1_ALL",
@@ -81,7 +87,7 @@
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
     "xml_path": "DLSSUpscalingQuality@value",
-    "value": 5
+    "value": 3
   },
   {
     "profile_id": "RDR1_ALL",
@@ -94,6 +100,12 @@
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
     "xml_path": "TripleBuffer@value",
     "value": "false"
+  },
+  {
+    "profile_id": "RDR1_ALL",
+    "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
+    "xml_path": "aaAntiAliasing@value",
+    "value": 3
   },
   {
     "profile_id": "RDR2_ALL",
