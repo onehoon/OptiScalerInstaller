@@ -110,5 +110,47 @@
     "section": "Settings",
     "key": "FrameGen",
     "value": "NV_DLSS_FG"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\Windows\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "UpsamplingMethod",
+    "value": "DLSS"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\Windows\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "DLSSFrameGenerationMode",
+    "value": "On2X"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\Windows\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "NVIDIAReflexMode",
+    "value": "On"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "UpsamplingMethod",
+    "value": "DLSS"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "DLSSFrameGenerationMode",
+    "value": "On2X"
+  },
+  {
+    "profile_id": "Samson_ALL",
+    "path": "%LOCALAPPDATA%\\Samson\\Saved\\Config\\WinGDK\\GameUserSettings.ini",
+    "section": "/Script/CJLyraBase.LyraSettingsLocal",
+    "key": "NVIDIAReflexMode",
+    "value": "On"
   }
 ]
