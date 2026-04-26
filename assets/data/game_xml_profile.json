@@ -8,97 +8,97 @@
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "Vsync",
+    "xml_path": "Vsync@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "DynamicResolution",
+    "xml_path": "DynamicResolution@value",
     "value": "false"
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "MotionBlurStyle",
+    "xml_path": "MotionBlurStyle@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "FSR3UpscalingQuality",
+    "xml_path": "FSR3UpscalingQuality@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "NVIDIAReflex",
+    "xml_path": "NVIDIAReflex@value",
     "value": 1
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "DLSSUpscalingQuality",
+    "xml_path": "DLSSUpscalingQuality@value",
     "value": 5
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "DLSSFrameGeneration",
+    "xml_path": "DLSSFrameGeneration@value",
     "value": 1
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%APPDATA%\\.1911\\Red Dead Redemption\\title\\graphicsOptions.xml",
-    "xml_path": "TripleBuffer",
+    "xml_path": "TripleBuffer@value",
     "value": "false"
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "Vsync",
+    "xml_path": "Vsync@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "DynamicResolution",
+    "xml_path": "DynamicResolution@value",
     "value": "false"
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "MotionBlurStyle",
+    "xml_path": "MotionBlurStyle@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "FSR3UpscalingQuality",
+    "xml_path": "FSR3UpscalingQuality@value",
     "value": 0
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "NVIDIAReflex",
+    "xml_path": "NVIDIAReflex@value",
     "value": 1
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "DLSSUpscalingQuality",
+    "xml_path": "DLSSUpscalingQuality@value",
     "value": 5
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "DLSSFrameGeneration",
+    "xml_path": "DLSSFrameGeneration@value",
     "value": 1
   },
   {
     "profile_id": "RDR1_ALL",
     "path": "%DOCUMENTS%\\Rockstar Games\\Red Dead Redemption\\graphicsOptions.xml",
-    "xml_path": "TripleBuffer",
+    "xml_path": "TripleBuffer@value",
     "value": "false"
   }
 ]
