@@ -570,10 +570,10 @@
     "game_name_en": "Red Dead Redemption",
     "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/2668510/f5cf694ddab93ed2462a9e2f5e01064e121c5663/library_600x900_2x.jpg?t=1730294614",
     "cover_filename": "RDR1.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
+    "enabled": true,
+    "support_intel": true,
+    "support_amd": true,
+    "support_nvidia": true
   },
   {
     "game_id": "Requiem",
