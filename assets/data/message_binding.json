@@ -654,5 +654,45 @@
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
     "memo": ""
+  },
+  {
+    "game_id": "Styx",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Windrose",
+    "gpu_vendor": "INTEL",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Windrose",
+    "gpu_vendor": "AMD",
+    "stage": "install_pre",
+    "message_id": "install_pre.borderless_fsr3_required",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Windrose",
+    "gpu_vendor": "NVIDIA",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
+  },
+  {
+    "game_id": "Samson",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post.dlss_relaunch",
+    "priority": 100,
+    "memo": ""
   }
 ]
