@@ -694,5 +694,13 @@
     "message_id": "install_post.dlss_relaunch",
     "priority": 100,
     "memo": ""
+  },
+  {
+    "game_id": "RDR1",
+    "gpu_vendor": "ALL",
+    "stage": "install_post",
+    "message_id": "install_post_RDR1",
+    "priority": 100,
+    "memo": ""
   }
 ]
