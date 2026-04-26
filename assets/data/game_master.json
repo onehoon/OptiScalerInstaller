@@ -528,28 +528,40 @@
     "support_nvidia": true
   },
   {
-    "game_id": "Windrose",
-    "match_exe": "",
-    "game_name_kr": "Windrose",
-    "game_name_en": "Windrose",
-    "cover_url": "https://images.pcgamingwiki.com/0/08/Windrose.jpg",
-    "cover_filename": "Windrose.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
-  },
-  {
     "game_id": "Styx",
-    "match_exe": "",
+    "match_exe": "Styx3-Win64-Shipping.exe",
     "game_name_kr": "Styx: Blades of Greed",
     "game_name_en": "Styx: Blades of Greed",
     "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/3290690/547c391a9c74fdcd91f471fcfd3b04b6ecd6568e/library_capsule_2x.jpg?t=1761128469",
     "cover_filename": "Styx.webp",
-    "enabled": false,
-    "support_intel": false,
-    "support_amd": false,
-    "support_nvidia": false
+    "enabled": true,
+    "support_intel": true,
+    "support_amd": true,
+    "support_nvidia": true
+  },
+  {
+    "game_id": "Windrose",
+    "match_exe": "Windrose-Win64-Shipping.exe",
+    "game_name_kr": "Windrose",
+    "game_name_en": "Windrose",
+    "cover_url": "https://images.pcgamingwiki.com/0/08/Windrose.jpg",
+    "cover_filename": "Windrose.webp",
+    "enabled": true,
+    "support_intel": true,
+    "support_amd": true,
+    "support_nvidia": true
+  },
+  {
+    "game_id": "Samson",
+    "match_exe": "CJSteam-Win64-Shipping.exe",
+    "game_name_kr": "Samson",
+    "game_name_en": "Samson",
+    "cover_url": "https://shared.steamstatic.com/store_item_assets/steam/apps/3634520/c9fbbef00cf0e9a55164530706939950dd9f5bc9/library_capsule_2x.jpg?t=1764772386",
+    "cover_filename": "Samson.webp",
+    "enabled": true,
+    "support_intel": true,
+    "support_amd": true,
+    "support_nvidia": true
   },
   {
     "game_id": "Requiem",
