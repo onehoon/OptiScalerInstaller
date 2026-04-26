@@ -214,5 +214,13 @@
     "en": "[RED]If crash after the first launch, Relaunch game.[END]",
     "url": "",
     "memo": ""
+  },
+  {
+    "message_id": "install_post_RDR1",
+    "category": "popup",
+    "ko": "[RED]설치 후 DLSS/DLSS프레임생성 설정 (수직동기화를 꺼야 설정가능함)[END]",
+    "en": "[RED]After install, set DLSS/DLSS FG in game (VSYNC must be off to enable DLSS FG)[END]",
+    "url": "",
+    "memo": ""
   }
 ]
