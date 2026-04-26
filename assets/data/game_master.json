@@ -680,7 +680,7 @@
     "cover_filename": "",
     "enabled": true,
     "support_intel": true,
-    "support_amd": false,
+    "support_amd": true,
     "support_nvidia": true
   }
 ]
